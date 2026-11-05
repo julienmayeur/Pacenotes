@@ -1,0 +1,161 @@
+# Core questions, shipped with the app: phases 1 to 4 of every interview (pacenote/phases.py),
+# merged into each client's questionnaire by clients.tailor_questionnaire. A client questionnaire
+# keeps the opening (phase `wealth`), the use-case walkthroughs (`deep-dives`) and the return.
+#
+# Same wording rules as clients.example/brioche-four/questionnaire.yaml (read its header), plus:
+#   - The phases are a backbone, never a form. Never ask "which tools do you use?" or run through a
+#     checklist out loud: every question is a story about value (where the company makes money,
+#     where the information travels and gets lost, where expertise is spent on low-value work), on a
+#     real recent case, with names, tools and numbers. The maps (people, flows, where information
+#     lives, decisions, tools) are filled by Claude from those stories.
+#   - No AI vocabulary (tests/test_questions.py checks this file too).
+#   - `replaces`: client question ids this core question stands for. When the client questionnaire
+#     has one, the client's own wording is kept in this phase and the core question is dropped.
+#   - Expect items carry fr and en: the core questions serve every client language.
+
+themes:
+  - id: core-signal-carriers
+    phase: signal-carriers
+    title: {fr: Qui porte l'information, en: Who carries the signal}
+    questions:
+      - id: core-who-comes
+        priority: 1
+        slots: [actors]
+        replaces: [capacity-size, strategy-size]
+        fr: "Dans une semaine normale, qui vient vous voir — dans votre bureau, par téléphone, par message — et pour quoi ? Prenez la semaine dernière : qui est venu le plus souvent, et qu'est-ce qu'il lui fallait de vous ?"
+        en: "In a normal week, who comes to you — in your office, by phone, by message — and for what? Take last week: who came most often, and what did they need from you?"
+        expect:
+          business:
+            - {fr: "qui vous rapporte directement (noms, rôles)", en: "who reports to you directly (names, roles)"}
+            - {fr: "le temps que ces demandes vous prennent par semaine", en: "how much of your week these requests take"}
+          workflow:
+            - {fr: "qui vient le plus souvent, et ce qu'il lui faut (une décision, une info, une validation)", en: "who comes most often, and what they need (a decision, information, a sign-off)"}
+          implementation:
+            - {fr: "par où ça arrive (bureau, téléphone, messagerie, mail)", en: "how it reaches you (office, phone, messaging, email)"}
+            - {fr: "combien de fois par semaine", en: "how many times a week"}
+        keywords: [rapporte, bureau, semaine, vient, demande, valider, équipe, reports, comes]
+      - id: core-key-people
+        priority: 2
+        slots: [actors]
+        fr: "Autour de vous, qui tient vraiment les clés de l'activité — la personne sans qui les commandes, le stock ou la facturation s'arrêteraient une semaine ? Avec qui travaille-t-elle tous les jours ?"
+        en: "Around you, who really holds the keys to the business — the person without whom orders, stock or invoicing would stop for a week? Who do they work with every day?"
+        expect:
+          business:
+            - {fr: "la personne clé (nom, poste) et ce qui s'arrêterait sans elle", en: "the key person (name, role) and what would stop without them"}
+          workflow:
+            - {fr: "avec qui elle travaille au quotidien (services, personnes)", en: "who they work with day to day (departments, people)"}
+          implementation:
+            - {fr: "combien de personnes par service", en: "how many people per department"}
+        keywords: [clés, absent, vacances, indispensable, service, entrepôt, comptabilité, keys]
+
+  - id: core-signal-flow
+    phase: signal-flow
+    title: {fr: Comment l'information circule, en: How the signal travels}
+    questions:
+      - id: core-waited-on-you
+        priority: 1
+        slots: [baseline, actors, trigger]
+        fr: "La semaine dernière, qu'est-ce qui a attendu sur votre bureau — une validation, un prix, une réponse pour un client ? Qui attendait derrière, et combien de temps ?"
+        en: "Last week, what sat waiting on your desk — a sign-off, a price, an answer for a customer? Who was waiting behind it, and for how long?"
+        expect:
+          business:
+            - {fr: "ce qui a attendu (une validation, un prix, une réponse)", en: "what waited (a sign-off, a price, an answer)"}
+            - {fr: "ce que l'attente a coûté (client perdu, commande retardée)", en: "what the wait cost (a lost customer, a late order)"}
+          workflow:
+            - {fr: "qui attendait (nom, poste), et combien de temps", en: "who was waiting (name, role), and for how long"}
+          implementation:
+            - {fr: "par où la demande est arrivée (mail, téléphone, messagerie, papier)", en: "how the request arrived (email, phone, messaging, paper)"}
+        keywords: [attend, attendait, valider, validation, prix, signer, bureau, waiting, sign-off]
+      - id: core-where-things-stand
+        priority: 1
+        slots: [actors, tool, baseline]
+        fr: "La dernière fois que vous avez voulu savoir où en était une commande, un dossier ou un client important, comment l'avez-vous su ? Vous avez demandé à qui, et où cette personne est allée chercher la réponse ?"
+        en: "The last time you wanted to know where an important order, case or customer stood, how did you find out? Whom did you ask, and where did that person go to look it up?"
+        expect:
+          business:
+            - {fr: "ce que vous vouliez savoir, et pourquoi c'était important", en: "what you wanted to know, and why it mattered"}
+          workflow:
+            - {fr: "à qui vous avez demandé (nom, poste)", en: "whom you asked (name, role)"}
+            - {fr: "combien de temps avant d'avoir la réponse", en: "how long before you had the answer"}
+          implementation:
+            - {fr: "où la personne a cherché (fichier Excel, logiciel, mails), par son nom", en: "where that person looked (Excel file, software, emails), by name"}
+        keywords: [savoir, où en, demandé, tableau, excel, fichier, point, stood, status]
+      - id: core-handoff
+        priority: 2
+        slots: [trigger, actors, distribution]
+        fr: "Prenez une commande ou un dossier qui passe d'un service à l'autre — des ventes à l'entrepôt, de l'achat à la comptabilité : comment l'information passe-t-elle ? Par mail, par téléphone, sur un groupe WhatsApp ou Teams, sur papier ? Où ça bloque, et qui attend qui ?"
+        en: "Take an order or a case that goes from one department to another — sales to the warehouse, purchasing to accounting: how does the information get across? By email, by phone, on a WhatsApp or Teams group, on paper? Where does it get stuck, and who waits for whom?"
+        expect:
+          business:
+            - {fr: "où ça bloque, et ce que ça coûte", en: "where it gets stuck, and what it costs"}
+          workflow:
+            - {fr: "qui transmet à qui, et qui attend qui (noms, services)", en: "who hands over to whom, and who waits for whom (names, departments)"}
+            - {fr: "ce que l'autre a vraiment besoin de savoir, et ce qui doit rester confidentiel", en: "what the other side really needs to know, and what must stay confidential"}
+          implementation:
+            - {fr: "le canal utilisé (mail, téléphone, messagerie, fax, papier)", en: "the channel used (email, phone, messaging, fax, paper)"}
+            - {fr: "combien de fois par jour ou par semaine", en: "how many times a day or a week"}
+        keywords: [service, transmet, passe, whatsapp, teams, mail, téléphone, papier, fax, bloque, handover]
+
+  - id: core-knowledge
+    phase: knowledge
+    title: {fr: Où vit le savoir, en: Where knowledge lives}
+    questions:
+      - id: core-last-search
+        priority: 2
+        slots: [tool, access, baseline]
+        fr: "La dernière fois que quelqu'un chez vous a cherché un document ou une information — un ancien devis, un contrat, le prix payé l'an dernier : où était-il, qui l'a trouvé, et combien de temps ça a pris ?"
+        en: "The last time someone in your company went looking for a document or a piece of information — an old quote, a contract, the price paid last year: where was it, who found it, and how long did it take?"
+        expect:
+          business:
+            - {fr: "ce qui a été cherché, et pour quoi faire", en: "what was searched for, and what for"}
+          workflow:
+            - {fr: "qui l'a trouvé, et en combien de temps", en: "who found it, and how long it took"}
+          implementation:
+            - {fr: "où il était (boîte mail, dossier partagé, Excel, logiciel, papier), par son nom", en: "where it was (mailbox, shared folder, Excel, software, paper), by name"}
+            - {fr: "qui donne l'accès à cet endroit", en: "who grants access to that place"}
+        keywords: [cherché, chercher, trouvé, dossier, serveur, drive, sharepoint, devis, contrat, archive, found]
+      - id: core-unwritten-rules
+        priority: 1
+        slots: [processing, actors]
+        fr: "Qui chez vous sait faire quelque chose que personne n'a jamais écrit — choisir un transporteur, fixer un prix, repérer un client qui va payer en retard ? Comment s'y prend-il, et que se passe-t-il quand il est en vacances ?"
+        en: "Who in your company knows how to do something nobody ever wrote down — choosing a carrier, setting a price, spotting a customer who will pay late? How do they go about it, and what happens when they are on holiday?"
+        expect:
+          business:
+            - {fr: "ce que ce savoir rapporte, ou ce qu'il coûte quand la personne est absente", en: "what this know-how is worth, or what it costs when the person is away"}
+          workflow:
+            - {fr: "qui sait (nom, poste), et sa façon de décider, étape par étape", en: "who knows (name, role), and how they decide, step by step"}
+          implementation:
+            - {fr: "les informations qu'il regarde pour décider, et où elles sont", en: "the information they look at to decide, and where it is"}
+        keywords: [sait, vacances, absent, écrit, habitude, choisir, expérience, tête, holiday]
+
+  - id: core-decisions
+    phase: decisions
+    title: {fr: Où l'expertise décide, en: Where expertise decides}
+    questions:
+      - id: core-recurring-decision
+        priority: 1
+        slots: [processing, actors, baseline]
+        fr: "Quelle décision revient chaque semaine chez vous — une commande à passer, un prix à accepter, la réunion du lundi ? Qui la prend, avec quelles informations sous les yeux, et combien de temps passe-t-on à se mettre à jour avant de vraiment décider ?"
+        en: "Which decision comes back every week in your company — an order to place, a price to accept, the Monday meeting? Who makes it, with what information in front of them, and how much time goes into catching up before actually deciding?"
+        expect:
+          business:
+            - {fr: "la décision, et ce qu'elle engage (montant, client, stock)", en: "the decision, and what is at stake (amount, customer, stock)"}
+          workflow:
+            - {fr: "qui décide, et qui prépare", en: "who decides, and who prepares it"}
+            - {fr: "le temps passé à se mettre à jour, puis à décider", en: "time spent catching up, then deciding"}
+          implementation:
+            - {fr: "les informations sous les yeux, et d'où elles viennent", en: "the information in front of them, and where it comes from"}
+        keywords: [décision, décide, réunion, lundi, valider, prix, commande, arbitrer, meeting]
+      - id: core-expert-time
+        priority: 2
+        slots: [baseline, actors, tool]
+        fr: "Prenez la personne dont l'expérience compte le plus chez vous. Sur une journée normale, combien de temps passe-t-elle vraiment à juger, négocier, décider, et combien à courir après des informations, ressaisir ou relancer ?"
+        en: "Take the person whose experience matters most in your company. On a normal day, how much time do they really spend judging, negotiating, deciding, and how much chasing information, re-keying or following up?"
+        expect:
+          business:
+            - {fr: "la part de sa journée sur ce qui demande son expérience", en: "the share of their day spent on what needs their experience"}
+          workflow:
+            - {fr: "ce qu'elle fait le reste du temps (relancer, ressaisir, chercher)", en: "what they do the rest of the time (chasing, re-keying, searching)"}
+          implementation:
+            - {fr: "les logiciels ou fichiers entre lesquels elle jongle", en: "the software or files they juggle between"}
+        keywords: [journée, relancer, ressaisir, négocier, expérience, temps, chercher, juggle]

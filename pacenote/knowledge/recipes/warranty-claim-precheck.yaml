@@ -1,0 +1,61 @@
+id: warranty-claim-precheck
+title:
+  fr: Pré-contrôle des dossiers de garantie
+  en: Warranty claim pre-check
+type: act_on_behalf
+status: seed
+flow:
+  trigger: A customer files a warranty claim (email, portal, form with photos and documents).
+  agent_does: Checks the claim against the warranty rules (dates, serial number, usage, parts, documents
+    and photos required), lists what is missing, and prepares the file for the manufacturer's format.
+  writes_to: The claim file (shared drive, ERP or manufacturer portal draft) with a checklist.
+  notifies: Asks the customer for missing documents; tells the after-sales person which claims are complete.
+  human_decision: The after-sales person accepts, refuses or escalates each claim.
+signals:
+- warranty claims come back incomplete and need several exchanges
+- the warranty rules are known by one after-sales person
+- claims are re-keyed into a manufacturer portal
+- refused claims cost money when a document was missing
+preconditions:
+- the warranty rules written down or explainable by the after-sales person
+- access to where claims arrive and where they are filed
+- the manufacturer's claim format or portal requirements
+integrations:
+- after-sales mailbox or customer portal
+- shared drive or ERP
+- manufacturer warranty portal
+probes:
+- fr: 'Le dernier dossier de garantie qui est revenu incomplet : qu''est-ce qui manquait, et qui l''a
+    vu ?'
+  en: 'The last warranty claim that came back incomplete: what was missing, and who spotted it?'
+- fr: Combien de dossiers par mois, et combien d'allers-retours avec le client pour un dossier ?
+  en: How many claims a month, and how many back-and-forths with the customer per claim?
+metrics:
+- id: claim-complete-first-time
+  name: Claims complete at first submission
+  unit: '% of claims'
+  how_measured: claims sent to the manufacturer without a request for more documents
+  cadence: monthly
+  owner: after-sales lead
+  typical_baseline: 'typical: 50 to 75 %'
+  typical_target: 'typical: 90 % or more'
+- id: claim-handling-days
+  name: Days from claim to submission
+  unit: days
+  how_measured: claim receipt date vs submission date
+  cadence: monthly
+  owner: after-sales lead
+  typical_baseline: 'typical: 5 to 15 days'
+  typical_target: 'typical: 2 days or less'
+proof:
+  first_win_cases: 40
+  first_win: Pre-check 40 past claims and compare with what the manufacturer accepted or refused.
+  shadow_mode: Two weeks where the checklist is produced and the after-sales person handles claims as
+    usual.
+  kill_week4: Stop if the pre-check misses a reason the manufacturer refused a claim.
+  kill_week8: Stop if first-time completeness did not rise.
+sourcing:
+  choice: build
+  note: The rules are specific to the brand and the manufacturer; build the checklist on a document-reading
+    model, configure the mailbox and drive connectors.
+evidence: []

@@ -1,0 +1,48 @@
+/* The Plan view: the plan as a document in the app (same tokens as app.css), and clean pages in print. */
+body.plan-page { overflow-y: auto; height: auto; }
+.plan-top { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; align-items: center;
+  gap: 16px; padding: 14px 3vw; background: var(--bg); border-bottom: 1px solid var(--rule); }
+.plan-top .brand { font-weight: 600; font-size: 16px; white-space: nowrap; }
+.plan-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
+.plan-actions button.primary { font-size: 14px; padding: 8px 18px; }
+.plan-actions button:disabled { opacity: .5; cursor: default; }
+.plan-link, .back { color: var(--accent); text-decoration: none; font-size: 14px; }
+.plan-status { font-size: 13px; color: var(--muted); }
+.plan-status.err { color: var(--bad); }
+.plan-status.ok { color: var(--ok); }
+.plan-main { max-width: 900px; margin: 0 auto; padding: 18px 3vw 80px; }
+.plan-meta { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+.plan-doc { background: var(--surface); border: 1px solid var(--rule); border-radius: 16px; box-shadow: var(--shadow);
+  padding: 36px 44px; font-size: 15px; line-height: 1.6; }
+.plan-doc h1 { font-size: 26px; line-height: 1.2; margin: 0 0 18px; }
+.plan-doc h2 { font-size: 19px; margin: 32px 0 10px; padding-bottom: 5px; border-bottom: 2px solid var(--accent); }
+.plan-doc h3 { font-size: 16px; margin: 24px 0 8px; }
+.plan-doc p { margin: 8px 0; }
+.plan-doc table { border-collapse: collapse; width: 100%; margin: 10px 0 16px; font-size: 13.5px; }
+.plan-doc th, .plan-doc td { border: 1px solid var(--rule); padding: 6px 9px; text-align: left; vertical-align: top; }
+.plan-doc th { background: var(--accent-soft); }
+.plan-doc code { font-size: 12.5px; color: var(--muted); }
+.plan-doc hr { border: 0; border-top: 1px solid var(--rule); margin: 28px 0 12px; }
+.plan-doc a { color: var(--accent); }
+/* the communication map: an inline SVG drawn server-side from plan.md's Mermaid source */
+.plan-doc figure.comm-map { margin: 10px 0 18px; padding: 10px; background: #fff; border: 1px solid var(--rule);
+  border-radius: 12px; }
+.plan-doc figure.comm-map svg { display: block; max-width: 100%; height: auto; }
+.plan-doc .mermaid-src summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
+.plan-doc .mermaid-src pre { overflow-x: auto; font-size: 12px; }
+.plan-warning { color: var(--warn, #b4561f); font-size: 13px; margin: 0 0 12px; }
+.plan-warning:empty { display: none; }
+
+/* the print dialog (fallback when no Chrome-family browser can export): the document only */
+@media print {
+  @page { size: A4; margin: 16mm 15mm; }
+  :root { --ink: #1b1f24; --muted: #5b6470; --rule: #d9dde3; --accent: #2a5bd7; --accent-soft: #f3f5f8; --surface: #fff; --bg: #fff; }
+  body.plan-page { background: #fff; color: var(--ink); }
+  .plan-top, .plan-meta { display: none !important; }
+  .plan-main { max-width: none; padding: 0; }
+  .plan-doc { border: 0; box-shadow: none; border-radius: 0; padding: 0; font-size: 10.5pt; line-height: 1.5; }
+  .plan-doc h2, .plan-doc h3 { break-after: avoid; }
+  .plan-doc tr, .plan-doc li { break-inside: avoid; }
+  .plan-doc figure.comm-map { border: 0; padding: 0; break-inside: avoid; }
+  .plan-doc .mermaid-src, .plan-warning { display: none; }
+}

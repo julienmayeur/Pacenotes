@@ -1,0 +1,59 @@
+id: meeting-decision-brief
+title:
+  fr: Chacun arrive à la réunion avec le contexte, la réunion décide
+  en: Everyone arrives with the context; the meeting only decides
+type: decision_brief
+status: seed
+flow:
+  trigger: Before a recurring decision meeting (weekly operations, purchasing, pricing).
+  agent_does: Gathers what changed since the last meeting from the sources each participant uses, merges
+    it, checks it against the figures, and lists the decisions to take with their options.
+  writes_to: A one-page brief per meeting, kept with the decisions taken.
+  notifies: Every participant gets the brief before the meeting.
+  human_decision: The meeting decides; the brief proposes options, never the decision.
+signals:
+- a recurring meeting spends most of its time catching up rather than deciding
+- each participant arrives with a different version of the figures
+- decisions are postponed for lack of information
+preconditions:
+- read access to the sources each participant brings
+- the list of recurring decisions taken in that meeting
+- someone who owns the brief during the pilot
+integrations:
+- ERP / reporting
+- mailboxes or shared drive
+- meeting notes
+probes:
+- fr: Dans la réunion de lundi dernier, combien de temps pour se mettre à jour, et combien pour décider
+    ?
+  en: In last Monday's meeting, how long did catching up take, and how long deciding?
+- fr: Quelle décision a été reportée faute d'information, récemment ?
+  en: Which decision was postponed recently for lack of information?
+metrics:
+- id: meeting-catch-up-share
+  name: Share of meeting time spent catching up
+  unit: '% of meeting time'
+  how_measured: the chair's estimate per meeting, two weeks before and after
+  cadence: weekly
+  owner: meeting chair
+  typical_baseline: 'typical: 40 to 70 %'
+  typical_target: 'typical: under 20 %'
+- id: decisions-postponed
+  name: Decisions postponed for lack of information
+  unit: per month
+  how_measured: count in the meeting notes
+  cadence: monthly
+  owner: meeting chair
+  typical_baseline: 'typical: 2 to 6 per month'
+  typical_target: 'typical: 0 to 1'
+proof:
+  first_win_cases: 4
+  first_win: Briefs for 4 past meetings, checked by the chair against what was actually discussed.
+  shadow_mode: Two meetings with the brief alongside the usual preparation.
+  kill_week4: Stop if the brief misses a topic the meeting needed.
+  kill_week8: Stop if catch-up time did not drop.
+sourcing:
+  choice: configure
+  note: Meeting and knowledge assistants over existing sources; the brief template is the client-specific
+    part.
+evidence: []

@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pacenote"
+version = "0.1.0"
+description = "Pace notes for your interviews. Live transcription on the Mac, the next question and follow-up drafted with Claude, notes and plan written for you."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.12"
+dependencies = [
+  "anthropic>=2.3",
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "pydantic>=2.7",
+  "pyyaml>=6",
+  "markdown>=3.6",
+  "babel>=2.14",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27"]
+
+[project.scripts]
+pacenote = "pacenote.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["pacenote*"]
+
+[tool.setuptools.package-data]
+pacenote = ["static/*", "locales/*.json", "listen/*.swift", "core/*.yaml", "knowledge/*.md", "knowledge/recipes/*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

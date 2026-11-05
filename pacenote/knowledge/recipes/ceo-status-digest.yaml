@@ -1,0 +1,61 @@
+id: ceo-status-digest
+title:
+  fr: Où en sont les dossiers, sans avoir à demander
+  en: Where things stand, without asking
+type: status_without_asking
+status: seed
+flow:
+  trigger: On a schedule (each morning) and when a tracked item changes status.
+  agent_does: 'Reads where work in progress is tracked (ERP, shared sheets, inboxes, board) and writes
+    a short status of A, B, C: what moved, what is late, what waits on whom.'
+  writes_to: A digest (email or messaging) and a status page that keeps the history.
+  notifies: The CEO, and the owner of anything late.
+  human_decision: The CEO decides what to chase or change; the digest never acts.
+signals:
+- the CEO asks a coworker where things stand several times a week
+- that coworker opens a spreadsheet or the ERP to answer
+- status lives in several places (inboxes, a shared sheet, the ERP)
+- late items are discovered by a customer complaint rather than in advance
+preconditions:
+- read access to where status is tracked today
+- a short list of the items the CEO follows
+- agreement from the owners that their status is read
+integrations:
+- ERP or tracking sheet
+- mailboxes
+- email or messaging for the digest
+probes:
+- fr: La dernière fois que vous vouliez savoir où en était une commande, à qui avez-vous demandé, et qu'a-t-il
+    ouvert pour répondre ?
+  en: The last time you wanted to know where an order stood, whom did you ask, and what did they open
+    to answer?
+- fr: Combien de fois par semaine vous posez ce genre de question ?
+  en: How many times a week do you ask that kind of question?
+metrics:
+- id: status-questions-per-week
+  name: Status questions the CEO asks
+  unit: per week
+  how_measured: the CEO's own tally for one week before and after
+  cadence: weekly
+  owner: the CEO
+  typical_baseline: 'typical: 10 to 30 per week'
+  typical_target: 'typical: fewer than 5'
+- id: late-items-seen-first
+  name: Late items flagged before a customer asks
+  unit: '% of late items'
+  how_measured: late items in the digest vs complaints
+  cadence: monthly
+  owner: operations lead
+  typical_baseline: 'typical: under 50 %'
+  typical_target: 'typical: 90 % or more'
+proof:
+  first_win_cases: 20
+  first_win: Two weeks of digests checked against the real status of 20 tracked items.
+  shadow_mode: The digest goes to the CEO only for two weeks; nobody changes how they work.
+  kill_week4: Stop if the digest is wrong on more than 1 item in 10.
+  kill_week8: Stop if the CEO still asks the same questions.
+sourcing:
+  choice: configure
+  note: Reporting and assistant tools over existing sources; build only the readers for sources without
+    an export.
+evidence: []

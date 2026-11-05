@@ -1,0 +1,191 @@
+# Frozen copy of the original seed questionnaire, used by the unit tests (stable ids).
+# The real one lives in clients.example/brioche-four/.
+# Seed questionnaire — Brioche & Four (bakery equipment distributor)
+# priority: 1 = must-have before we can write the plan, 2 = important, 3 = if time allows
+# keywords: only used by the offline (--offline) engine; Claude ignores them.
+
+client: Brioche & Four
+slug: brioche-four
+language: fr
+target_minutes: 15
+
+consent:
+  fr: >-
+    Avec votre accord, notre échange est transcrit en direct sur cet ordinateur pour
+    construire le plan d'action. L'audio n'est ni enregistré ni envoyé : seul le texte
+    est analysé, et vous pouvez demander sa suppression à tout moment.
+  en: >-
+    With your consent, our conversation is transcribed live on this computer to build
+    the action plan. Audio is neither recorded nor sent anywhere: only the text is
+    analysed, and you can ask for it to be deleted at any time.
+
+context: >-
+  Brioche & Four distributes professional bakery equipment (Fornaxa deck ovens, dough mixers,
+  proofers) in France to independent bakeries: it takes their orders, holds stock, delivers
+  and installs the equipment, and runs the after-sales service. We are a forward-deployed
+  engineering team scoping where software and AI can remove manual work (order intake, stock,
+  supply, delivery, after-sales, data) and what return on investment the CEO expects.
+
+# These fixtures test the locking, slots and thread rules on their own: no core questions, and
+# every question in one phase (tests/test_phases.py covers phases and the core merge).
+core_questions: false
+themes:
+  - id: strategy
+    phase: deep-dives
+    title: {fr: Entreprise & objectifs, en: Company & goals}
+    questions:
+      - id: strategy-success
+        priority: 1
+        fr: Dans un an, qu'est-ce qui vous ferait dire que ce projet a vraiment réussi ?
+        en: A year from now, what would make you say this project really worked?
+        keywords: [réussi, réussite, objectif, dans un an, success]
+      - id: strategy-pain
+        priority: 1
+        fr: Aujourd'hui, où est-ce que vos équipes perdent le plus de temps ?
+        en: Today, where do your teams lose the most time?
+        keywords: [perd, perdent, temps, ressaisie, manuel, excel]
+      - id: strategy-size
+        priority: 2
+        fr: Pour situer, combien de personnes, de boulangeries clientes et de machines par an ?
+        en: For context, how many people, bakery customers and machines per year?
+        keywords: [salariés, personnes, boulangeries, machines par an, unités]
+
+  - id: import
+    phase: deep-dives
+    title: {fr: Approvisionnement, en: Supply}
+    questions:
+      - id: import-flow
+        priority: 1
+        fr: Comment se passe une commande à l'usine Fornaxa, de la prévision jusqu'à l'arrivée du camion ?
+        en: How does an order to the Fornaxa factory work, from forecast to the truck's arrival?
+        keywords: [usine, camion, commande, italie, prévision, transporteur]
+      - id: import-customs
+        priority: 2
+        fr: Qui gère les documents de transport, la conformité et les notices des machines, et avec quels outils ?
+        en: Who handles transport documents, compliance and the machines' manuals, and with which tools?
+        keywords: [documents, conformité, notices, bon de livraison, transport, certificat]
+      - id: import-forecast
+        priority: 3
+        fr: Comment décidez-vous des quantités à commander par modèle et par saison ?
+        en: How do you decide quantities to order per model and season?
+        keywords: [quantités, saison, prévision, modèle, forecast]
+
+  - id: stock
+    phase: deep-dives
+    title: {fr: Stock & entrepôt, en: Stock & warehouse}
+    questions:
+      - id: stock-visibility
+        priority: 1
+        fr: Avez-vous une vision fiable et à jour de votre stock de machines et de pièces ?
+        en: Do you have a reliable, up-to-date view of your machine and parts stock?
+        keywords: [stock, inventaire, entrepôt, à jour, fiable, pièces]
+      - id: stock-tools
+        priority: 2
+        fr: Dans quel outil vit le stock aujourd'hui, et qui le met à jour ?
+        en: Which tool holds the stock today, and who updates it?
+        keywords: [erp, logiciel, excel, mise à jour, saisie, outil]
+
+  - id: logistics
+    phase: deep-dives
+    title: {fr: Livraison & mise en service, en: Delivery & installation}
+    questions:
+      - id: logistics-delivery
+        priority: 2
+        fr: Comment organisez-vous les livraisons et les mises en service chez les boulangeries, et qu'est-ce qui coince ?
+        en: How do you organise deliveries and installations at the bakeries, and what goes wrong?
+        keywords: [livraison, transporteur, camion, délai, tournée, coince]
+      - id: logistics-tracking
+        priority: 3
+        fr: La boulangerie sait-elle où en est sa commande sans vous appeler ?
+        en: Can a bakery see where its order is without calling you?
+        keywords: [suivi, appeler, téléphone, statut, tracking]
+
+  - id: customers
+    phase: deep-dives
+    title: {fr: Boulangeries clientes, en: Bakery customers}
+    questions:
+      - id: customers-ordering
+        priority: 1
+        fr: Comment vos boulangeries clientes passent-elles commande de machines et de pièces aujourd'hui ?
+        en: How do your bakery customers order machines and parts today?
+        keywords: [boulangerie, commande, portail, mail, téléphone, bon de commande]
+      - id: customers-requests
+        priority: 2
+        fr: Quelles sont les demandes les plus fréquentes de vos boulangeries clientes à vos équipes ?
+        en: What are the most frequent requests your bakery customers make to your teams?
+        keywords: [demandes, questions, disponibilité, prix, délai]
+
+  - id: aftersales
+    phase: deep-dives
+    title: {fr: "Après-vente, pièces & garantie", en: "After-sales, parts & warranty"}
+    questions:
+      - id: aftersales-warranty
+        priority: 1
+        fr: Comment est traitée une panne sous garantie, de l'appel de la boulangerie jusqu'au remboursement Fornaxa ?
+        en: How is a breakdown under warranty handled, from the bakery's call to the Fornaxa reimbursement?
+        keywords: [garantie, panne, remboursement, photos, dossier, technicien]
+      - id: aftersales-parts
+        priority: 2
+        fr: Quel est le délai pour une pièce détachée qui n'est pas en stock ?
+        en: What is the lead time for a spare part that is out of stock?
+        keywords: [pièce, détachée, délai, rupture, semaines]
+      - id: aftersales-tech
+        priority: 3
+        fr: Comment les techniciens trouvent-ils la documentation technique des machines ?
+        en: How do the technicians find the machines' technical documentation?
+        keywords: [documentation, technique, technicien, manuel, formation]
+
+  - id: it_security
+    phase: deep-dives
+    title: {fr: SI & sécurité, en: IT & security}
+    questions:
+      - id: it-outage
+        priority: 1
+        fr: Que s'est-il passé lors de la dernière grosse panne informatique, et qu'est-ce qui a changé depuis ?
+        en: What happened during the last major IT outage, and what has changed since?
+        keywords: [panne informatique, serveur, coupure, sauvegarde, prestataire, bloqué]
+      - id: it-landscape
+        priority: 2
+        fr: Quels sont vos principaux logiciels aujourd'hui, et qui s'occupe de l'informatique ?
+        en: What are your main software tools today, and who looks after IT?
+        keywords: [erp, prestataire, informatique, logiciel, serveur, cloud]
+      - id: it-constraints
+        priority: 2
+        fr: Quelles règles de sécurité devons-nous respecter pour accéder à vos données ?
+        en: Which security rules must we follow to access your data?
+        keywords: [règles, accès, mfa, vpn, sécurité, droits]
+
+  - id: data
+    phase: deep-dives
+    title: {fr: Données & reporting, en: Data & reporting}
+    questions:
+      - id: data-reporting
+        priority: 2
+        fr: Quels chiffres regardez-vous chaque semaine, et d'où viennent-ils ?
+        en: Which numbers do you look at every week, and where do they come from?
+        keywords: [chiffres, tableau de bord, reporting, semaine, kpi, excel]
+      - id: data-quality
+        priority: 3
+        fr: Y a-t-il des données en lesquelles vous n'avez pas confiance ?
+        en: Is there data you don't trust?
+        keywords: [confiance, erreurs, doublons, qualité]
+
+  - id: roi
+    phase: deep-dives
+    title: {fr: "ROI, budget & décision", en: "ROI, budget & decision"}
+    questions:
+      - id: roi-expectation
+        priority: 1
+        fr: Quel retour sur investissement attendez-vous, et sur quel horizon ?
+        en: What return on investment do you expect, and over what horizon?
+        keywords: [retour, roi, rentabilité, horizon, mois, gain]
+      - id: roi-budget
+        priority: 1
+        fr: Avez-vous une enveloppe budgétaire en tête pour les six premiers mois ?
+        en: Do you have a budget envelope in mind for the first six months?
+        keywords: [budget, enveloppe, euros, k€, mille, investir]
+      - id: roi-decision
+        priority: 2
+        fr: Qui d'autre doit être impliqué dans la décision et dans le projet ?
+        en: Who else needs to be involved in the decision and the project?
+        keywords: [décision, impliqué, directeur, équipe, valider]

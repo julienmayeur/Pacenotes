@@ -1,0 +1,64 @@
+id: supplier-update-distil
+title:
+  fr: 'Commande fournisseur : l''essentiel transmis à la logistique'
+  en: 'Supplier order: the useful part routed to operations'
+type: route_distil
+status: seed
+flow:
+  trigger: A supplier email or document about an order arrives (confirmation, ready date, shipping notice),
+    often in the manager's inbox.
+  agent_does: Extracts what operations need (ready date, pickup place, quantities, references) and leaves
+    out what stays with the sender (prices, negotiation, margins).
+  writes_to: Updates the supply tracking file or the ERP purchase order with the dates.
+  notifies: 'Sends the logistics person a short update: what is ready, where, when, what to book.'
+  human_decision: The manager keeps the negotiation and any change to the order; logistics decides the
+    pickup.
+signals:
+- supplier updates land in the CEO's or a manager's inbox and must be forwarded
+- the logistics person waits for a ready date or pickup place someone else holds
+- part of the supplier exchange is confidential (prices, negotiation)
+- a delay or a forgotten forward has caused a missed pickup or a late delivery
+preconditions:
+- read access to the inbox where supplier updates arrive
+- an agreed list of what may be passed on and what stays private
+- the place where logistics follows incoming orders (file, ERP, board)
+integrations:
+- manager mailbox
+- supply tracking file or ERP purchase orders
+- logistics email or messaging
+probes:
+- fr: La dernière fois que l'usine a confirmé une date, comment l'info est-elle arrivée jusqu'à la personne
+    qui organise l'enlèvement ?
+  en: The last time the factory confirmed a date, how did it reach the person who organises the pickup?
+- fr: Dans ces échanges, qu'est-ce qui doit rester entre vous et le fournisseur ?
+  en: In those exchanges, what has to stay between you and the supplier?
+- fr: Combien de temps entre le mail de l'usine et le moment où la logistique le sait ?
+  en: How long between the factory's email and the moment logistics knows?
+metrics:
+- id: supplier-update-lag
+  name: Delay from supplier update to operations
+  unit: hours
+  how_measured: email receipt time vs the time logistics is told, on a sample
+  cadence: weekly
+  owner: logistics lead
+  typical_baseline: 'typical: half a day to 2 days'
+  typical_target: 'typical: under 1 hour'
+- id: supplier-forwards-by-manager
+  name: Supplier updates the manager forwards by hand
+  unit: per week
+  how_measured: count in the manager's sent mail
+  cadence: weekly
+  owner: the manager
+  typical_baseline: 'typical: 5 to 20 per week'
+  typical_target: 'typical: none for routine updates'
+proof:
+  first_win_cases: 30
+  first_win: 'Run 30 past supplier emails: the extract must hold the right date and place and no confidential
+    line.'
+  shadow_mode: For two weeks the manager receives the extract before it goes out and approves it.
+  kill_week4: Stop if a confidential element ever reaches the extract.
+  kill_week8: Stop if logistics still has to ask for the dates.
+sourcing:
+  choice: configure
+  note: Mailbox rules plus a summarising assistant; the confidentiality list is the client-specific part.
+evidence: []

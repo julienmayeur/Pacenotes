@@ -1,0 +1,68 @@
+# ── Interview data: never in git ─────────────────────────────────────────────
+# Live sessions: transcripts, state, plans
+sessions/
+
+# Real clients: sheets, questionnaires, glossaries, research, people, metrics.
+# The committed example is the fictional clients.example/.
+clients/
+# …except the fictional questionnaires the unit tests load
+!tests/fixtures/clients/
+
+# The example client stays fictional: generated files never go to git
+clients.example/*/research.md
+clients.example/*/preplan.md
+clients.example/*/preplan.json
+clients.example/*/history/
+clients.example/*/people/
+clients.example/*/metrics.yaml
+clients.example/*/.*.lock
+
+# Recordings and transcripts (tests build synthetic ones at run time)
+samples/
+*.srt
+*.vtt
+*.wav
+*.m4a
+*.mp3
+*.aac
+*.flac
+*.caf
+wispr*.txt
+
+# Exports
+*.pdf
+
+# ── Secrets and local config ─────────────────────────────────────────────────
+.env
+.env.*
+.envrc
+*.pem
+*.key
+
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# ── Swift helper builds ──────────────────────────────────────────────────────
+.build/
+*.o
+
+# ── Node (Playwright checks) ─────────────────────────────────────────────────
+node_modules/
+
+# ── OS and editors ───────────────────────────────────────────────────────────
+.DS_Store
+.idea/
+.vscode/
+*.swp

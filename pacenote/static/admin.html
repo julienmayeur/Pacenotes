@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pacenote — Administration</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" href="/static/admin.css">
+  <!-- shared i18n helper: t(), data-i18n, <language-select> (see README "Languages") -->
+  <script src="/static/i18n.js"></script>
+</head>
+<body class="admin">
+  <header class="admin-top">
+    <div class="brand">Pacenote <span class="muted">· <span data-i18n="admin.title"></span></span></div>
+    <div class="admin-top-right">
+      <language-select bind="ui" compact data-i18n-attr="title:admin.uiLanguage"></language-select>
+      <a class="back" href="/" id="back-link" data-i18n="admin.back"></a>
+    </div>
+  </header>
+
+  <div class="admin-grid">
+    <aside class="client-list">
+      <div class="label" data-i18n="admin.clients"></div>
+      <ul id="clients" class="clients"></ul>
+      <form id="new-client" class="new-client">
+        <div class="label small-label" data-i18n="admin.newClient"></div>
+        <input id="new-name" data-i18n-attr="placeholder:admin.newName" required>
+        <div class="row">
+          <language-select id="new-lang" value="fr" allow-other data-i18n-attr="title:admin.language"></language-select>
+          <button type="submit" data-i18n="admin.create"></button>
+        </div>
+        <p id="new-error" class="error"></p>
+      </form>
+    </aside>
+
+    <main id="panel" class="panel">
+      <p class="muted" id="empty" data-i18n="admin.empty"></p>
+
+      <div id="client" class="hidden">
+        <div class="panel-head">
+          <h1 id="c-name"></h1>
+          <span id="c-slug" class="slug"></span>
+          <label class="switch" data-i18n-attr="title:admin.nextHint">
+            <input type="checkbox" id="c-next"><span class="track"><span class="knob"></span></span>
+            <span class="switch-label" data-i18n="admin.next"></span>
+          </label>
+        </div>
+
+        <section class="box">
+          <div class="box-head"><h2 data-i18n="admin.sheet"></h2><span id="save-state" class="muted small"></span></div>
+          <form id="info-form" class="info-form">
+            <label><span data-i18n="admin.name"></span><input id="f-name" required autocomplete="off"></label>
+            <label><span data-i18n="admin.language"></span>
+              <language-select id="f-language" value="fr" allow-other></language-select></label>
+            <!-- Auto-fill: a web agent fills the company fields straight in (pacenote/autofill.py);
+                 hidden when the server has no /admin/api/autofill. The fields are cells: double-click
+                 to edit (Enter or leaving saves, Esc cancels); a value you edit is never overwritten. -->
+            <div id="autofill" class="wide autofill hidden">
+              <div class="autofill-bar">
+                <button type="button" id="autofill-run" class="ghost" data-i18n="admin.autofill.run"
+                        data-i18n-attr="title:admin.autofill.hint"></button>
+                <button type="button" id="autofill-stop" class="ghost hidden" data-i18n="admin.stop"></button>
+                <span id="autofill-status" class="research-status"></span>
+              </div>
+              <ol id="autofill-steps" class="steps hidden"></ol>
+              <div id="autofill-candidates" class="candidates hidden">
+                <div class="field-label" data-i18n="admin.autofill.pick"></div>
+                <ul id="autofill-candidate-list"></ul>
+              </div>
+            </div>
+            <div class="wide group">
+              <div class="field-label" data-i18n="admin.registered"></div>
+              <div id="cells-registered" class="cells"></div>
+            </div>
+            <div class="wide group">
+              <div class="field-label" data-i18n="admin.companyFacts"></div>
+              <div id="cells-company" class="cells"></div>
+            </div>
+            <div class="wide group">
+              <div class="field-label"><span data-i18n="admin.linked.title"></span>
+                <span class="muted small" data-i18n="admin.linked.hint"></span></div>
+              <table id="linked" class="linked hidden"><thead><tr><th data-i18n="admin.linked.col.name"></th>
+                <th data-i18n="admin.linked.col.relation"></th><th data-i18n="admin.linked.col.website"></th>
+                <th data-i18n="admin.linked.col.linkedin"></th><th></th></tr></thead><tbody id="linked-rows"></tbody></table>
+              <p id="linked-empty" class="muted small" data-i18n="admin.linked.empty"></p>
+            </div>
+            <div class="wide">
+              <div class="field-label" data-i18n="admin.who"></div>
+              <ul id="f-contacts" class="contacts"></ul>
+              <button type="button" id="add-contact" class="ghost" data-i18n="admin.addContact"></button>
+              <!-- interviewee profile cards (pacenote/people.py) -->
+              <div id="profiles" class="profiles"></div>
+            </div>
+            <label class="wide"><span data-i18n="admin.notes"></span>
+              <textarea id="f-notes" rows="7" data-i18n-attr="placeholder:admin.notesPh"></textarea></label>
+            <label class="wide check"><input type="checkbox" id="f-use-preplan"> <span data-i18n="admin.usePreplan"></span>
+              <span class="muted small" data-i18n="admin.usePreplanHint"></span></label>
+            <div class="wide actions"><button type="submit" class="primary" data-i18n="admin.save"></button></div>
+          </form>
+        </section>
+
+        <section class="box">
+          <div class="box-head">
+            <h2 data-i18n="admin.research"></h2>
+            <span id="gen-info" class="muted small"></span>
+          </div>
+          <div class="research-bar">
+            <button id="run-research" class="primary"></button>
+            <button id="stop-research" class="ghost hidden" data-i18n="admin.stop"></button>
+            <span id="research-status" class="research-status"></span>
+          </div>
+          <ol id="steps" class="steps hidden"></ol>
+          <p id="summary" class="summary"></p>
+
+          <nav class="tabs" id="tabs">
+            <button data-tab="preplan" class="on" data-i18n="admin.tabs.preplan"></button>
+            <button data-tab="research" data-i18n="admin.tabs.research"></button>
+            <button data-tab="questions" data-i18n="admin.tabs.questions"></button>
+            <button data-tab="history" data-i18n="admin.tabs.history"></button>
+            <button data-tab="metrics" data-i18n="admin.tabs.metrics"></button>
+          </nav>
+
+          <div class="tab" data-tab="preplan">
+            <div class="doc-actions"><button class="ghost" data-edit="preplan" data-i18n="admin.edit"></button></div>
+            <div id="preplan-view" class="doc"></div>
+            <div id="preplan-edit" class="doc-edit hidden">
+              <textarea id="preplan-text" rows="24"></textarea>
+              <div class="actions"><button class="primary" data-save="preplan" data-i18n="admin.save"></button>
+                <button class="ghost" data-cancel="preplan" data-i18n="admin.cancel"></button></div>
+            </div>
+          </div>
+          <div class="tab hidden" data-tab="research">
+            <div class="doc-actions"><button class="ghost" data-edit="research" data-i18n="admin.edit"></button></div>
+            <div id="research-view" class="doc"></div>
+            <div id="research-edit" class="doc-edit hidden">
+              <textarea id="research-text" rows="24"></textarea>
+              <div class="actions"><button class="primary" data-save="research" data-i18n="admin.save"></button>
+                <button class="ghost" data-cancel="research" data-i18n="admin.cancel"></button></div>
+            </div>
+          </div>
+          <div class="tab hidden" data-tab="questions">
+            <p class="muted small" data-i18n="admin.questionsHint"></p>
+            <ul id="seed" class="seed"></ul>
+            <h3 data-i18n="admin.useCases"></h3>
+            <table class="cases"><thead><tr><th data-i18n="admin.col.useCase"></th><th data-i18n="admin.col.value"></th>
+              <th data-i18n="admin.col.feasibility"></th><th data-i18n="admin.col.kind"></th></tr></thead>
+              <tbody id="cases"></tbody></table>
+          </div>
+          <!-- metric monitoring: clients/<slug>/metrics.yaml (pacenote metrics seed / add / import) -->
+          <div class="tab hidden" data-tab="metrics">
+            <p class="muted small" data-i18n="admin.metrics.hint"></p>
+            <p id="metrics-empty" class="muted small hidden" data-i18n="admin.metrics.empty"></p>
+            <p id="metrics-error" class="error"></p>
+            <div id="metrics" class="metrics"></div>
+          </div>
+          <div class="tab hidden" data-tab="history">
+            <p class="muted small" data-i18n="admin.historyHint"></p>
+            <ul id="history" class="history"></ul>
+            <div id="history-view" class="doc hidden"></div>
+          </div>
+        </section>
+
+        <section class="box">
+          <div class="box-head"><h2 data-i18n="admin.sessions.title"></h2></div>
+          <ul id="sessions" class="sessions"></ul>
+          <p id="sessions-empty" class="muted small hidden" data-i18n="admin.sessions.empty"></p>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="/static/admin.js"></script>
+</body>
+</html>
