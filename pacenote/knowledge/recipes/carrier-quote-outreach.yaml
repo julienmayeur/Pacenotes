@@ -1,0 +1,62 @@
+id: carrier-quote-outreach
+title:
+  fr: Demandes de prix aux transporteurs habituels, réponses comparées
+  en: Quote requests to the usual carriers, answers compared
+type: act_on_behalf
+status: seed
+flow:
+  trigger: A shipment or service needs booking (a full truck, a pickup, a delivery round).
+  agent_does: Sends the usual carriers or providers the same request, reads their answers (price, date,
+    conditions) and puts them side by side.
+  writes_to: A comparison table (decision dashboard or shared sheet) per request.
+  notifies: The person who books gets the comparison when the answers are in, or a reminder of who has
+    not answered.
+  human_decision: The person chooses the carrier and confirms the booking.
+signals:
+- someone emails or calls the same few carriers or providers for each shipment
+- answers come back in different formats and are compared by hand
+- booking waits on chasing the carriers who have not answered
+- the choice of carrier follows rules that live in one person's head
+preconditions:
+- the list of usual carriers or providers and how each prefers to be asked
+- a mailbox the requests can be sent from
+- the criteria the person uses to choose (price, date, reliability)
+integrations:
+- shared mailbox
+- carrier list
+- comparison sheet or dashboard
+probes:
+- fr: Pour la dernière livraison fournisseur, combien de transporteurs avez-vous sollicités, et comment
+    avez-vous choisi ?
+  en: For the last supplier delivery, how many carriers did you ask, and how did you choose?
+- fr: Combien de temps entre la première demande et la réservation ?
+  en: How long between the first request and the booking?
+metrics:
+- id: quote-cycle-hours
+  name: Time from request to booking decision
+  unit: hours
+  how_measured: first request email vs booking email, per shipment
+  cadence: per shipment
+  owner: logistics lead
+  typical_baseline: 'typical: 1 to 3 days'
+  typical_target: 'typical: same day'
+- id: quotes-per-request
+  name: Quotes compared per request
+  unit: quotes
+  how_measured: count in the comparison table
+  cadence: monthly
+  owner: logistics lead
+  typical_baseline: 'typical: 1 to 2'
+  typical_target: 'typical: every usual carrier asked'
+proof:
+  first_win_cases: 20
+  first_win: 'Re-run 20 past requests: the comparison must match the answers the carriers gave.'
+  shadow_mode: Requests go out from the agent only after the person approves the first ones; the person
+    books as usual.
+  kill_week4: Stop if a carrier complains about the requests or answers are misread.
+  kill_week8: Stop if booking time did not drop.
+sourcing:
+  choice: configure
+  note: Freight and procurement tools offer multi-carrier requests; configure one when the carriers are
+    on it, otherwise a mailbox assistant.
+evidence: []

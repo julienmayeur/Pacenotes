@@ -1,0 +1,280 @@
+# Seed questionnaire — Brioche & Four (bakery equipment distributor)
+#
+# How to write questions here (the app relies on it):
+#   - The CEO meets a forward-deployed engineer for the first time. He has heard of AI but does
+#     not know how to use it, so he cannot say what success looks like in the abstract nor imagine
+#     what could be taken off his team's hands. Ask about his work, never about technology.
+#   - Start from CAPACITY: what stops the company from taking more customers, orders or volume, or a
+#     new market, and what eats the team's time today. The target comes out of that discussion
+#     ("if this took half the time, what would you do with it, how many more orders?"); never ask
+#     for success or goals in the abstract.
+#   - Every question is precise and operational, on a real recent case ("take the last order you
+#     got last week…"): who does what, with which software or file (by name), how often, how long
+#     it takes, where the information comes from and where it goes next. A CEO answers "we have an
+#     ERP" to "which tools do you use?", but tells who did what, where, and how long it took when
+#     asked about last week. The follow-ups and the `expect` items dig the same way.
+#   - No AI vocabulary in any question or `expect` item: no "IA"/"AI", "intelligence
+#     artificielle", "agent", "automatiser"/"automate", "LLM", "bot", "algorithme"
+#     (tests/test_questions.py checks it).
+#   - The plan is a factual integration proposal, one section per USE CASE (a workflow we could
+#     take over). Every use case is drilled through the same integration slots, the schema the
+#     plan is written from (pacenote/contract.py, SLOT_KEYS), on three rungs:
+#       business:       baseline     = current cost: time spent, delays, errors
+#                       target       = the success metric, with a number and a date
+#       workflow:       trigger      = what starts the work and where it lives (mailbox, folder, portal, phone)
+#                       actors       = who does it today, who acts on the result
+#                       processing   = what is done with the data
+#                       distribution = who receives the result, channel, format
+#       implementation: tool         = the software by name (ERP, WMS, Excel…), version, export or API
+#                       access       = how we reach it, credentials/permissions, who owns or grants them
+#                       volume       = how many per day / week, peaks
+#   - Every question maps to its slots (`slots:`):
+#       * with `use_case:` they are the slots it requires (default: all nine). They are its
+#         "Ce qui manque" (labels from the locale files) and it is answered only once all of them
+#         hold what the CEO actually said. Slots belong to the use case, so a second question on
+#         the same use case starts with what the first one filled. Use cases discovered live get
+#         their own question and slot set.
+#       * without a use case (capacity, IT, ROI) they are the slots its answer feeds for whichever
+#         workflow the CEO describes; the question itself is dug down the ladder with `expect`:
+#           business       = what it costs today, what the freed time would allow;
+#           workflow       = the real steps of the last concrete case, who does what, handoffs;
+#           implementation = software or files by name, data, volumes, access.
+#         `expect` lists 1 to 3 concrete details per rung (short, in the questionnaire language);
+#         such a question is answered once at least half of them are covered.
+#   - priority: 1 = must-have before we can write the plan, 2 = important, 3 = if time allows.
+#   - 15 minutes is about 12 to 14 questions in all, the 9 core questions included: the follow-ups
+#     do the digging, not more questions. Each phase has a time budget; when it is spent the next
+#     move goes to the next phase, so priority 2-3 questions may stay unasked.
+#   - keywords: only used by the offline (--offline) engine; Claude ignores them.
+#   - PHASES (pacenote/phases.py): the interview runs through seven ordered phases, an internal
+#     backbone the CEO never sees as a form. This file holds three of them, set with `phase:` on a
+#     theme (or a question): `wealth` (where the company makes and loses money, what limits growth),
+#     `deep-dives` (the use-case walkthroughs) and `return` (ROI, budget, decision). The four phases
+#     in between (who carries the signal, how it travels, where knowledge lives, where expertise
+#     decides) ship with the app (pacenote/core/questions.yaml) and are merged in at load time.
+#     A file without `phase:` still loads: use-case questions go to the deep dives, capacity /
+#     strategy themes open, ROI / budget close, the rest are deep dives. `phase_minutes:` overrides
+#     the time budget per phase (scaled to target_minutes).
+#   - Leave every top opportunity with at least one baseline number (hours, delays, volumes) and a
+#     way to measure it, in the CEO's words: the plan proves value against that baseline.
+
+client: Brioche & Four
+slug: brioche-four
+language: fr
+target_minutes: 15
+
+consent:
+  fr: >-
+    Avec votre accord, notre échange est transcrit en direct sur cet ordinateur pour
+    construire le plan d'action. L'audio n'est ni enregistré ni envoyé : seul le texte
+    est analysé, et vous pouvez demander sa suppression à tout moment.
+  en: >-
+    With your consent, our conversation is transcribed live on this computer to build
+    the action plan. Audio is neither recorded nor sent anywhere: only the text is
+    analysed, and you can ask for it to be deleted at any time.
+
+context: >-
+  Brioche & Four distributes professional bakery equipment (Fornaxa deck ovens, dough mixers,
+  proofers) in France to independent bakeries: it takes their orders, holds stock, delivers
+  and installs the equipment, and runs the after-sales service (breakdowns, repairs, spare
+  parts). We are a forward-deployed engineering team scoping where software and AI can remove
+  manual work (order intake, stock, supply, delivery, after-sales, data) and what return on
+  investment the CEO expects. The CEO is not technical and has never worked with AI: start
+  from what limits the company's capacity (more bakeries, more orders, new regions) and what
+  eats the team's time, then ask for stories from last week, people, software and files by
+  name, how often, how long, numbers and time lost, never for architecture or AI.
+
+use_cases:
+  - id: bakery-orders
+    title: {fr: Saisie des commandes des boulangeries, en: Bakery order entry}
+  - id: stock-requests
+    title: {fr: "Réponses aux demandes « dispo en stock ? »", en: "Answering \"is it in stock?\" requests"}
+  - id: import-replenishment
+    title: {fr: Réassort fournisseur et transport, en: Supplier replenishment and freight}
+  - id: delivery-tracking
+    title: {fr: Suivi des livraisons aux boulangeries, en: Bakery delivery tracking}
+  - id: warranty-claims
+    title: {fr: Demandes SAV et garantie, en: After-sales and warranty requests}
+  - id: weekly-reporting
+    title: {fr: Reporting hebdomadaire, en: Weekly reporting}
+
+themes:
+  - id: capacity
+    phase: wealth
+    title: {fr: Capacité & croissance, en: Capacity & growth}
+    questions:
+      - id: capacity-limit
+        priority: 1
+        slots: [baseline, target, actors, processing, tool, volume]
+        fr: "Si demain vous signiez trente boulangeries de plus, ou si les commandes doublaient, qui dans l'équipe serait débordé en premier, et sur quelle tâche précise ? Qu'est-ce que cette personne fait de ses journées aujourd'hui ?"
+        en: "If tomorrow you signed thirty more bakeries, or orders doubled, who on the team would be swamped first, and on which exact task? What does that person spend their days on today?"
+        expect:
+          business:
+            - "la tâche qui coincerait en premier"
+            - "le temps qu'elle prend aujourd'hui (heures par jour ou par semaine)"
+            - "ce que vous feriez du temps gagné (boulangeries ou commandes en plus)"
+          workflow:
+            - "qui la fait (nom, poste)"
+            - "ce que cette personne fait, sur un cas réel de la semaine dernière"
+          implementation:
+            - "le logiciel ou le fichier utilisé, par son nom"
+            - "combien de fois par jour ou par semaine"
+        keywords: [débordé, débordée, doublaient, doubler, coince, coincerait, embaucher, recruter, effectifs, capacité, swamped, twice]
+      - id: capacity-time
+        priority: 1
+        slots: [baseline, trigger, actors, distribution, tool, volume]
+        fr: "Prenez la semaine dernière : sur quelle tâche répétitive vos équipes ont-elles passé le plus d'heures — ressaisir des commandes, répondre au téléphone, remplir des tableaux Excel, relancer le fournisseur ou les transporteurs ? Qui l'a faite, combien d'heures au total, et dans quel logiciel ?"
+        en: "Take last week: which repetitive task took your teams the most hours — re-keying orders, answering the phone, filling in Excel sheets, chasing the supplier or the carriers? Who did it, how many hours in total, and in which software?"
+        expect:
+          business:
+            - "la tâche qui a pris le plus d'heures"
+            - "le nombre d'heures par semaine, et combien de personnes"
+          workflow:
+            - "qui l'a faite (nom, poste)"
+            - "d'où arrive l'information (mail, téléphone, portail, fichier)"
+            - "où elle repart ensuite (ERP, mail, tableau, boulangerie)"
+          implementation:
+            - "le logiciel ou le fichier, par son nom"
+            - "combien de fois par jour ou par semaine"
+        keywords: [perd, perdent, temps, heures, ressaisie, ressaisir, manuel, excel, semaine, bloquées, e-mails]
+      - id: capacity-growth
+        priority: 2
+        slots: [baseline, target, actors, volume]
+        fr: "Y a-t-il des boulangeries, des clients ou une région que vous laissez de côté aujourd'hui faute de bras — les chaînes de boulangeries, les pièces détachées, une région voisine ? Pour les prendre, quel travail faudrait-il absorber en plus, et qui le ferait ?"
+        en: "Are there bakeries, customers or a region you leave aside today for lack of hands — bakery chains, spare parts, a neighbouring region? To take them on, which extra work would have to be absorbed, and who would do it?"
+        expect:
+          business:
+            - "l'opportunité laissée de côté"
+            - "ce qu'elle représenterait (boulangeries, machines ou chiffre d'affaires en plus)"
+          workflow:
+            - "le travail qu'il faudrait absorber en plus"
+            - "qui devrait le faire"
+          implementation:
+            - "le volume en plus (par semaine ou par mois)"
+        keywords: [marché, région, nouveaux clients, chaînes, faute de, croissance, développer, export]
+
+  - id: customers
+    phase: deep-dives
+    title: {fr: Boulangeries clientes, en: Bakery customers}
+    questions:
+      - id: orders-walkthrough
+        priority: 1
+        use_case: bakery-orders
+        fr: "Prenez la dernière commande qu'une boulangerie vous a passée la semaine dernière : elle est arrivée comment (mail, téléphone, bon de commande en PDF, portail), qui l'a ressaisie, dans quel logiciel, combien de minutes ça a pris, et qui a été prévenu ensuite ?"
+        en: "Take the last order a bakery placed with you last week: how did it arrive (email, phone, PDF order form, portal), who re-keyed it, in which software, how many minutes did it take, and who was told next?"
+        keywords: [boulangerie, commande, mail, téléphone, saisie, ressaisie, portail, bon de commande]
+      - id: stock-walkthrough
+        priority: 2
+        use_case: stock-requests
+        fr: "La dernière fois qu'une boulangerie a demandé « vous l'avez en stock ? » : qui a répondu, en regardant quel écran ou quel fichier, combien de temps avant qu'elle ait sa réponse, et combien de demandes comme ça arrivent par jour ?"
+        en: "The last time a bakery asked \"do you have it in stock?\": who answered, looking at which screen or file, how long before they got their answer, and how many such requests come in a day?"
+        keywords: [stock, inventaire, entrepôt, dispo, disponibilité, pièces, logiciel]
+
+  - id: import
+    phase: deep-dives
+    title: {fr: Approvisionnement & logistique, en: Supply & logistics}
+    questions:
+      - id: import-walkthrough
+        priority: 1
+        use_case: import-replenishment
+        fr: "Prenez le dernier réassort commandé à l'usine Fornaxa : qui a décidé des quantités, à partir de quel fichier ou de quel état du stock, comment le transporteur a été choisi, et comment vous avez suivi le camion jusqu'à l'entrepôt — mails, site du transporteur, tableau Excel ?"
+        en: "Take the last replenishment ordered from the Fornaxa factory: who decided the quantities, from which file or stock report, how was the carrier chosen, and how did you follow the truck to the warehouse — emails, the carrier's website, an Excel sheet?"
+        keywords: [usine, camion, réassort, italie, transporteur, fret, délai, livraison usine]
+      - id: logistics-delivery
+        priority: 2
+        use_case: delivery-tracking
+        slots: [trigger, actors, tool, volume, distribution, baseline]
+        fr: "Quand une boulangerie veut savoir où en est sa livraison ou sa mise en service, comment fait-elle aujourd'hui : elle appelle qui, où cette personne va chercher l'information (planning des tournées, ERP, mails), et combien d'appels de ce genre recevez-vous par semaine ?"
+        en: "When a bakery wants to know where its delivery or installation stands, what does it do today: whom does it call, where does that person look it up (delivery round planning, ERP, emails), and how many such calls do you get a week?"
+        keywords: [livraison, tournée, suivi, appeler, téléphone, statut, mise en service]
+
+  - id: aftersales
+    phase: deep-dives
+    title: {fr: "Après-vente, pièces & garantie", en: "After-sales, parts & warranty"}
+    questions:
+      - id: aftersales-warranty-walkthrough
+        priority: 1
+        use_case: warranty-claims
+        fr: "Prenez la dernière panne signalée par une boulangerie : qu'a-t-elle envoyé (photos, numéro de série du four, facture) et par où — mail, téléphone, portail ? Qui l'a traitée, dans quel outil, combien de jours entre l'appel et le passage du technicien, et qui a été prévenu ou facturé ?"
+        en: "Take the last breakdown a bakery reported: what did it send (photos, the oven's serial number, invoice) and through which channel — email, phone, a portal? Who handled it, in which tool, how many days between the call and the technician's visit, and who was notified or invoiced?"
+        keywords: [panne, garantie, technicien, intervention, photos, dossier, numéro de série]
+
+  - id: it_security
+    phase: deep-dives
+    title: {fr: SI & sécurité, en: IT & security}
+    questions:
+      - id: it-outage
+        priority: 2
+        slots: [baseline, tool, access]
+        fr: "La dernière fois que l'ERP ou la messagerie s'est arrêté, qu'est-ce qui s'est bloqué concrètement — les commandes, la facturation, le planning des tournées —, pendant combien de temps, comment avez-vous travaillé en attendant, et qu'avez-vous changé depuis (sauvegardes, mots de passe, prestataire) ?"
+        en: "The last time the ERP or email went down, what concretely stopped — orders, invoicing, the delivery round planning —, for how long, how did you work in the meantime, and what have you changed since (backups, passwords, IT provider)?"
+        expect:
+          business:
+            - "ce qui s'est arrêté, et combien de temps"
+            - "ce que ça a coûté (commandes bloquées, données perdues)"
+          workflow:
+            - "comment l'équipe a travaillé en attendant (papier, téléphone, Excel)"
+          implementation:
+            - "qui gère l'informatique (interne ou prestataire, nom)"
+            - "ce qui a changé depuis (sauvegardes, accès)"
+        keywords: [panne informatique, arrêté, coupure, sauvegarde, prestataire, serveur, bloqué]
+      - id: it-access
+        priority: 1
+        slots: [tool, access]
+        fr: "Aujourd'hui, quand un nouvel employé ou un prestataire a besoin d'accéder à la boîte mail des commandes ou à l'ERP, qui lui ouvre l'accès, en combien de temps, et quelles règles avez-vous fixées ?"
+        en: "Today, when a new employee or a contractor needs access to the orders mailbox or the ERP, who grants it, how long does it take, and which rules have you set?"
+        expect:
+          business:
+            - "ce qui est interdit ou sensible"
+          workflow:
+            - "qui ouvre les accès (nom, interne ou prestataire)"
+            - "en combien de temps"
+          implementation:
+            - "la messagerie utilisée (Outlook, Gmail…)"
+            - "où sont hébergées les données (cloud, serveur local, pays)"
+        keywords: [accès, droits, prestataire, messagerie, outlook, gmail, hébergement, serveur, mot de passe]
+
+  - id: data
+    phase: deep-dives
+    title: {fr: Données & pilotage, en: Data & reporting}
+    questions:
+      - id: data-reporting
+        priority: 2
+        use_case: weekly-reporting
+        slots: [trigger, actors, processing, distribution, tool, baseline]
+        fr: "Les chiffres que vous regardez chaque lundi — ventes, stock, interventions SAV en retard : qui les prépare, en copiant depuis quels logiciels ou fichiers, combien d'heures ça lui prend, et sous quelle forme vous les recevez (Excel, mail, papier) ?"
+        en: "The figures you look at every Monday — sales, stock, late after-sales visits: who prepares them, copying from which software or files, how many hours does it take them, and in what form do you get them (Excel, email, paper)?"
+        keywords: [chiffres, tableau, reporting, lundi, semaine, kpi, excel]
+
+  - id: roi
+    phase: return
+    title: {fr: "ROI, budget & décision", en: "ROI, budget & decision"}
+    questions:
+      - id: roi-expectation
+        priority: 1
+        slots: [baseline, target]
+        fr: "Si la tâche qui vous freine le plus prenait deux fois moins de temps, qu'en feriez-vous concrètement : combien de commandes ou de boulangeries en plus, ou quelle embauche évitée ? Et en combien de mois voulez-vous voir la différence ?"
+        en: "If the task that holds you back most took half the time, what would you concretely do with it: how many more orders or bakeries, or which hire avoided? And within how many months do you want to see the difference?"
+        expect:
+          business:
+            - "ce que le temps gagné permettrait (commandes, boulangeries, embauche évitée)"
+            - "en combien de mois"
+          workflow:
+            - "sur quelle tâche, et pour qui, le gain doit se voir"
+          implementation:
+            - "comment vous le verrez (quel chiffre, dans quel outil)"
+        keywords: [retour, roi, rentabilité, mois, gain, heure, moitié, deux fois moins, embauche]
+      - id: roi-budget
+        priority: 1
+        slots: [actors]
+        fr: "Pour chiffrer la suite : qui valide une dépense comme celle-ci chez vous, à partir de quel montant, avez-vous une fourchette en tête pour les six premiers mois, et qui serait notre interlocuteur au quotidien — combien d'heures par semaine ?"
+        en: "To price the next step: who signs off on a spend like this, above which amount, do you have a range in mind for the first six months, and who would be our day-to-day contact — how many hours a week?"
+        expect:
+          business:
+            - "fourchette en euros"
+          workflow:
+            - "qui valide la dépense, et à partir de quel montant"
+          implementation:
+            - "notre interlocuteur au quotidien (nom, rôle)"
+            - "sa disponibilité (heures par semaine)"
+        keywords: [budget, enveloppe, euros, k€, mille, fourchette, valide]

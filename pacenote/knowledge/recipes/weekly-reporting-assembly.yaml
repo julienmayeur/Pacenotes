@@ -1,0 +1,54 @@
+id: weekly-reporting-assembly
+title:
+  fr: Le reporting du lundi assemblé tout seul
+  en: The Monday report, ready without rebuilding it
+type: status_without_asking
+status: seed
+flow:
+  trigger: Every week before the reporting meeting (or month end).
+  agent_does: Pulls the figures from the ERP, accounting and the usual files, fills the reporting template,
+    and flags figures that moved unusually or are missing.
+  writes_to: The reporting file or dashboard, in the format the team already reads.
+  notifies: The person who prepares the reporting gets it ready to check; the readers when it is published.
+  human_decision: The person checks and comments the figures before they go out.
+signals:
+- someone spends hours each week assembling the same report
+- figures are copied from the ERP or accounting into a spreadsheet
+- the report is late or incomplete when that person is away
+preconditions:
+- exports or read access to the systems the figures come from
+- the current report template and how each figure is computed
+integrations:
+- ERP / accounting exports
+- reporting spreadsheet or dashboard
+probes:
+- fr: 'Le dernier reporting du lundi : qui l''a préparé, à partir de quels fichiers, et combien de temps
+    ça a pris ?'
+  en: 'Last Monday''s reporting: who prepared it, from which files, and how long did it take?'
+metrics:
+- id: report-prep-hours
+  name: Time to prepare the weekly report
+  unit: hours per week
+  how_measured: the preparer's own count for two weeks before and after
+  cadence: weekly
+  owner: the preparer
+  typical_baseline: 'typical: 2 to 6 hours'
+  typical_target: 'typical: under 30 minutes of checking'
+- id: report-on-time
+  name: Reports ready on time
+  unit: '% of weeks'
+  how_measured: publication time vs meeting time
+  cadence: monthly
+  owner: the preparer
+  typical_baseline: 'typical: 70 to 90 %'
+  typical_target: 'typical: 100 %'
+proof:
+  first_win_cases: 8
+  first_win: Rebuild the last 8 weekly reports from the raw data and compare figure by figure.
+  shadow_mode: Two cycles where the assembled report is produced next to the manual one.
+  kill_week4: Stop if a figure differs from the manual report without an explanation.
+  kill_week8: Stop if the preparer still rebuilds it by hand.
+sourcing:
+  choice: configure
+  note: BI or spreadsheet automation over existing exports; build nothing the BI tool already does.
+evidence: []

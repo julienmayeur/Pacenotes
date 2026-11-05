@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pacenote</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <!-- shared i18n helper: t(), data-i18n, <language-select> (see README "Languages") -->
+  <script src="/static/i18n.js"></script>
+</head>
+<body>
+  <div id="app" class="app">
+    <header class="top">
+      <div class="brand">
+        <span id="client"></span>
+        <span id="listen" class="listen idle" title="">
+          <span class="meter" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+          <span id="listen-label" class="listen-label"></span>
+          <span id="langs" class="langs"></span>
+        </span>
+      </div>
+      <div class="meta">
+        <!-- THE display language (labels, questions, follow-ups, missing items): one at a time.
+             Not the spoken languages, which are the FR / EN chips of the listening indicator. -->
+        <language-select id="ui-switch" bind="ui" compact segmented label="lang.display"
+                         data-i18n-attr="title:lang.display"></language-select>
+        <span id="latency" class="latency muted" title=""></span>
+        <span id="sync-dot" class="dot" title=""></span>
+      </div>
+    </header>
+
+    <div id="alerts" class="alerts" role="alert"></div>
+
+    <main class="stage">
+      <!-- ONE scrolling panel = the interview thread: past questions (compact, collapsible) above,
+           the current question card, then the upcoming questions (smaller) -->
+      <section id="interview" class="focus interview">
+        <div class="thread-head label small-label" id="history-head"><span data-i18n="thread.title"></span></div>
+        <ol id="history" class="history"></ol>
+
+        <article id="current-card" class="current-card">
+          <div class="card-ghost" id="card-ghost" aria-hidden="true"></div>
+          <div class="card-body" id="card-body">
+            <!-- the theme under study: a calm header (the seed question and its own
+                 Business > Workflow > Implementation ladder), not the focal point -->
+            <div class="card-top">
+              <div class="label theme-label">
+                <span id="phase-label" class="phase-label"></span>
+                <span data-i18n="focus.theme"></span>
+                <span id="current-origin" class="origin"></span>
+                <span id="analysing" class="analysing" aria-live="polite"></span>
+              </div>
+              <div class="controls" id="controls">
+                <button data-action="next" class="ctl primary-ctl" data-i18n-attr="title:controls.nextTitle"><span data-i18n="controls.next"></span><kbd>n</kbd></button>
+                <button data-action="answered" class="ctl" data-i18n-attr="title:controls.answeredTitle"><span data-i18n="controls.answered"></span><kbd>a</kbd></button>
+                <button data-action="skip" class="ctl" id="ctl-skip" data-i18n-attr="title:controls.skipTitle"><span data-i18n="controls.skip"></span><kbd>k</kbd></button>
+                <button data-action="phase" class="ctl subtle" data-i18n-attr="title:controls.nextPhaseTitle"><span data-i18n="controls.nextPhase"></span><kbd>p</kbd></button>
+                <button data-action="sync" class="ctl subtle" data-i18n-attr="title:controls.syncTitle"><span data-i18n="controls.sync"></span><kbd>s</kbd></button>
+              </div>
+            </div>
+            <header id="theme-head" class="theme-head">
+              <h2 id="current" class="current"></h2>
+              <ol id="ladder" class="ladder" data-i18n-attr="aria-label:focus.ladder"></ol>
+            </header>
+
+            <!-- THE focal point: what the FDE asks now (the pending follow-up; with none yet, the
+                 theme question itself) -->
+            <section id="ask-now" class="ask-now" aria-live="polite">
+              <span id="ask-label" class="ask-label"></span>
+              <p id="ask-text" class="ask-text"></p>
+            </section>
+
+            <!-- secondary, quiet: what is still missing / already heard, the answer so far -->
+            <div class="details">
+              <section id="missing-card" class="missing-box" aria-live="polite">
+                <div class="missing-head">
+                  <span class="missing-title" data-i18n="focus.missing"></span>
+                  <span id="missing-rung" class="missing-rung"></span>
+                  <span id="missing-usecase" class="missing-usecase"></span>
+                  <span id="missing-count" class="missing-count"></span>
+                </div>
+                <ul id="missing" class="missing-chips"></ul>
+                <p id="missing-empty" class="missing-empty"></p>
+                <p id="phase-gaps" class="phase-gaps"></p>
+                <div id="got-row" class="got-row">
+                  <span class="got-label" data-i18n="focus.got"></span>
+                  <ul id="got" class="got-chips"></ul>
+                </div>
+              </section>
+
+              <section id="summary-card" class="summary-box" aria-live="polite">
+                <div class="block-label"><span data-i18n="focus.summary"></span>
+                  <span id="current-pill" class="pill"></span><span id="vague" class="vague"></span>
+                  <span id="summary-meta" class="summary-meta"></span></div>
+                <p id="summary-text" class="summary-text"></p>
+                <p id="thread-empty" class="thread-empty"></p>
+                <div id="followups" class="followups">
+                  <div class="block-label sub" data-i18n="focus.followups"></div>
+                  <ol id="thread" class="thread"></ol>
+                </div>
+              </section>
+            </div>
+            <div class="move-hint" id="move-hint"></div>
+          </div>
+        </article>
+
+        <div class="upcoming">
+          <div class="label small-label"><span data-i18n="focus.next"></span><span id="where-line" class="where-line"></span></div>
+          <ol id="next" class="next"></ol>
+        </div>
+        <div class="interview-end" aria-hidden="true"></div>
+      </section>
+      <button id="jump" class="jump hidden" data-i18n="focus.jump"></button>
+
+      <aside class="side">
+        <div class="where">
+          <div class="label" data-i18n="where.title"></div>
+          <div class="where-row">
+            <div class="big-num"><span id="time-left">15:00</span><small data-i18n="where.timeLeft"></small></div>
+            <div class="big-num"><span id="coverage-pct">0 %</span><small data-i18n="where.coverage"></small></div>
+          </div>
+          <div class="must" id="must"></div>
+          <div class="label small-label phases-title" data-i18n="phases.title"></div>
+          <ol id="phases" class="phases"></ol>
+          <div id="maps-line" class="maps-line muted small"></div>
+          <ul id="themes" class="themes"></ul>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="live" id="live-wrap">
+      <div class="live-label"><span class="rec"></span><span data-i18n="live.title"></span>
+        <span id="noise" class="noise"></span></div>
+      <div class="tail" id="tail" aria-live="off"></div>
+    </footer>
+  </div>
+
+  <!-- consent screen, shown before capture starts -->
+  <div id="consent" class="overlay">
+    <div class="card">
+      <h2 id="consent-client"></h2>
+      <p id="consent-primary" class="consent-primary"></p>
+      <div class="consent-langs">
+        <div class="ls-title" data-i18n="consent.languages"></div>
+        <language-select id="consent-interview" label="consent.interview" allow-other></language-select>
+        <language-select id="consent-speech" label="consent.speech" multiple></language-select>
+        <p class="ls-hint muted small" data-i18n="consent.speechHint"></p>
+        <language-select id="consent-ui" bind="ui" segmented label="consent.ui"></language-select>
+      </div>
+      <button id="start" class="primary" data-i18n="consent.start"></button>
+      <p id="consent-progress" class="muted small"></p>
+      <p id="consent-error" class="error"></p>
+      <p class="admin-link"><a href="/admin" target="_blank" data-i18n="consent.admin"></a></p>
+    </div>
+  </div>
+
+  <!-- end-of-interview banner -->
+  <div id="banner" class="overlay banner hidden">
+    <div class="card">
+      <p id="banner-primary" class="banner-primary"></p>
+      <p id="banner-status" class="muted"></p>
+      <p id="banner-links" class="links"></p>
+      <p id="banner-paths" class="paths"></p>
+    </div>
+  </div>
+
+  <!-- FDE console: press "c" (or click the corner) -->
+  <button id="console-toggle" class="console-toggle" data-i18n-attr="title:app.console;aria-label:app.console">⋯</button>
+  <div id="console" class="console hidden">
+    <div class="console-row status" id="console-status"></div>
+    <div class="console-row">
+      <button data-action="next" title="n / Enter"><span data-i18n="console.next"></span> <kbd>n</kbd></button>
+      <button data-action="answered" title="a"><span data-i18n="console.answered"></span> <kbd>a</kbd></button>
+      <button data-action="skip" title="k"><span data-i18n="console.skip"></span> <kbd>k</kbd></button>
+      <button data-action="phase" title="p"><span data-i18n="console.nextPhase"></span> <kbd>p</kbd></button>
+      <button data-action="sync" title="s"><span data-i18n="console.sync"></span> <kbd>s</kbd></button>
+    </div>
+    <div class="console-row">
+      <button data-action="enough" data-i18n="console.enough"></button>
+      <button data-action="finalize" class="primary" data-i18n="console.finalize"></button>
+    </div>
+    <div class="console-row langs-row">
+      <span class="ls-title" data-i18n="console.languages"></span>
+      <language-select id="console-interview" label="lang.interview" allow-other></language-select>
+      <language-select id="console-speech" label="lang.speech" multiple disabled></language-select>
+      <span id="translation-status" class="muted small"></span>
+    </div>
+    <div class="console-row">
+      <label for="wispr" data-i18n="console.wisprLabel"></label>
+      <textarea id="wispr" rows="5" data-i18n-attr="placeholder:console.wisprPlaceholder"></textarea>
+      <button data-action="wispr" data-i18n="console.wisprMerge"></button>
+      <span id="wispr-status" class="muted"></span>
+    </div>
+    <!-- possible recipes: library recipes the interview fits so far (FDE only, never the question card) -->
+    <div class="console-row recipes hidden" id="console-recipes">
+      <span class="ls-title" data-i18n="console.recipes"></span>
+      <ul id="console-recipe-list" class="recipe-list"></ul>
+    </div>
+    <div class="console-row links" id="console-links"></div>
+    <div class="console-row paths" id="console-paths"></div>
+    <div class="console-row"><a href="/admin" target="_blank" class="admin-link" data-i18n="console.admin"></a></div>
+    <div class="console-row muted small" data-i18n="console.keys"></div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+id: customer-order-intake
+title:
+  fr: Saisie des commandes reçues par email ou PDF
+  en: Order intake from email or PDF into the ERP
+type: act_on_behalf
+status: seed
+flow:
+  trigger: A customer order arrives in the orders mailbox, in the email body or as a PDF / spreadsheet
+    attachment.
+  agent_does: Reads the order, extracts customer, references, quantities, prices and requested date, checks
+    them against the customer account, price list and stock, and prepares the order.
+  writes_to: Creates the order as a draft in the ERP (or an import file the ERP reads).
+  notifies: 'Sends the order desk one line per order: ready to validate, or the exact field that needs
+    a look.'
+  human_decision: The order desk validates each draft; anything unusual (unknown reference, price off
+    the list, special terms) is decided by a person.
+signals:
+- orders arrive by email or PDF and someone re-keys them into the ERP
+- one or two people spend a large share of their day on order entry
+- the order desk is the first team swamped when volume grows
+- orders follow a recognisable layout per customer
+preconditions:
+- read access to the mailbox the orders arrive in
+- an ERP that accepts orders by API, import file or an existing connector
+- the customer list, references and price list exportable from the ERP
+- a person who validates drafts during the pilot
+integrations:
+- mailbox (Outlook / Gmail)
+- ERP order entry (API or import)
+- price list and stock export
+probes:
+- fr: 'Prenons la dernière commande reçue ce matin : elle est arrivée comment, et qui l''a saisie, dans
+    quel logiciel ?'
+  en: 'Take the last order that came in this morning: how did it arrive, and who keyed it in, in which
+    software?'
+- fr: Combien de commandes comme celle-là par semaine, et combien de temps pour chacune ?
+  en: How many orders like that per week, and how long does each one take?
+- fr: Si on voulait lire ces commandes depuis la boîte mail, qui donne l'accès à cette boîte ?
+  en: If we wanted to read those orders from the mailbox, who grants access to it?
+metrics:
+- id: order-entry-minutes
+  name: Time to key in one order
+  unit: minutes per order
+  how_measured: timed on a sample of orders, or ERP creation time minus email receipt time
+  cadence: weekly
+  owner: order desk lead
+  typical_baseline: 'typical: 5 to 15 minutes per order'
+  typical_target: 'typical: under 2 minutes of checking'
+- id: order-same-day-rate
+  name: Orders entered the day they arrive
+  unit: '% of orders'
+  how_measured: ERP order date vs email receipt date
+  cadence: weekly
+  owner: order desk lead
+  typical_baseline: 'typical: 60 to 85 %'
+  typical_target: 'typical: 95 % or more'
+- id: order-entry-errors
+  name: Order lines corrected after entry
+  unit: '% of lines'
+  how_measured: credit notes and order edits in the ERP, or a manual count
+  cadence: monthly
+  owner: order desk lead
+  typical_baseline: 'typical: 1 to 3 %'
+  typical_target: 'typical: no worse than the baseline'
+proof:
+  first_win_cases: 50
+  first_win: 'Replay last month''s orders: at least 50 real ones run through extraction and compared field
+    by field with what was keyed in.'
+  shadow_mode: Two weeks of drafts the order desk validates next to their usual entry; nothing is sent
+    to the ERP without a click.
+  kill_week4: Stop if fewer than 80 % of drafts are correct without edits on the replayed orders.
+  kill_week8: Stop if the order desk does not use the drafts on most days, or entry time did not drop.
+sourcing:
+  choice: configure
+  note: Order-capture products and ERP connectors exist for common ERPs; build only the mapping to this
+    client's references.
+evidence: []

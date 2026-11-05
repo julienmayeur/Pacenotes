@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pacenote</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" href="/static/plan.css">
+  <!-- shared i18n helper: t(), data-i18n, <language-select> (see README "Languages") -->
+  <script src="/static/i18n.js"></script>
+</head>
+<body class="plan-page">
+  <!-- The Plan view: plan.md of one session, shown in the app (/plan at the end of the interview,
+       /admin/plan/<client>/<session> from the admin panel). The chrome follows the screen
+       language; the plan itself stays in the interview language. -->
+  <header class="plan-top">
+    <div class="brand">Pacenote <span class="muted">· <span data-i18n="planView.title"></span></span></div>
+    <div class="plan-actions">
+      <span id="status" class="plan-status" role="status" aria-live="polite"></span>
+      <a id="md-link" class="plan-link hidden" target="_blank" rel="noopener" data-i18n="planView.markdown"></a>
+      <button id="export" class="primary" disabled data-i18n="planView.exportPdf"></button>
+      <language-select bind="ui" compact data-i18n-attr="title:planView.uiLanguage"></language-select>
+      <a id="back" class="back"></a>
+    </div>
+  </header>
+
+  <main class="plan-main">
+    <p id="meta" class="plan-meta"></p>
+    <p id="cap-warning" class="plan-warning" role="note"></p>
+    <article id="plan-doc" class="plan-doc hidden"></article>
+  </main>
+
+  <script src="/static/plan.js"></script>
+</body>
+</html>

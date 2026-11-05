@@ -1,0 +1,63 @@
+id: stock-availability-answers
+title:
+  fr: Réponses « dispo en stock ? »
+  en: '"Is it in stock?" answers'
+type: act_on_behalf
+status: seed
+flow:
+  trigger: A customer or salesperson asks whether a reference is available (email, phone note, messaging).
+  agent_does: 'Finds the reference, reads stock, incoming supply and reservations, and drafts the answer:
+    available now, date of the next arrival, or an alternative.'
+  writes_to: Drafts the reply in the same channel; logs the request (reference, who asked) for demand
+    tracking.
+  notifies: The person who usually answers sees the draft, ready to send.
+  human_decision: A person sends or edits the answer; reserving stock or promising a date beyond the data
+    stays with them.
+signals:
+- people ask whether a reference is in stock several times a day
+- someone opens the ERP or a stock spreadsheet to answer each request
+- answers wait when that person is away or busy
+- incoming supply dates live in a separate file or in someone's inbox
+preconditions:
+- stock levels readable from the ERP or a regularly updated export
+- incoming supply dates in one known place
+- access to the channel the requests arrive in
+integrations:
+- ERP or WMS stock
+- supply / arrivals file
+- mailbox or messaging
+probes:
+- fr: La dernière fois qu'un client a demandé si un modèle était dispo, qui a répondu, et où a-t-il regardé
+    ?
+  en: The last time a customer asked whether a model was available, who answered, and where did they look?
+- fr: Combien de demandes comme ça par jour, et combien de temps avant que la réponse parte ?
+  en: How many requests like that per day, and how long before the answer goes out?
+metrics:
+- id: stock-answer-delay
+  name: Time to answer an availability request
+  unit: minutes
+  how_measured: request time vs reply time on a sample of emails or messages
+  cadence: weekly
+  owner: sales admin lead
+  typical_baseline: 'typical: 30 minutes to half a day'
+  typical_target: 'typical: under 10 minutes'
+- id: stock-requests-handled
+  name: Availability requests answered from the draft
+  unit: '% of requests'
+  how_measured: count of drafts sent unchanged or lightly edited
+  cadence: weekly
+  owner: sales admin lead
+  typical_baseline: 'typical: 0 % (no drafts today)'
+  typical_target: 'typical: 70 % or more'
+proof:
+  first_win_cases: 50
+  first_win: Answer 50 past requests from the data as it was that day and compare with what was really
+    answered.
+  shadow_mode: Drafts only for two weeks; the usual person keeps answering and marks each draft right
+    or wrong.
+  kill_week4: Stop if more than 1 draft in 10 gives a wrong availability.
+  kill_week8: Stop if answer time did not drop or the drafts are not used.
+sourcing:
+  choice: configure
+  note: A mailbox assistant reading an ERP stock export; build only when the stock data has no export.
+evidence: []
