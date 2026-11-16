@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Mapping
 
-from . import ambassadors, briefs, horizons, i18n
+from . import ambassadors, briefs, horizons, i18n, lens
 from . import phases as P
 from . import recipes as recipe_lib
 from .contract import CATALOG_DESCRIPTIONS, SLOT_DESCRIPTIONS, SLOT_KEYS, SLOT_RUNG
@@ -260,6 +260,43 @@ PROBE_TONES = {
 }
 
 
+LENS_GUIDE = """\
+# The executive lens: guide the CEO on value, workflow by workflow
+You have about {target} minutes with an executive, not weeks with the staff: the weak signals from \
+the floor will rarely come up. So help the interviewer guide the CEO on what is worth doing and \
+what it would change.
+- value_framings: when the CEO describes manual, repetitive work on a real case (someone opens \
+emails by hand and re-keys them into Excel, copies figures between files, chases a status by phone), \
+write ONE short talking point for the interviewer to say, in {lang_name}, in the CEO's register: \
+this task brings that person little, it can run on its own, and their time would go to the \
+decisions only they can make (which supplier, which customer first, what to do about a late order). \
+About the task, never the person: no "useless", no "replace", no job cut, no head count, never AI \
+vocabulary ("it can run on its own", "ça peut se faire tout seul"). Like "Re-keying each order is \
+work nobody chose this job for: it can run on its own, and Claire's time goes to the big accounts." \
+Use the figure the CEO gave when there is one ("six hours a week"); never invent one. Fields: \
+use_case (its id in state.use_cases), person (who does it, as heard; "" = the team), task (as the \
+CEO described it), point, moves_up_to (the higher-level decision or work they would move up to, as \
+the CEO's words suggest), reason (interviewer only, a few words: why now). timing: "now" once the \
+task was described on a real case and the conversation is on that workflow; "later" otherwise; \
+"done" when the CEO already said it himself or agreed. At most one per workflow, only new or changed \
+ones; state.value_framings lists the ones given so far: never change one already said.
+- Metrics: every workflow worth doing needs a baseline (today, with a number) and a success metric \
+(how the CEO would see it improve, by when), of one kind: time spent, volume, error rate or delay. \
+They show whether the work heads the right way, and they are what will convince the rest of the \
+team. metric_questions: for each workflow whose baseline or target slot is still empty, the next \
+question to get it, on a real recent case, in {lang_name}: use_case, kind (time, volume, errors, \
+delay: the one this workflow is best judged on), side (baseline first, then target), question \
+(short, ready to say: "Last week, how long did Claire spend re-keying the orders?"; "If it worked, \
+which figure would tell you, and by when?"). Only new or changed ones; none for a side already filled.
+"""
+
+
+def lens_guide(state: SessionState) -> str:
+    """The executive lens (lens.py): talking points on manual work, and the metric questions. Full
+    sync only."""
+    return LENS_GUIDE.format(target=state.target_minutes, lang_name=LANG_NAME[state.language])
+
+
 def people_guide(state: SessionState) -> str:
     """The interviewee read and the indirect people questions, in the tone the sector's pace sets
     (no pre-study: pragmatic). Full sync only (the fast pass returns neither)."""
@@ -361,6 +398,7 @@ locks the question. Otherwise "partial".
 {maps_guide}
 {recipes_guide}
 {people_guide}
+{lens_guide}
 # Output fields
 - question_updates: questions whose status, answer, covered items, rung or follow-up change in \
 this slice (the current question first; also any question the CEO answered spontaneously).
@@ -400,6 +438,7 @@ coverage of at least about 0.6, or when the time budget is used up and the remai
 be listed as open points in the plan. Be conservative: once true, the interview ends and plan \
 writing starts. enough_data_reason: one sentence why (or why not yet).
 - interviewee_read and ambassador_probes: see Reading the interviewee and People questions above.
+- value_framings and metric_questions: see The executive lens above.
 """
 
 
@@ -417,6 +456,7 @@ def build_sync_system(state: SessionState, glossary: str, context: str = "") -> 
         maps_guide=maps_guide(state),
         recipes_guide=recipes_guide(),
         people_guide=people_guide(state),
+        lens_guide=lens_guide(state),
     )
 
 
@@ -482,9 +522,13 @@ def state_snapshot(state: SessionState, for_plan: bool = False) -> dict:
                                   for e in ambassadors.candidates(state)],
         "plan_notes": {k: v for k, v in state.plan_notes.items() if v},
     }
-    if for_plan:
-        return out
-    return out | {"interviewee_read": state.interviewee_read or None,
+    if for_plan:  # the talking points' task and the decision it frees time for, never why they were said
+        return out | {"value_framings": lens.for_plan(state)}
+    return out | {"value_framings": [{"use_case": uc, "point": f.get("point", ""), "timing": f.get("timing", ""),
+                                      "asked": bool(f.get("asked"))} for uc, f in state.value_framings.items()],
+                  "metric_questions": {k: {"kind": m.get("kind", ""), "question": m.get("question", "")}
+                                       for k, m in state.metric_questions.items()},
+                  "interviewee_read": state.interviewee_read or None,
                   "ambassador_probes": [{"use_case": uc, "person": p.get("person", ""), "question": p.get("question", ""),
                                          "timing": p.get("timing", ""), "asked": bool(p.get("asked"))}
                                         for uc, p in state.ambassador_probes.items()],
@@ -625,6 +669,12 @@ is captured and found again in seconds; an unwritten rule becomes the agent's pl
 not coded), or other.
 - human_decision: the decision the human keeps (the agent gathers, compares and proposes; the \
 human makes the call).
+- freed: what the opportunity gives back to the people doing the work: who (as heard), task (the \
+manual, low-value task that goes away, as described), time (the time freed, with its number, ONLY \
+from figures said, e.g. the baseline; "" when none was given, never an estimate), evidence (the \
+quote of that figure), moves_up_to (the higher-level decision or work they move up to; \
+state.value_framings holds what the interview framed live). About the task, never the person: no \
+head-count reduction, no "useless".
 - success: statement = what success looks like for the people doing the work; check = how it is \
 checked: the metric's baseline vs target on which data, and who verifies.
 - metric: the id of its entry in `metrics` ("" only when nothing measurable was discussed).
@@ -657,7 +707,8 @@ Never invent a person, a tool or a delay.
 kind: waits_on_ceo (approvals, prices, answers wait on the CEO), ceo_asks_status (the CEO must ask \
 someone who opens a file to know where things stand), handoff, search, expertise (only one person \
 knows), other. Only bottlenecks actually heard; a suspected one is to_confirm with its question.
-- metrics: one per opportunity that can be measured: id, use_case, name, unit, how_measured (the \
+- metrics: one per opportunity that can be measured, of one kind: time spent, volume, error rate or \
+delay (the name says which): id, use_case, name, unit, how_measured (the \
 data source in the client's systems, or a manual count), cadence, owner (who verifies), baseline \
 and target, each a Measure (value with its number and date as said; to_confirm with the question \
 to ask and who to ask when the number was not given). NEVER invent a number: a missing baseline is \
@@ -690,10 +741,10 @@ person before they enter the library. Empty list when every opportunity has a re
 {other_recipes}
 </other_recipes>
 
-# Adoption plan: how the first pilot spreads
-A pilot spreads through a respected colleague, not through the consultant or the CEO: one \
-lighthouse use case, visible beyond its user, carried by one ambassador, told as demo, proven \
-value, then spread.
+# Adoption plan: three waves
+Bet on the people keen to go further, never on converting the reluctant: the volunteers prove it, \
+their measured results convince most of the team, and once most of the company works this way the \
+rest follow. One lighthouse use case, visible beyond its user, carried by one ambassador.
 - adoption.lighthouse: the id of the opportunity to start with: an h1 one, high volume, a human \
 who validates, a metric already counted, a gain others will see.
 - adoption.ambassador: the person (name or role) who would pilot it, only as heard in the \
@@ -701,11 +752,17 @@ interview (state.potential_ambassadors lists who the CEO put on each use case an
 about them); evidence = the CEO's quote. Nobody named: ambassador and evidence "", question = the \
 question to ask to find one ("Qui, dans l'équipe, aurait envie d'essayer en premier ?"), ask = who \
 to ask it. Never pick someone the CEO described as reluctant.
-- adoption.demo: week 1: what is shown on a real case from yesterday, to the ambassador then to \
-the CEO (no slides). adoption.proven: week 4: the metric against its baseline on real cases, in \
-shadow mode. adoption.spread: week 8 and after: the ambassador presents the result to the team \
-(not us), in which existing meeting, and which team or workflow is next. Short, concrete, with the \
-client's names; "" when nothing supports it.
+- The three waves, each with plan (what happens, short, concrete, plain business words) and \
+trigger (what starts it):
+  - volunteers: weeks 1 to 4: the ambassador and the colleagues keen to go first run the lighthouse \
+on real cases (a demo on yesterday's case, then shadow mode), measured against today's figure.
+  - majority: most of the team: the volunteers show their own numbers (the lighthouse metric against \
+its baseline) in an existing meeting, and the next workflow or team starts. Its trigger is wave 1's \
+measured result: name the metric and the result that starts it.
+  - everyone: once most of the company works this way, it becomes the standard way of working; the \
+others follow, with no campaign aimed at them.
+  Never label an individual (no "reluctant", "undecided", "late adopter"), never name anyone in the \
+majority or everyone waves; "" when nothing supports a field.
 {pace}
 # Other fields
 - context: 2 to 4 sentences: who the client is, what the interview covered, the CEO's goals as \

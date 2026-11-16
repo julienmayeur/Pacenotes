@@ -277,6 +277,35 @@ class AmbassadorProbe(_Strict):
     timing: ProbeTiming  # now = rapport is there and the workflow was walked through; done = answered
 
 
+MetricKind = Literal["time", "volume", "errors", "delay"]
+METRIC_KINDS = ("time", "volume", "errors", "delay")  # time spent, volume, error rate, delay
+MetricSide = Literal["baseline", "target"]
+
+
+class ValueFraming(_Strict):
+    """The executive lens (lens.py): the CEO describes manual, low-value work (someone opens emails by
+    hand and re-keys them into Excel); the interviewer gets a short, tactful talking point that this
+    task brings that person little, can run on its own, and frees them for higher-level decisions."""
+
+    use_case: str  # the state use case (the workflow) it is tied to
+    person: str  # who does the task today, as heard ("" = the team doing it)
+    task: str  # the manual task, as the CEO described it
+    point: str  # the talking point, in the interview language, ready to say: about the task, never the person
+    moves_up_to: str  # the higher-level decision or work the person would move up to
+    reason: str  # interviewer-only, a few words: why say it now
+    timing: ProbeTiming  # now = the task was described on a real case; done = already said or agreed
+
+
+class MetricQuestion(_Strict):
+    """The question to get a workflow's baseline (today, with a number) or its success metric (the
+    target), when the interview has not given it yet (lens.py)."""
+
+    use_case: str
+    kind: MetricKind  # time spent, volume, error rate or delay
+    side: MetricSide  # baseline = today's figure; target = how success would show, by when
+    question: str  # short, ready to say, in the interview language
+
+
 def empty_read() -> IntervieweeRead:
     return IntervieweeRead(role="", ai_stance="unknown", worries="", pride="", politics="", tone="",
                            rapport="building", approach="")
@@ -296,6 +325,8 @@ class SyncResult(_Strict):
     enough_data_reason: str
     interviewee_read: IntervieweeRead  # the running read: the full current view (see IntervieweeRead)
     ambassador_probes: list[AmbassadorProbe]  # new or changed probes only; empty list when nothing changed
+    value_framings: list[ValueFraming]  # new or changed talking points only; empty list when nothing changed
+    metric_questions: list[MetricQuestion]  # for workflows still missing a baseline or a target; new ones only
 
 
 class FastResult(_Strict):
@@ -426,12 +457,25 @@ class RecipeCandidate(_Strict):
 Horizon = Literal["h1", "h2", "h3"]  # horizons.py: execution now / emerging / foresight
 
 
+class TimeFreed(_Strict):
+    """What the opportunity gives back to the people doing the work (the executive lens): the
+    low-value task taken off their hands, the time it frees (only from numbers said) and the
+    higher-level decision they move up to."""
+
+    who: str  # the person or role, as heard ("" = the team)
+    task: str  # the manual task that goes away, as described
+    time: str  # the time freed, with its number, only from figures said ("" when not given)
+    evidence: str  # the quote the figure comes from ("" when none)
+    moves_up_to: str  # the decision or higher-value work they move up to
+
+
 class PlanUseCase(_Strict):
     id: str
     title: str
     horizon: Horizon  # h1 = can start this week, h2 = this quarter, h3 = within two years
     pattern: Pattern  # route & distil, act on behalf, status without asking, decision brief, capture & find again
     human_decision: str  # the decision the human keeps (the human stays in the loop on it)
+    freed: TimeFreed  # the task that goes away, the time freed, the decision the person moves up to
     success: Success
     metric: str  # id of its metric in PlanDoc.metrics ("" when none could be defined)
     not_claimed: str  # what the pilot will NOT claim
@@ -562,18 +606,24 @@ class Metric(_Strict):
     target: Measure  # the pilot target
 
 
+class AdoptionWave(_Strict):
+    plan: str  # what happens in this wave, short, concrete (no label on any individual)
+    trigger: str  # what starts it (wave 2: wave 1's measured result against today's figure)
+
+
 class AdoptionPlan(_Strict):
-    """How the first pilot spreads: one lighthouse use case, carried by a colleague the others listen
-    to, told as demo -> proven value -> spread (the ambassador announces it, not the consultant)."""
+    """How the first pilot spreads, in three waves: the volunteers keen to go further prove it on the
+    lighthouse use case; their measured results convince most of the team; once most of the company
+    works this way, everyone follows. Nothing is designed around converting the reluctant."""
 
     lighthouse: str  # id of the opportunity to start with (an h1 one)
     ambassador: str  # the person (name or role) who pilots it, as heard in the interview; "" when nobody was named
     evidence: str  # the CEO's quote supporting that choice ("" when none)
     question: str  # when no ambassador was named: the question to ask to find one ("" otherwise)
     ask: str  # who to ask it (a name or role heard; "" when unknown)
-    demo: str  # week 1: what is shown, on which real case, to whom
-    proven: str  # week 4: the value proven (the metric against its baseline, on real cases)
-    spread: str  # week 8 and after: who announces it to the team, which team or workflow is next
+    volunteers: AdoptionWave  # wave 1, weeks 1-4: the colleagues keen to go first run it on real cases
+    majority: AdoptionWave  # wave 2: most of the team, convinced by wave 1's measured results
+    everyone: AdoptionWave  # wave 3: it becomes the standard way of working; the rest follow
 
 
 class TimelineStep(_Strict):
@@ -600,8 +650,17 @@ def empty_current_state() -> CurrentState:
     return CurrentState(people=[], flows=[], systems=[], stores=[], decisions=[])
 
 
+def empty_wave() -> AdoptionWave:
+    return AdoptionWave(plan="", trigger="")
+
+
 def empty_adoption() -> AdoptionPlan:
-    return AdoptionPlan(lighthouse="", ambassador="", evidence="", question="", ask="", demo="", proven="", spread="")
+    return AdoptionPlan(lighthouse="", ambassador="", evidence="", question="", ask="", volunteers=empty_wave(),
+                        majority=empty_wave(), everyone=empty_wave())
+
+
+def empty_freed() -> TimeFreed:
+    return TimeFreed(who="", task="", time="", evidence="", moves_up_to="")
 
 
 assert tuple(PlanSlots.model_fields) == SLOT_KEYS  # one schema for the interview and the plan
@@ -677,4 +736,6 @@ def empty_result() -> SyncResult:
         enough_data_reason="",
         interviewee_read=empty_read(),
         ambassador_probes=[],
+        value_framings=[],
+        metric_questions=[],
     )

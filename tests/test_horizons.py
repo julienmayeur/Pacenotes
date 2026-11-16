@@ -154,8 +154,7 @@ def test_apply_horizons_demotes_hard_h1_and_picks_the_best_ranked_h1_as_lighthou
         plan_use_case("later", "Plus tard", impact=5, feasibility=5, horizon="h2"),
         plan_use_case("small", "Petit", impact=2, feasibility=3, horizon="h1"),
         plan_use_case("big", "Gros", impact=4, feasibility=4, horizon="h1"),
-        adoption={"lighthouse": "later", "ambassador": "", "evidence": "", "question": "", "ask": "",
-                  "demo": "", "proven": "", "spread": ""}))
+        adoption={"lighthouse": "later"}))
     out = apply_horizons(doc)
     tags = {u.id: u.horizon for u in out.use_cases}
     assert tags == {"hard": "h2", "later": "h2", "small": "h1", "big": "h1"}
@@ -300,9 +299,11 @@ def test_a_named_ambassador_is_quoted_in_the_adoption_plan():
     st.language = "en"
     doc = parse_plan_doc(plan_doc(plan_use_case("orders", "Orders", horizon="h1"), adoption={
         "lighthouse": "orders", "ambassador": "Claire", "evidence": "she always tries new things first",
-        "question": "", "ask": "", "demo": "Yesterday's 10 orders", "proven": "", "spread": "Claire shows it on Monday"}))
+        "volunteers": {"plan": "Yesterday's 10 orders", "trigger": ""},
+        "majority": {"plan": "Claire shows it on Monday", "trigger": ""}}))
     md = render_plan_md(apply_horizons(doc, st), st)
     assert "**Pilot ambassador**: Claire — « she always tries new things first »" in md
     assert "**Start with**: Orders" in md and "**When**: This week" in md
-    assert "1. **Demo (week 1)** — Yesterday's 10 orders" in md and "Claire shows it on Monday" in md
-    assert "Proven value (week 4)** — The metric against today's figure" in md  # the default when empty
+    assert "1. **The volunteers (weeks 1 to 4)** — Yesterday's 10 orders" in md
+    assert "2. **Most of the team** — Claire shows it on Monday" in md
+    assert "3. **Everyone** — It becomes the usual way of working" in md  # the default when empty

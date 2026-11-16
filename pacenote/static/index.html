@@ -69,10 +69,17 @@
               <span id="ask-label" class="ask-label"></span>
               <p id="ask-text" class="ask-text"></p>
             </section>
-            <!-- an indirect people question tied to this workflow (ambassadors.py): the question only; why it
-                 is asked (the ambassador angle) stays in the interviewer console -->
+            <!-- the executive lens (lens.py): a talking point about this workflow's manual work; why now stays
+                 in the interviewer console -->
+            <p id="framing-say" class="ambassador-ask hidden" aria-live="polite">
+              <span class="amb-label"><span data-i18n="focus.framingLabel"></span><span id="framing-uc" class="amb-uc"></span></span>
+              <span id="framing-text" class="amb-text"></span>
+            </p>
+            <!-- more questions tied to this workflow: its missing baseline or success metric (lens.py) and an
+                 indirect people question (ambassadors.py); why they are asked stays in the interviewer console -->
             <p id="ambassador-ask" class="ambassador-ask hidden" aria-live="polite">
               <span class="amb-label"><span data-i18n="focus.ambassadorLabel"></span><span id="ambassador-uc" class="amb-uc"></span></span>
+              <span id="metric-text" class="amb-text"></span>
               <span id="ambassador-text" class="amb-text"></span>
             </p>
 
@@ -212,6 +219,11 @@
       <span class="ls-title" data-i18n="console.probes"></span>
       <p id="console-read" class="muted small hidden"></p>
       <ul id="console-probe-list" class="recipe-list"></ul>
+    </div>
+    <!-- the talking points per workflow: the decision the person moves up to and why now (interviewer only) -->
+    <div class="console-row recipes hidden" id="console-framings">
+      <span class="ls-title" data-i18n="console.framings"></span>
+      <ul id="console-framing-list" class="recipe-list"></ul>
     </div>
     <div class="console-row links" id="console-links"></div>
     <div class="console-row paths" id="console-paths"></div>

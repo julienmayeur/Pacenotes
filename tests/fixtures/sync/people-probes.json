@@ -55,7 +55,9 @@
     "reason": "savoir si Claire est la référence outils de l'ADV : pilote des commandes",
     "timing": "later"
    }
-  ]
+  ],
+  "value_framings": [],
+  "metric_questions": []
  },
  {
   "question_updates": [],
@@ -121,7 +123,9 @@
     "reason": "ambassadeur ?",
     "timing": "now"
    }
-  ]
+  ],
+  "value_framings": [],
+  "metric_questions": []
  },
  {
   "question_updates": [],
@@ -179,6 +183,8 @@
     "reason": "",
     "timing": "done"
    }
-  ]
+  ],
+  "value_framings": [],
+  "metric_questions": []
  }
 ]

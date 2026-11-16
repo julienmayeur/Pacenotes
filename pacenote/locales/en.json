@@ -53,6 +53,21 @@
       "explorer": "When Excel or the software gets in the way, who do people turn to: {{person}}, or someone else?",
       "pragmatic": "When the team picks up a new Excel trick or a new tool, does it usually come from {{person}}, or from someone else?",
       "urgent": "If we tried a quicker way of doing this, would it tempt {{person}} to be the first to give it a go?"
+    },
+    "framingLabel": "Worth saying",
+    "metric": {
+      "baseline": {
+        "time": "On last week's cases, how much time did this take, per day or per week?",
+        "volume": "How many of these come in on a normal week, and at the peak?",
+        "errors": "On a normal week, how many go wrong or have to be redone?",
+        "delay": "From the moment it comes in, how long until it is done today?"
+      },
+      "target": {
+        "time": "Which figure would tell you it got better: how much time per week, and by when?",
+        "volume": "Which figure would tell you it got better: how many per week, and by when?",
+        "errors": "Which figure would tell you it got better: how few errors per week, and by when?",
+        "delay": "Which figure would tell you it got better: done within how long, and by when?"
+      }
     }
   },
   "where": {
@@ -137,6 +152,13 @@
       "now": "to ask now",
       "later": "later",
       "asked": "asked"
+    },
+    "framings": "Talking points",
+    "framingMoves": "moves up to: {{moves}}",
+    "framingState": {
+      "now": "to say now",
+      "later": "later",
+      "asked": "said"
     }
   },
   "interview": {
@@ -212,7 +234,8 @@
       "recipeProof": "Proof",
       "horizon": "When",
       "lighthouse": "Start with",
-      "ambassador": "Pilot ambassador"
+      "ambassador": "Pilot ambassador",
+      "freed": "Time given back"
     },
     "table": {
       "rank": "#",
@@ -389,17 +412,25 @@
       "h3Hint": "Where this could take the company, kept as an option: nothing promised."
     },
     "adoption": {
-      "intro": "One first use case, carried by a colleague the others listen to: a demo, proven value, then it spreads.",
-      "demo": "Demo (week 1)",
-      "proven": "Proven value (week 4)",
-      "spread": "Spread (week 8 and after)",
+      "intro": "Start with the people keen to go further; their measured results convince most of the team; then everyone follows.",
+      "volunteers": "The volunteers (weeks 1 to 4)",
+      "majority": "Most of the team",
+      "everyone": "Everyone",
+      "startsWhen": "Starts: {{trigger}}",
+      "proof": "Result to show: {{proof}}",
+      "noMetric": "the first use case's figure, today against the pilot (to confirm)",
       "findQuestion": "Who on the team would be keen to try it first?",
       "default": {
-        "demo": "Shown on a real case from yesterday, first to the person who will use it, then to you.",
-        "proven": "The metric against today's figure, on real cases, while the team keeps the final say.",
-        "spread": "The pilot user presents the result to the team; the next team or workflow is chosen then."
+        "volunteers": "The pilot ambassador and the colleagues keen to go first use it on real cases: a demo on yesterday's case, then measured against today's figure.",
+        "volunteersTrigger": "week 1, on the first use case.",
+        "majority": "The volunteers show their own numbers to the team in an existing meeting; the next workflow or team starts.",
+        "majorityTrigger": "the first results measured on real cases, against today's figure (week 4).",
+        "everyone": "It becomes the usual way of working; the others follow, with no campaign aimed at them.",
+        "everyoneTrigger": "once most of the company works this way."
       }
-    }
+    },
+    "freedLine": "{{task}} — {{who}} · time freed: {{time}} · moves up to: {{moves}}",
+    "freedTeam": "the team"
   },
   "offline": {
     "followUp": "Concretely: {{item}}?"
@@ -439,7 +470,7 @@
     "notes": "What we will talk about — context, goals, topics, constraints",
     "notesPh": "Why this meeting, what the client expects, topics to cover, what to avoid…",
     "usePreplan": "Use the pre-plan to prepare the interview",
-    "usePreplanHint": "(adds its questions as the “AI opportunities found” theme and gives it to Claude as context)",
+    "usePreplanHint": "(adds its questions as the “Opportunities to check” theme and gives it to Claude as context)",
     "save": "Save",
     "cancel": "Cancel",
     "edit": "Edit",
@@ -456,7 +487,7 @@
       "prestudy": "Pre-study",
       "ambassadors": "Ambassadors"
     },
-    "questionsHint": "These questions are added to the interview (theme “AI opportunities found”, right after the first theme), each dug Business › Workflow › Implementation like the others.",
+    "questionsHint": "These questions are added to the interview (theme “Opportunities to check”, right after the first theme), each dug Business › Workflow › Implementation like the others.",
     "useCases": "Use cases",
     "col": {
       "useCase": "Use case",
@@ -498,7 +529,7 @@
     },
     "confirmRerun": "Run the research again? The current version will be kept in “Versions”.",
     "confirmRestore": "Restore version {{v}}? The current version will be kept in “Versions”.",
-    "preplanTheme": "AI opportunities found",
+    "preplanTheme": "Opportunities to check",
     "step": {
       "start": "Starting the research ({{model}}, web)…",
       "search": "Search: {{query}}",

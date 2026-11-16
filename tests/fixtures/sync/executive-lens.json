@@ -1,0 +1,193 @@
+[
+ {
+  "question_updates": [],
+  "slots": [
+   {
+    "use_case": "bakery-orders",
+    "slot": "actors",
+    "value": "Claire",
+    "evidence": "c'est Claire qui saisit les commandes"
+   },
+   {
+    "use_case": "bakery-orders",
+    "slot": "processing",
+    "value": "Claire ouvre chaque mail de commande et ressaisit les lignes dans Excel puis dans Sage",
+    "evidence": "elle ouvre les mails un par un et elle retape tout dans Excel, puis dans Sage"
+   }
+  ],
+  "maps": {
+   "org": [],
+   "flows": [],
+   "stores": [],
+   "decisions": [],
+   "catalog": []
+  },
+  "recipe_matches": [],
+  "queue_edits": [],
+  "next_questions": [],
+  "coverage": [],
+  "plan_delta": {
+   "context": [],
+   "priorities": [],
+   "workflows": [],
+   "quick_wins": [],
+   "risks": [],
+   "budget": [],
+   "open_points": []
+  },
+  "clean_passages": [],
+  "enough_data": false,
+  "enough_data_reason": "",
+  "interviewee_read": {
+   "role": "",
+   "ai_stance": "unknown",
+   "worries": "",
+   "pride": "",
+   "politics": "",
+   "tone": "",
+   "rapport": "building",
+   "approach": ""
+  },
+  "ambassador_probes": [],
+  "value_framings": [
+   {
+    "use_case": "bakery-orders",
+    "person": "Claire",
+    "task": "ouvrir chaque mail de commande et ressaisir les lignes dans Excel puis dans Sage",
+    "point": "Ressaisir chaque commande à la main, ce n'est pas ce pour quoi Claire est là : ça peut se faire tout seul, et ses trois heures par jour vont aux clients boulangers qui comptent.",
+    "moves_up_to": "le suivi des grands comptes boulangers",
+    "reason": "attendre le chiffre du temps passé",
+    "timing": "later"
+   }
+  ],
+  "metric_questions": [
+   {
+    "use_case": "bakery-orders",
+    "kind": "time",
+    "side": "baseline",
+    "question": "La semaine dernière, combien de temps Claire a passé chaque jour à ressaisir les commandes ?"
+   }
+  ]
+ },
+ {
+  "question_updates": [],
+  "slots": [
+   {
+    "use_case": "bakery-orders",
+    "slot": "baseline",
+    "value": "3 heures par jour de ressaisie pour Claire",
+    "evidence": "à peu près trois heures par jour, tous les jours"
+   }
+  ],
+  "maps": {
+   "org": [],
+   "flows": [],
+   "stores": [],
+   "decisions": [],
+   "catalog": []
+  },
+  "recipe_matches": [],
+  "queue_edits": [],
+  "next_questions": [],
+  "coverage": [],
+  "plan_delta": {
+   "context": [],
+   "priorities": [],
+   "workflows": [],
+   "quick_wins": [],
+   "risks": [],
+   "budget": [],
+   "open_points": []
+  },
+  "clean_passages": [],
+  "enough_data": false,
+  "enough_data_reason": "",
+  "interviewee_read": {
+   "role": "",
+   "ai_stance": "unknown",
+   "worries": "",
+   "pride": "",
+   "politics": "",
+   "tone": "",
+   "rapport": "building",
+   "approach": ""
+  },
+  "ambassador_probes": [],
+  "value_framings": [
+   {
+    "use_case": "bakery-orders",
+    "person": "Claire",
+    "task": "ouvrir chaque mail de commande et ressaisir les lignes dans Excel puis dans Sage",
+    "point": "Ressaisir chaque commande à la main, ce n'est pas ce pour quoi Claire est là : ça peut se faire tout seul, et ses trois heures par jour vont aux clients boulangers qui comptent.",
+    "moves_up_to": "le suivi des grands comptes boulangers",
+    "reason": "le PDG vient de chiffrer la ressaisie : recadrer vers la valeur",
+    "timing": "now"
+   }
+  ],
+  "metric_questions": [
+   {
+    "use_case": "bakery-orders",
+    "kind": "time",
+    "side": "target",
+    "question": "Si ça marchait, combien de temps par jour Claire y passerait encore, et d'ici quand ?"
+   }
+  ]
+ },
+ {
+  "question_updates": [],
+  "slots": [
+   {
+    "use_case": "bakery-orders",
+    "slot": "target",
+    "value": "moins de 30 minutes par jour d'ici mars",
+    "evidence": "si elle y passait une demi-heure, d'ici mars, ce serait gagné"
+   }
+  ],
+  "maps": {
+   "org": [],
+   "flows": [],
+   "stores": [],
+   "decisions": [],
+   "catalog": []
+  },
+  "recipe_matches": [],
+  "queue_edits": [],
+  "next_questions": [],
+  "coverage": [],
+  "plan_delta": {
+   "context": [],
+   "priorities": [],
+   "workflows": [],
+   "quick_wins": [],
+   "risks": [],
+   "budget": [],
+   "open_points": []
+  },
+  "clean_passages": [],
+  "enough_data": false,
+  "enough_data_reason": "",
+  "interviewee_read": {
+   "role": "",
+   "ai_stance": "unknown",
+   "worries": "",
+   "pride": "",
+   "politics": "",
+   "tone": "",
+   "rapport": "building",
+   "approach": ""
+  },
+  "ambassador_probes": [],
+  "value_framings": [
+   {
+    "use_case": "bakery-orders",
+    "person": "Claire",
+    "task": "",
+    "point": "",
+    "moves_up_to": "",
+    "reason": "",
+    "timing": "done"
+   }
+  ],
+  "metric_questions": []
+ }
+]

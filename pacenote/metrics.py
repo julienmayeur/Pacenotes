@@ -45,7 +45,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
 
 from . import fsutil
 from .contract import Metric as PlanMetric
-from .contract import PlanUseCase
+from .contract import PlanUseCase, empty_freed
 from .finalize import clean_measure
 
 METRICS_FILE = "metrics.yaml"
@@ -242,7 +242,7 @@ def seed(clients_dir: Path, sessions_dir: Path, slug: str, session: str | None =
     recipes = {}
     for u in raw.get("use_cases") or []:
         try:
-            uc = PlanUseCase.model_validate(u)
+            uc = PlanUseCase.model_validate({"freed": empty_freed().model_dump(), **u})  # plans written before it
         except ValidationError:
             continue
         if uc.recipe is not None and uc.recipe.fit != "none":

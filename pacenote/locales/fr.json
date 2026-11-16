@@ -53,6 +53,21 @@
       "explorer": "Quand Excel ou le logiciel coince, vers qui les gens se tournent : {{person}}, ou quelqu'un d'autre ?",
       "pragmatic": "Quand l'équipe adopte une astuce Excel ou un nouvel outil, ça vient plutôt de {{person}}, ou de quelqu'un d'autre ?",
       "urgent": "Si on essayait une façon plus rapide de faire ça, est-ce que ça tenterait {{person}} de l'essayer en premier ?"
+    },
+    "framingLabel": "À glisser",
+    "metric": {
+      "baseline": {
+        "time": "Sur les cas de la semaine dernière, combien de temps ça a pris, par jour ou par semaine ?",
+        "volume": "Combien en arrive-t-il sur une semaine normale, et en pointe ?",
+        "errors": "Sur une semaine normale, combien partent de travers ou sont à refaire ?",
+        "delay": "Entre le moment où ça arrive et le moment où c'est traité, combien de temps aujourd'hui ?"
+      },
+      "target": {
+        "time": "Quel chiffre vous dirait que ça va mieux : combien de temps par semaine, et d'ici quand ?",
+        "volume": "Quel chiffre vous dirait que ça va mieux : combien par semaine, et d'ici quand ?",
+        "errors": "Quel chiffre vous dirait que ça va mieux : combien d'erreurs par semaine au plus, et d'ici quand ?",
+        "delay": "Quel chiffre vous dirait que ça va mieux : traité en combien de temps, et d'ici quand ?"
+      }
     }
   },
   "where": {
@@ -137,6 +152,13 @@
       "now": "à poser maintenant",
       "later": "plus tard",
       "asked": "posée"
+    },
+    "framings": "Points à glisser",
+    "framingMoves": "pour se consacrer à : {{moves}}",
+    "framingState": {
+      "now": "à dire maintenant",
+      "later": "plus tard",
+      "asked": "dit"
     }
   },
   "interview": {
@@ -212,7 +234,8 @@
       "recipeProof": "Preuve",
       "horizon": "Quand",
       "lighthouse": "Pour commencer",
-      "ambassador": "Ambassadeur du pilote"
+      "ambassador": "Ambassadeur du pilote",
+      "freed": "Temps rendu"
     },
     "table": {
       "rank": "#",
@@ -389,17 +412,25 @@
       "h3Hint": "Là où cela pourrait mener l'entreprise, gardé comme une option : rien n'est promis."
     },
     "adoption": {
-      "intro": "Un premier cas d'usage, porté par un collègue que les autres écoutent : une démonstration, une valeur prouvée, puis la diffusion.",
-      "demo": "Démonstration (semaine 1)",
-      "proven": "Valeur prouvée (semaine 4)",
-      "spread": "Diffusion (semaine 8 et après)",
+      "intro": "On commence avec ceux qui ont envie d'aller plus loin ; leurs résultats mesurés convainquent le gros de l'équipe ; puis tout le monde suit.",
+      "volunteers": "Les volontaires (semaines 1 à 4)",
+      "majority": "Le gros de l'équipe",
+      "everyone": "Tout le monde",
+      "startsWhen": "Démarre : {{trigger}}",
+      "proof": "Résultat à montrer : {{proof}}",
+      "noMetric": "le chiffre du premier cas d'usage, aujourd'hui face au pilote (à confirmer)",
       "findQuestion": "Qui, dans l'équipe, aurait envie de l'essayer en premier ?",
       "default": {
-        "demo": "Montré sur un vrai cas de la veille, d'abord à la personne qui l'utilisera, puis à vous.",
-        "proven": "La mesure face au chiffre d'aujourd'hui, sur des cas réels, l'équipe gardant la décision finale.",
-        "spread": "L'utilisateur pilote présente le résultat à l'équipe ; on choisit alors l'équipe ou le processus suivant."
+        "volunteers": "L'ambassadeur du pilote et les collègues partants l'utilisent sur des cas réels : une démonstration sur un cas de la veille, puis la mesure face au chiffre d'aujourd'hui.",
+        "volunteersTrigger": "semaine 1, sur le premier cas d'usage.",
+        "majority": "Les volontaires montrent leurs propres chiffres à l'équipe, lors d'une réunion existante ; le processus ou l'équipe suivante démarre.",
+        "majorityTrigger": "les premiers résultats mesurés sur des cas réels, face au chiffre d'aujourd'hui (semaine 4).",
+        "everyone": "Ça devient la façon de travailler habituelle ; les autres suivent, sans campagne à leur intention.",
+        "everyoneTrigger": "quand la plupart de l'entreprise travaille ainsi."
       }
-    }
+    },
+    "freedLine": "{{task}} — {{who}} · temps libéré : {{time}} · pour se consacrer à : {{moves}}",
+    "freedTeam": "l'équipe"
   },
   "offline": {
     "followUp": "Concrètement : {{item}} ?"
@@ -439,7 +470,7 @@
     "notes": "Ce dont on va parler — contexte, objectifs, sujets, contraintes",
     "notesPh": "Pourquoi ce rendez-vous, ce que le client attend, les sujets à aborder, ce qu'il faut éviter…",
     "usePreplan": "Utiliser le pré-plan pour préparer l'entretien",
-    "usePreplanHint": "(ajoute ses questions comme thème « Pistes IA identifiées » et le donne en contexte à Claude)",
+    "usePreplanHint": "(ajoute ses questions comme thème « Pistes à vérifier » et le donne en contexte à Claude)",
     "save": "Enregistrer",
     "cancel": "Annuler",
     "edit": "Modifier",
@@ -456,7 +487,7 @@
       "prestudy": "Pré-étude",
       "ambassadors": "Ambassadeurs"
     },
-    "questionsHint": "Ces questions sont ajoutées à l'entretien (thème « Pistes IA identifiées », juste après le premier thème), chacune creusée Business › Workflow › Implémentation comme les autres.",
+    "questionsHint": "Ces questions sont ajoutées à l'entretien (thème « Pistes à vérifier », juste après le premier thème), chacune creusée Business › Workflow › Implémentation comme les autres.",
     "useCases": "Cas d'usage",
     "col": {
       "useCase": "Cas d'usage",
@@ -498,7 +529,7 @@
     },
     "confirmRerun": "Relancer la recherche ? La version actuelle sera gardée dans « Versions ».",
     "confirmRestore": "Restaurer la version {{v}} ? La version actuelle sera gardée dans « Versions ».",
-    "preplanTheme": "Pistes IA identifiées",
+    "preplanTheme": "Pistes à vérifier",
     "step": {
       "start": "Démarrage de la recherche ({{model}}, web)…",
       "search": "Recherche : {{query}}",

@@ -62,7 +62,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-from . import ambassadors, fsutil, i18n
+from . import ambassadors, fsutil, i18n, lens
 from . import phases as P
 from . import recipes as recipe_lib
 from .contract import (CATALOG_CATEGORIES, MAP_KINDS, PLAN_SECTIONS, RUNGS, SLOT_KEYS, SLOT_RUNG, FastResult,
@@ -373,6 +373,12 @@ class SessionState(BaseModel):
     interviewee_read: dict[str, str] = Field(default_factory=dict)
     interviewee_read_at: int = 0  # the transcript line the read was written from
     ambassador_probes: dict[str, dict] = Field(default_factory=dict)
+    # the executive lens (lens.py): talking points per use case (contract.ValueFraming + read, asked), the
+    # metric questions per "use_case:side", what showed under each question, and the metric sides asked
+    value_framings: dict[str, dict] = Field(default_factory=dict)
+    metric_questions: dict[str, dict] = Field(default_factory=dict)
+    lens_prompted: dict[str, dict] = Field(default_factory=dict)
+    metric_asked: list[str] = Field(default_factory=list)
     # phases (phases.py): the current one, when it started, seconds spent in the ones left, budgets
     phase: str | None = None
     phase_since: float | None = None
@@ -988,6 +994,9 @@ class SessionState(BaseModel):
         # 6b. the interviewee read and the people questions (ambassadors.py)
         ambassadors.apply_read(self, result.interviewee_read, read, ok)
         ambassadors.apply_probes(self, result.ambassador_probes, read, ok, reject)
+        # 6c. the executive lens: talking points and metric questions per workflow (lens.py)
+        lens.apply_framings(self, result.value_framings, read, ok, reject)
+        lens.apply_metric_questions(self, result.metric_questions, read, ok, reject)
 
         # 7. enough_data is sticky
         if result.enough_data and not self.enough_data:
@@ -1156,6 +1165,7 @@ class SessionState(BaseModel):
             if (suggested := ambassadors.prompt_for(self, old)) is not None:
                 self.ambassador_prompted[old] = suggested["person"]
                 ambassadors.mark_asked(self, left.use_case)
+            lens.mark_shown(self, old)
         if self.phase is None:
             self.phase = left.phase if left is not None else self.current_phase
         # phase by phase: the current phase while it is not done, then the next one (phases.py)

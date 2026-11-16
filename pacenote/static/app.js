@@ -329,12 +329,21 @@ function renderAsk(cur, changed) {
   lastAsk = text;
 }
 
-/** The indirect people question tied to the current workflow (ambassadors.prompt_for), quiet under the
- *  focal follow-up: the question to say and the workflow's name only. Why it is asked stays in the console. */
+/** Under the focal follow-up, quiet, tied to the current workflow: a talking point to say about its manual
+ *  work (lens.py), then the questions also worth asking: its missing baseline or success metric (lens.py)
+ *  and the indirect people question (ambassadors.py). Only what to say and the workflow's name; why stays
+ *  in the console. */
 function renderAmbassadorAsk(cur) {
-  const a = cur && S.mode === "interview" ? cur.ambassador : null;
-  setClass($("ambassador-ask"), "hidden", !a);
-  setText($("ambassador-uc"), a && a.use_case ? ` · ${a.use_case}` : "");
+  const live = cur && S.mode === "interview";
+  const f = live ? cur.framing : null;
+  setClass($("framing-say"), "hidden", !f);
+  setText($("framing-uc"), f && f.use_case ? ` · ${f.use_case}` : "");
+  setText($("framing-text"), f ? f.point : "");
+  const m = live ? cur.metric_ask : null, a = live ? cur.ambassador : null;
+  const uc = (m && m.use_case) || (a && a.use_case);
+  setClass($("ambassador-ask"), "hidden", !m && !a);
+  setText($("ambassador-uc"), uc ? ` · ${uc}` : "");
+  setText($("metric-text"), m ? m.question : "");
   setText($("ambassador-text"), a ? a.question : "");
 }
 
@@ -662,6 +671,19 @@ function renderConsoleProbes() {
     + `<br>${esc(p.question)}`
     + `<br><small>${esc(t("console.probeWhy"))} : ${esc(p.reason || t("console.probeTemplateWhy", { person: p.person || "—" }))}</small></li>`).join("");
   if ($("console-probe-list").innerHTML !== html) $("console-probe-list").innerHTML = html;
+  renderConsoleFramings();
+}
+
+// The talking points per workflow in the interviewer console: the point, the decision the person moves up
+// to, why now, held for later or said.
+function renderConsoleFramings() {
+  const list = S.framings || [];
+  setClass($("console-framings"), "hidden", !list.length);
+  const html = list.map((f) => `<li><b>${esc(f.use_case)}</b> <span class="fit">${esc(t(`console.framingState.${f.asked ? "asked" : f.timing === "now" ? "now" : "later"}`))}</span>`
+    + `<br>${esc(f.point)}`
+    + (f.moves_up_to ? `<br><small>${esc(t("console.framingMoves", { moves: f.moves_up_to }))}</small>` : "")
+    + (f.reason ? `<br><small>${esc(t("console.probeWhy"))} : ${esc(f.reason)}</small>` : "") + `</li>`).join("");
+  if ($("console-framing-list").innerHTML !== html) $("console-framing-list").innerHTML = html;
 }
 
 // --- languages: the same <language-select> component on the consent screen, header and console.

@@ -21,7 +21,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
-from . import ambassadors, fsutil, i18n, translate
+from . import ambassadors, fsutil, i18n, lens, translate
 from . import phases as P
 from . import recipes as recipe_lib
 from .capture import ReplaySource, Source
@@ -915,6 +915,10 @@ class Session:
                        # the indirect people question tied to this workflow (ambassadors.prompt_for): its
                        # reason (the ambassador angle) is for the interviewer, shown only in the console
                        "ambassador": ambassadors.prompt_for(st, lang=shown),
+                       # the executive lens (lens.py): a talking point to say about this workflow's
+                       # manual work, and the question for its missing baseline or success metric
+                       "framing": lens.framing_for(st, lang=shown),
+                       "metric_ask": lens.metric_ask_for(st, lang=shown),
                        "since": st.focus_since}
         upcoming = [qv(q) for q in (st.get(i) for i in self._upcoming_ids()) if q is not None]
         streams = [
@@ -957,6 +961,7 @@ class Session:
             "ambassadors": ambassadors.candidates(st),  # console only: "Potential ambassadors"
             "probes": ambassadors.probes_view(st, shown),  # console only: the people questions and their reasons
             "read": ambassadors.read_view(st),  # console only: the interviewee's tone and how to ask
+            "framings": lens.framings_view(st, shown),  # console only: the talking points and why now
             # the interview thread above the current question: what was asked or answered, in order
             "history": [{**qv(q), **summary(q), "thread": thread(q, 20), "thread_at": q.thread_at,
                          "skipped": q.status == "removed"} for q in st.history()],

@@ -216,8 +216,8 @@ class _PlanEngine(OfflineEngine):
             plan_use_case("sav", "Pré-diagnostic SAV", horizon="h2", feasibility=3),
             plan_use_case("portal", "Portail boulangers", horizon="h3", feasibility=3),
             adoption={"lighthouse": "orders", "ambassador": "Claire", "evidence": "elle essaie toujours en premier",
-                      "question": "", "ask": "", "demo": "Dix commandes d'hier rejouées devant Claire.",
-                      "proven": "", "spread": "Claire présente le résultat à la réunion du lundi."}))
+                      "volunteers": {"plan": "Dix commandes d'hier rejouées devant Claire.", "trigger": ""},
+                      "majority": {"plan": "Claire présente le résultat à la réunion du lundi.", "trigger": ""}}))
 
 
 def test_plan_view_groups_by_horizon_in_plain_words_in_a_browser(tmp_path):

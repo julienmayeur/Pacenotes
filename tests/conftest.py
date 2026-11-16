@@ -61,6 +61,8 @@ def result(**kw) -> SyncResult:
         enough_data_reason="",
         interviewee_read=empty_read(),
         ambassador_probes=[],
+        value_framings=[],
+        metric_questions=[],
     )
     base.update(kw)
     return SyncResult.model_validate(base)
@@ -95,6 +97,7 @@ def plan_use_case(uid="bakery-orders", title="Saisie des commandes", impact=4, f
 
     return {"id": uid, "title": title, "horizon": horizon, "pattern": "act_on_behalf",
             "human_decision": "Claire valide les commandes atypiques.",
+            "freed": {"who": "", "task": "", "time": "", "evidence": "", "moves_up_to": ""},
             "success": {"statement": "Les commandes sont saisies le jour même.",
                         "check": "Délai de saisie avant / après, vérifié par Claire."},
             "metric": "", "not_claimed": "Aucune réduction d'effectif.",
@@ -110,7 +113,13 @@ def plan_use_case(uid="bakery-orders", title="Saisie des commandes", impact=4, f
             "feasibility": {"score": feasibility, "reason": "Boîte mail accessible."}}
 
 
-ADOPTION_KEYS = ("lighthouse", "ambassador", "evidence", "question", "ask", "demo", "proven", "spread")
+ADOPTION_KEYS = ("lighthouse", "ambassador", "evidence", "question", "ask")
+WAVE_KEYS = ("volunteers", "majority", "everyone")
+
+
+def adoption_doc(**kw):
+    """A contract-valid AdoptionPlan dict: every field "" and every wave empty unless given."""
+    return {**{k: "" for k in ADOPTION_KEYS}, **{k: {"plan": "", "trigger": ""} for k in WAVE_KEYS}, **kw}
 
 
 def plan_doc(*use_cases, context="Brioche & Four distribue des fours Fornaxa.", open_items=None, current_state=None, bottlenecks=None,
@@ -118,7 +127,7 @@ def plan_doc(*use_cases, context="Brioche & Four distribue des fours Fornaxa.", 
     return {"context": context,
             "current_state": current_state or {"people": [], "flows": [], "systems": [], "stores": [], "decisions": []},
             "bottlenecks": bottlenecks or [], "metrics": metrics or [], "use_cases": list(use_cases),
-            "timeline": timeline or [], "adoption": adoption or {k: "" for k in ADOPTION_KEYS},
+            "timeline": timeline or [], "adoption": adoption_doc(**(adoption or {})),
             "open_items": open_items or [],
             "recipe_candidates": recipe_candidates or []}
 

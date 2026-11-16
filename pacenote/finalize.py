@@ -95,6 +95,30 @@ def clean_measure(m: Measure) -> Measure:
                    ask=m.ask.strip())
 
 
+def freed_line(u: PlanUseCase, tr) -> str:
+    """The executive lens in one line: the task that goes away, for whom, the time it frees (only a
+    figure with its quote; otherwise "to confirm") and the decision they move up to ("" when the
+    interview gave none of it)."""
+    f = u.freed
+    who, task, moves = _one_line(f.who), _one_line(f.task), _one_line(f.moves_up_to)
+    if not (task or moves):
+        return ""
+    time_ = _one_line(f.time) if f.time.strip() and f.evidence.strip() else tr("plan.toConfirm")
+    return tr("plan.freedLine", task=task or tr("plan.toConfirm"), who=who or tr("plan.freedTeam"), time=time_,
+              moves=moves or tr("plan.toConfirm"))
+
+
+# Labels on individuals never belong in the adoption plan (the waves are groups, never verdicts).
+_PEOPLE_LABELS = re.compile(r"r[ée]ticen|reluctan|r[ée]sist|ind[ée]cis|undecided|h[ée]sitant|sceptic|skeptic|"
+                            r"r[ée]calcitr|ventre mou|late adopter|laggard|retardataire|traîn|\bfreins?\b", re.I)
+
+
+def wave_text(text: str) -> str:
+    """A wave's text, or "" when it labels people (the default wording is then shown)."""
+    text = _one_line(text)
+    return "" if _PEOPLE_LABELS.search(text) else text
+
+
 def _metric_of(doc: PlanDoc, u: PlanUseCase):
     return next((m for m in doc.metrics if m.id and m.id == u.metric), None) or next(
         (m for m in doc.metrics if m.use_case == u.id), None)
@@ -554,8 +578,10 @@ def render_plan_md(doc: PlanDoc, state: SessionState) -> str:
                 field("horizon", tr(f"plan.horizon.{u.horizon}")), "",
                 field("pattern", tr(f"plan.patterns.{u.pattern}")), "",
                 field("recipe", recipe_line(u)), "",
-                field("humanDecision", u.human_decision.strip() or tr("plan.toConfirm")), "",
-                field("success", u.success.statement.strip() or tr("plan.toConfirm")), "",
+                field("humanDecision", u.human_decision.strip() or tr("plan.toConfirm")), ""]
+        if freed := freed_line(u, tr):
+            out += [field("freed", freed), ""]
+        out += [field("success", u.success.statement.strip() or tr("plan.toConfirm")), "",
                 field("check", u.success.check.strip() or tr("plan.toConfirm")), ""]
         if metric is not None:
             out += [field("metric", tr("plan.metricLine", name=metric.name, baseline=measure(metric.baseline),
@@ -615,7 +641,8 @@ def render_plan_md(doc: PlanDoc, state: SessionState) -> str:
         [tr("plan.timeline.week"), tr("plan.timeline.milestone"), tr("plan.timeline.proof")],
         [[str(w), m, pr] for w, m, pr in steps]) + [""]
 
-    # 7. adoption: one lighthouse, its ambassador, demo -> proven value -> spread
+    # 7. adoption in three waves: the volunteers prove it, their measured results convince most of the
+    #    team, then everyone follows; wave 2 starts from wave 1's metric against today's figure
     a = doc.adoption
     light = next((u for u in cases if u.id == a.lighthouse), None)
     out += [f"## {h['adoption']}", "", f"_{tr('plan.adoption.intro')}_", "",
@@ -627,8 +654,17 @@ def render_plan_md(doc: PlanDoc, state: SessionState) -> str:
         who = tr("plan.confirmLine", question=a.question.strip() or tr("plan.adoption.findQuestion"),
                  ask=a.ask.strip() or unknown)
     out += [field("ambassador", who), ""]
-    out += [f"{n}. **{tr(f'plan.adoption.{k}')}** — {_one_line(v) or tr(f'plan.adoption.default.{k}')}"
-            for n, (k, v) in enumerate((("demo", a.demo), ("proven", a.proven), ("spread", a.spread)), 1)] + [""]
+    lm = metric_by_case.get(light.id) if light is not None else None
+    proof = (tr("plan.metricLine", name=lm.name, baseline=measure(lm.baseline), target=measure(lm.target))
+             if lm is not None else tr("plan.adoption.noMetric"))
+    for n, k in enumerate(("volunteers", "majority", "everyone"), 1):
+        w = getattr(a, k)
+        trigger = wave_text(w.trigger) or tr(f"plan.adoption.default.{k}Trigger")
+        out += [f"{n}. **{tr(f'plan.adoption.{k}')}** — {wave_text(w.plan) or tr(f'plan.adoption.default.{k}')}",
+                f"    - {tr('plan.adoption.startsWhen', trigger=trigger)}"]
+        if k == "majority":
+            out.append(f"    - {tr('plan.adoption.proof', proof=proof)}")
+    out.append("")
 
     rows = open_items(doc, tr, library)
     out += [f"## {h['open_items']}", ""]

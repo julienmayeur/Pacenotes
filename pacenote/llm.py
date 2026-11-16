@@ -44,6 +44,7 @@ from .contract import (
     Score,
     SyncResult,
     empty_read,
+    TimeFreed,
     Bottleneck,
     CurrentState,
     FirstWin,
@@ -640,6 +641,8 @@ class OfflineEngine:
                 enough_data_reason="",
                 interviewee_read=empty_read(),
                 ambassador_probes=[],
+                value_framings=[],
+                metric_questions=[],
             )
         )
         coverage = trial.computed_coverage()
@@ -662,6 +665,8 @@ class OfflineEngine:
             enough_data_reason="offline heuristic: all must-have questions answered" if enough else "",
             interviewee_read=empty_read(),  # no model: no read, no probe (the screen falls back to a template)
             ambassador_probes=[],
+            value_framings=[],  # no model: no talking point (metric questions fall back to templates)
+            metric_questions=[],
         )
 
     def fast(self, system: str, user: str, *, state: SessionState, lines: list[Segment]) -> FastResult:
@@ -702,7 +707,7 @@ def offline_plan_doc(state: SessionState) -> PlanDoc:
                                   target=_measure(u.slots.get("target"))))
         cases.append(PlanUseCase(id=u.id, title=u.title(lang),
                                  horizon=offline_horizon(sum(1 for k in SLOT_KEYS if u.filled(k)), u.id in best),
-                                 pattern="other", human_decision="",
+                                 pattern="other", human_decision="", freed=offline_freed(state, u),
                                  success=Success(statement="", check=""), metric=metric, not_claimed="",
                                  first_win=FirstWin(description="", cases=0, week=0), kill_criterion="",
                                  sourcing="to_confirm", sourcing_reason="", adoption="", back_office=False,
@@ -715,6 +720,15 @@ def offline_plan_doc(state: SessionState) -> PlanDoc:
     return apply_horizons(PlanDoc(context=context, current_state=current, bottlenecks=bottlenecks, metrics=metrics,
                                   use_cases=cases, timeline=[], adoption=empty_adoption(), open_items=[],
                                   recipe_candidates=[]), state)
+
+
+def offline_freed(state: SessionState, u) -> TimeFreed:
+    """The executive lens without a model: the talking point's task and the decision the person moves up
+    to as written live; who does it from the actors slot. The time freed stays to confirm."""
+    f = state.value_framings.get(u.id) or {}
+    actors = u.slots.get("actors")
+    who = f.get("person") or (actors.value if actors is not None and u.filled("actors") else "")
+    return TimeFreed(who=who, task=f.get("task", ""), time="", evidence="", moves_up_to=f.get("moves_up_to", ""))
 
 
 def _measure(v) -> Measure:
