@@ -38,9 +38,15 @@ prepare (admin) ─► consent ─► interview: capture + follow-ups ─► sto
 - **Pace and horizons in the interview.** The pace sets the tone of the follow-ups and decides which
   closing questions are asked and how much they matter (what competitors changed, what the company
   could do in two years).
-- **Potential ambassadors.** When the CEO names the person who does a workflow, the screen suggests
-  asking "Could Claire be keen to try this kind of tool?", once per person. A core question asks
-  who tries new tools first and who the others listen to. Each potential ambassador is kept as a
+- **Potential ambassadors, asked with tact.** Claude keeps a light read of the person you interview
+  (role, how they talk about new tools, what worries them, what they are proud of in their team,
+  tone, rapport). For each workflow worth piloting, it writes an indirect question about the people
+  behind it, phrased for that person ("When Sage gets in the way, is Claire the one people turn
+  to?"), never head-on and never as an assessment. It is softer when the sector is behind and more
+  direct when competitors already have results. The question shows under the follow-up, tied to the
+  workflow, once that workflow has been walked through (in a sector that is behind, only once rapport
+  is there), once per person. Why it is asked and the read stay in your console (`c`). A core
+  question asks who tries new tools first and who the others listen to. Each potential ambassador is kept as a
   light label with the CEO's words, on your Mac only, and you can edit or remove it in the admin
   (your edits are kept; a removed person never comes back).
 - **Plan and PDF export.** When you stop, Claude writes a factual integration proposal
@@ -207,6 +213,8 @@ Chrome-family browser.
 - Profile cards keep professional, publicly self-published facts only.
 - Potential ambassadors are a name or role, the use case and the CEO's own words, nothing more.
   They stay in `clients/<slug>/ambassadors.json`, which git ignores wherever it is.
+- The read of the interviewee and the people questions stay in the session (`sessions/` is
+  git-ignored) and in your console. They are never sent to the plan or shown in it.
 
 ## Layout
 

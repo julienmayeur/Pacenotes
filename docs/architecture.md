@@ -80,7 +80,7 @@ flowchart LR
 | `questionnaire.py`, `clients.py` | Questionnaire schema and loader; client sheet, scaffold, next client, pre-plan merged into questionnaire and context, core questions merged in |
 | `research.py`, `autofill.py`, `people.py` | Admin web agents: research + pre-plan + sector pre-study (Opus), client-sheet Auto-fill (Sonnet), interviewee profile cards (Sonnet) with a privacy filter |
 | `horizons.py` | Horizon tags (h1 execution now, h2 emerging, h3 foresight), the pre-study's 0–10 score and posture (explorer / pragmatic / urgent, operator-only), the posture's questions (`core/horizons.yaml`) |
-| `ambassadors.py` | Use case → person links, the "could X be keen to try this kind of tool?" suggestion, the local `ambassadors.json` (engine fills, hand edit wins) |
+| `ambassadors.py` | Use case → person links; the interviewee read and the indirect people questions per workflow (merge, wording guard, timing, tone from the pace, template fallback); the local `ambassadors.json` (engine fills, hand edit wins) |
 | `recipes.py`, `metrics.py`, `briefs.py` | Recipe library schema and evidence; per-client metrics with locking; the dated knowledge briefs and their refresh |
 | `i18n.py`, `translate.py`, `locales/` | Catalogs shared with the browser, language resolution, on-the-fly translation through Claude |
 | `static/` | Interview page (`index.html`, `app.js`), admin (`admin.*`), Plan view (`plan.*`), shared `i18n.js` |
