@@ -47,7 +47,9 @@
     "readAt": "analysed up to line {{n}}",
     "followups": "Follow-ups asked",
     "whereLine": "{{answered}} answered · {{open}} open · {{pct}} % covered · {{left}} left",
-    "jump": "↓ Current question"
+    "jump": "↓ Current question",
+    "ambassadorLabel": "Also worth asking",
+    "ambassadorAsk": "Could {{person}} be keen to try this kind of tool?"
   },
   "where": {
     "title": "Where we are",
@@ -120,7 +122,9 @@
       "partial": "partial fit",
       "none": "ruled out"
     },
-    "recipeMissing": "missing"
+    "recipeMissing": "missing",
+    "ambassadors": "Potential ambassadors",
+    "ambassadorUseCase": "for {{useCase}}"
   },
   "interview": {
     "bannerDone": "All good, I'm taking care of the plan.",
@@ -144,7 +148,8 @@
       "bottlenecks": "Where the signal is lost",
       "metrics": "Metrics",
       "timeline": "Engagement timeline",
-      "recipe_candidates": "Recipe candidates (drafts)"
+      "recipe_candidates": "Recipe candidates (drafts)",
+      "adoption": "Adoption plan"
     },
     "status": {
       "answered": "answered",
@@ -191,7 +196,10 @@
       "recipeSignals": "Signals that show it fits",
       "recipePreconditions": "Preconditions",
       "recipeMetrics": "Metrics",
-      "recipeProof": "Proof"
+      "recipeProof": "Proof",
+      "horizon": "When",
+      "lighthouse": "Start with",
+      "ambassador": "Pilot ambassador"
     },
     "table": {
       "rank": "#",
@@ -358,6 +366,26 @@
         "partial": "partial fit",
         "none": "ruled out"
       }
+    },
+    "horizon": {
+      "h1": "This week",
+      "h2": "This quarter",
+      "h3": "Within two years",
+      "h1Hint": "Today's work, measured on real cases: it can start this week.",
+      "h2Hint": "Changing a workflow or a role, step by step over the coming months.",
+      "h3Hint": "Where this could take the company, kept as an option: nothing promised."
+    },
+    "adoption": {
+      "intro": "One first use case, carried by a colleague the others listen to: a demo, proven value, then it spreads.",
+      "demo": "Demo (week 1)",
+      "proven": "Proven value (week 4)",
+      "spread": "Spread (week 8 and after)",
+      "findQuestion": "Who on the team would be keen to try it first?",
+      "default": {
+        "demo": "Shown on a real case from yesterday, first to the person who will use it, then to you.",
+        "proven": "The metric against today's figure, on real cases, while the team keeps the final say.",
+        "spread": "The pilot user presents the result to the team; the next team or workflow is chosen then."
+      }
     }
   },
   "offline": {
@@ -411,7 +439,9 @@
       "research": "Research & sources",
       "questions": "Interview questions",
       "history": "Versions",
-      "metrics": "Metrics"
+      "metrics": "Metrics",
+      "prestudy": "Pre-study",
+      "ambassadors": "Ambassadors"
     },
     "questionsHint": "These questions are added to the interview (theme “AI opportunities found”, right after the first theme), each dug Business › Workflow › Implementation like the others.",
     "useCases": "Use cases",
@@ -419,7 +449,8 @@
       "useCase": "Use case",
       "value": "Value",
       "feasibility": "Feasibility",
-      "kind": "Type"
+      "kind": "Type",
+      "horizon": "When"
     },
     "historyHint": "Every new research run keeps the previous version here.",
     "badge": {
@@ -585,6 +616,75 @@
         "reached": "target reached",
         "on_track": "moving toward the target",
         "off_track": "no progress"
+      }
+    },
+    "horizon": {
+      "h1": "This week",
+      "h2": "This quarter",
+      "h3": "Within two years"
+    },
+    "prestudy": {
+      "operatorOnly": "For you only: sets the interview's pace, never shown to the client.",
+      "empty": "No pre-study yet: run the research to study the sector and its adoption of AI.",
+      "posture": "Pace",
+      "postures": {
+        "explorer": "Explorer · gentle",
+        "pragmatic": "Pragmatic",
+        "urgent": "Urgent · move fast"
+      },
+      "postureHints": {
+        "explorer": "The sector is behind: one visible, low-risk improvement first, a reassuring tone.",
+        "pragmatic": "One measured improvement now, one dated option for next quarter.",
+        "urgent": "Competitors already report results: today's improvement and the next redesign in parallel."
+      },
+      "score": "Score {{total}}/10",
+      "fromPrestudy": "from the pre-study",
+      "manual": "set by you",
+      "criteria": {
+        "a": "Sector adoption",
+        "b": "Competitors with results",
+        "c": "Market pressure",
+        "d": "Task exposure"
+      },
+      "adoption": "Sector adoption of AI",
+      "unknownFigure": "no official figure found",
+      "competitors": "Competitors",
+      "noCompetitors": "No competitor signal found.",
+      "result": "Result:",
+      "noResult": "no published result",
+      "notCounted": "not counted: no URL or date",
+      "pressure": "Market pressure:",
+      "exposure": "Task exposure:",
+      "levels": {
+        "none": "none",
+        "moderate": "moderate",
+        "strong": "strong",
+        "low": "low",
+        "medium": "medium",
+        "high": "high"
+      },
+      "modulators": {
+        "ceo_uses_ai": "The CEO already uses AI tools: one step faster.",
+        "regulated": "Regulated sector: a slower pace, the same urgency."
+      },
+      "rationale": "Why",
+      "override": "Pace for the interview",
+      "overrideAuto": "From the pre-study",
+      "overrideSaved": "Pace saved."
+    },
+    "ambassadors": {
+      "hint": "People the interviews suggested as potential ambassadors for a first pilot, with the CEO's words. Stored on this Mac only. Your edits are kept; a removed person never comes back.",
+      "empty": "None yet: the interview suggests them when the CEO names who does the work.",
+      "person": "Person",
+      "role": "Role",
+      "useCase": "Use case",
+      "quote": "What the CEO said",
+      "add": "+ Add a person",
+      "save": "Save",
+      "saved": "Saved.",
+      "by": {
+        "agent": "from the interview",
+        "manual": "edited by you"
       }
     }
   },

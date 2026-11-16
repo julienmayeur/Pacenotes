@@ -54,13 +54,15 @@ from .contract import (
     PlanStore,
     PlanSystem,
     Success,
+    empty_adoption,
     empty_maps,
     ThemeCoverage,
     parse_fast_result,
     parse_plan_doc,
     parse_sync_result,
 )
-from .finalize import render_plan_md
+from .finalize import apply_horizons, render_plan_md
+from .horizons import offline_horizon
 from .srt import format_clock
 from .state import NEXT_COUNT, SessionState
 from .transcript import Segment
@@ -693,7 +695,9 @@ def offline_plan_doc(state: SessionState) -> PlanDoc:
             metrics.append(Metric(id=metric, use_case=u.id, name=u.title(lang), unit="", how_measured="", cadence="",
                                   owner="", baseline=_measure(u.slots.get("baseline")),
                                   target=_measure(u.slots.get("target"))))
-        cases.append(PlanUseCase(id=u.id, title=u.title(lang), pattern="other", human_decision="",
+        cases.append(PlanUseCase(id=u.id, title=u.title(lang),
+                                 horizon=offline_horizon(sum(1 for k in SLOT_KEYS if u.filled(k)), u.id in best),
+                                 pattern="other", human_decision="",
                                  success=Success(statement="", check=""), metric=metric, not_claimed="",
                                  first_win=FirstWin(description="", cases=0, week=0), kill_criterion="",
                                  sourcing="to_confirm", sourcing_reason="", adoption="", back_office=False,
@@ -703,8 +707,9 @@ def offline_plan_doc(state: SessionState) -> PlanDoc:
                                  impact=Score(score=0, reason=""), feasibility=Score(score=0, reason="")))
     context = " ".join(state.plan_notes.get("context", [])[:4])
     current, bottlenecks = offline_current_state(state)
-    return PlanDoc(context=context, current_state=current, bottlenecks=bottlenecks, metrics=metrics, use_cases=cases,
-                   timeline=[], open_items=[], recipe_candidates=[])
+    return apply_horizons(PlanDoc(context=context, current_state=current, bottlenecks=bottlenecks, metrics=metrics,
+                                  use_cases=cases, timeline=[], adoption=empty_adoption(), open_items=[],
+                                  recipe_candidates=[]), state)
 
 
 def _measure(v) -> Measure:

@@ -93,6 +93,9 @@ class ClientInfo(BaseModel):
     contacts: list[Contact] = Field(default_factory=list)
     notes: str = ""  # what we will talk about: context, goals, topics, constraints
     use_preplan: bool = True  # seed the interview with the pre-plan's questions
+    # the interview's pace set by hand in the admin (horizons.py: explorer, pragmatic, urgent); "" = the
+    # pre-study's score decides. Operator-only: never shown to the client.
+    posture_override: str = ""
     updated_at: str | None = None
 
     @field_validator("language")
@@ -102,6 +105,16 @@ class ClientInfo(BaseModel):
             return i18n.normalize_interview(v)
         except i18n.LanguageError as exc:
             raise ValueError(str(exc)) from exc
+
+    @field_validator("posture_override")
+    @classmethod
+    def _posture(cls, v: str) -> str:
+        from .horizons import POSTURES
+
+        v = (v or "").strip().lower()
+        if v and v not in POSTURES:
+            raise ValueError(f"unknown posture {v!r} (known: {', '.join(POSTURES)})")
+        return v
 
 
 def client_dir(clients_dir: Path, slug: str) -> Path:
@@ -399,6 +412,8 @@ def tailor_questionnaire(q: Questionnaire, info: ClientInfo | None, preplan: dic
     questions (phases 1-4, merge_core), plus the pre-plan's seed questions as a theme right after the
     first one (parked in the deep dives), and a richer background for the model (client sheet, interviewer
     notes, pre-plan summary and use cases)."""
+    from .horizons import effective_posture, posture_theme  # (avoid an import cycle)
+
     q = merge_core(q)
     themes = list(q.themes)
     use = preplan is not None and (info is None or info.use_preplan)
@@ -406,7 +421,21 @@ def tailor_questionnaire(q: Questionnaire, info: ClientInfo | None, preplan: dic
         theme = seed_theme(preplan, {x.id for t in q.themes for x in t.questions})
         if theme is not None and PREPLAN_THEME not in {t.id for t in themes}:
             themes.insert(min(1, len(themes)), theme)
-    return q.model_copy(update={"themes": themes,
+    # the posture: the interviewer's override, else the pre-study's score, else the questionnaire's own
+    posture, origin = effective_posture(info.posture_override if info is not None else "", preplan if use else None)
+    posture = posture or q.posture
+    rationale = q.posture_rationale
+    if origin == "prestudy":
+        rationale = str(((preplan or {}).get("prestudy") or {}).get("rationale") or "").strip()
+    elif origin == "manual":
+        rationale = ""
+    extra = posture_theme(posture) if q.core_questions else None
+    if extra is not None:
+        taken = {x.id for t in themes for x in t.questions}
+        keep = [x for x in extra.questions if x.id not in taken]
+        if keep and extra.id not in {t.id for t in themes}:
+            themes.append(extra.model_copy(update={"questions": keep}))
+    return q.model_copy(update={"themes": themes, "posture": posture, "posture_rationale": rationale,
                                 "context": client_context(q.context, info, preplan if use else None, profiles)})
 
 
@@ -440,10 +469,13 @@ def client_context(base: str, info: ClientInfo | None, preplan: dict | None,
         if info.notes.strip():
             parts.append("interviewer notes (what we want to talk about):\n" + info.notes.strip())
     if preplan:
+        from .horizons import preplan_horizon  # (avoid an import cycle)
+
         summary = str(preplan.get("summary") or "").strip()
         cases = preplan.get("use_cases") or []
         lines = [f"- {c.get('title')} (value {c.get('value')}/5, feasibility {c.get('feasibility')}/5, "
-                 f"{'quick win' if c.get('kind') == 'quick_win' else 'bigger bet'})" for c in cases[:6] if c.get("title")]
+                 f"{'quick win' if c.get('kind') == 'quick_win' else 'bigger bet'}, {preplan_horizon(c)})"
+                 for c in cases[:6] if c.get("title")]
         if summary or lines:
             parts.append("Pre-plan from desk research (hypotheses to confirm in the interview, not facts):\n"
                          + (summary + "\n" if summary else "") + "\n".join(lines))

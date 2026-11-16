@@ -3,8 +3,10 @@
 One `claude -p` run (Opus, web search and web fetch allowed, nothing else) researches the
 company and returns, as structured output: the research write-up with its sources, a pre-plan
 (how they work today, what they already do, use cases ranked by value and feasibility, quick
-wins vs bigger bets) and a few seed questions for the interview, each with its Business >
-Workflow > Implementation ladder. Progress (searches made, pages read) streams to the admin
+wins vs bigger bets, each tagged with its horizon), the pre-study of its sector (AI adoption in
+the sector, competitors that adopted AI and whether it worked, market pressure, task exposure:
+horizons.py scores it into a posture, explorer / pragmatic / urgent, operator-only) and a few
+seed questions for the interview, each with its Business > Workflow > Implementation ladder. Progress (searches made, pages read) streams to the admin
 panel while it runs. Results are written to the client folder; the previous version is moved to
 history/<timestamp>/ first.
 """
@@ -27,6 +29,7 @@ from pydantic import BaseModel, ConfigDict
 
 from . import fsutil, i18n
 from .clients import ClientInfo, client_dir, linked_summary, load_info
+from .horizons import HORIZON_GUIDE, Horizon, PreStudy, preplan_horizon, score_prestudy
 from .llm import DEFAULT_MODEL, _kill_group, cli_env, find_claude
 from .questionnaire import load_questionnaire
 
@@ -51,6 +54,7 @@ class UseCase(_Strict):
     value: int  # 1 (low) .. 5 (high)
     feasibility: int  # 1 (hard) .. 5 (easy)
     kind: Literal["quick_win", "big_bet"]
+    horizon: Horizon  # h1 execution now, h2 emerging (next quarter), h3 foresight (about two years)
     already_done: bool  # they already do (part of) it
 
 
@@ -75,6 +79,7 @@ class ResearchOutput(_Strict):
     preplan_md: str
     use_cases: list[UseCase]
     seed_questions: list[SeedQuestion]
+    prestudy: PreStudy
     sources: list[Source]
 
 
@@ -91,18 +96,34 @@ company's own site, official registries, press releases, job offers), then trade
 invent facts, numbers, names or tools: when something is not found, say so, and mark \
 inferences as hypotheses.
 
+Also study the company's industry and its adoption of AI (the pre-study), from public sources \
+only:
+- the share of companies of its sector and size class that use AI, from official statistics \
+(national statistics office, Eurostat, central bank, OECD), with the figure's year and scope;
+- direct competitors (3 to 5, same sector and market) that adopted AI: what they did (a tool, a \
+service, a hire, a public statement) and whether it worked, i.e. a published result with a \
+number. Keep a signal only with its URL and its publication date; a competitor that "talks about \
+AI" without a result is a signal, not a result;
+- whether the sector's own software vendors (ERP, trade software) already ship AI features;
+- market and customer pressure: do customers already compare on speed, price or self-service?
+- task exposure: how much of the company's work is text, documents, re-keying and back-office;
+- whether the sector is strongly regulated, and whether the CEO publicly uses AI tools himself.
+Never invent a statistic, a competitor or a result: when not found, say so.
+
 Write in {lang_name}.
 
 Return:
 - summary: 3 to 5 plain sentences: who they are and the most promising directions.
 - research_md: Markdown. Sections: L'entreprise; Comment elle fonctionne aujourd'hui; Ce qu'elle \
-fait déjà (numérique, données, IA); Le secteur et ses irritants; Ce qu'on n'a pas trouvé. Cite \
+fait déjà (numérique, données, IA); Le secteur et ses irritants; Le secteur face à l'IA \
+(adoption, concurrents, résultats publiés); Ce qu'on n'a pas trouvé. Cite \
 sources inline as [n] and end with a "Sources" list ([n] title — URL).
 - preplan_md: Markdown pre-plan. Sections: Synthèse; Ce qu'ils font déjà; Cas d'usage (a table: \
 cas d'usage | valeur 1-5 | faisabilité 1-5 | type quick win / gros pari | pourquoi); Quick wins \
 (30-60 jours); Gros paris (3-12 mois); Questions à creuser en entretien; Hypothèses à vérifier. \
 Ranked by value x feasibility. Concrete, specific to this company, no generic AI hype.
-- use_cases: the same use cases, structured (value and feasibility from 1 to 5).
+- use_cases: the same use cases, structured (value and feasibility from 1 to 5), each with its \
+horizon: {horizons}.
 - seed_questions: 2 to 4 interview questions for the CEO about the work behind the most \
 promising use cases. The CEO meets us for the first time and does not know how AI could help, so \
 ask about his work, never about technology: start from what limits capacity (taking more \
@@ -116,6 +137,15 @@ questions (never IA/AI, agent, automatiser/automate, LLM, bot, algorithme). Each
 today in hours, delays or lost sales, and what the freed time would allow: how many more orders \
 or customers), workflow (who does what on the last real case, where the information comes from \
 and goes, handoffs), implementation (software or files by name, how many per day or week).
+- prestudy: the pre-study, structured: sector, size_band (the size class of the statistic), \
+sector_adoption_pct (a percentage, e.g. 18 for 18 %; null when no official figure was found), \
+adoption_source (title and URL of that figure; both "" when not found), adoption_note (one \
+sentence: figure, year, scope), competitors (each: competitor, signal, result = the published \
+outcome with its number or "" when none, url, date), market_pressure (none, moderate, strong) \
+with pressure_note, task_exposure (low, medium, high) with exposure_note, regulated, ceo_uses_ai \
+(yes, no, unknown), rationale (2 or 3 plain sentences: how fast this company should move and why, \
+from these facts). It is for the interviewer only: it sets the interview's pace and is never shown \
+to the client.
 - sources: every URL you relied on, with a title.
 """
 
@@ -261,7 +291,7 @@ class ResearchManager:
             "--output-format", "stream-json", "--verbose",
             "--include-partial-messages",  # so "writing the pre-plan" shows as soon as it starts
             "--model", self.model, "--effort", self.effort,
-            "--system-prompt", RESEARCH_SYSTEM.format(lang_name=lang_name),
+            "--system-prompt", RESEARCH_SYSTEM.format(lang_name=lang_name, horizons=HORIZON_GUIDE),
             "--tools", "WebSearch,WebFetch",  # web research only: no shell, no files
             "--allowedTools", "WebSearch,WebFetch",
             "--strict-mcp-config", "--no-session-persistence",
@@ -384,9 +414,14 @@ def write_outputs(cdir: Path, output: ResearchOutput, model: str) -> str | None:
     stamp = datetime.now().isoformat(timespec="seconds")
     fsutil.atomic_write_text(cdir / "research.md", output.research_md.strip() + "\n")
     fsutil.atomic_write_text(cdir / "preplan.md", output.preplan_md.strip() + "\n")
+    cases = [u.model_dump() for u in output.use_cases]
+    for c in cases:
+        c["horizon"] = preplan_horizon(c)
     meta = {"generated_at": stamp, "model": model, "summary": output.summary,
-            "use_cases": [u.model_dump() for u in output.use_cases],
+            "use_cases": cases,
             "seed_questions": [s.model_dump() for s in output.seed_questions],
+            # operator-only: the sector pre-study and its posture score (horizons.py), never shown to the client
+            "prestudy": output.prestudy.model_dump(), "posture": score_prestudy(output.prestudy),
             "sources": [s.model_dump() for s in output.sources]}
     fsutil.atomic_write_text(cdir / "preplan.json", json.dumps(meta, ensure_ascii=False, indent=2) + "\n")
     return archived

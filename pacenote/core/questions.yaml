@@ -47,6 +47,20 @@ themes:
           implementation:
             - {fr: "combien de personnes par service", en: "how many people per department"}
         keywords: [clés, absent, vacances, indispensable, service, entrepôt, comptabilité, keys]
+      # who could carry a first pilot (ambassadors.py): who tries new tools first, who the others listen to
+      - id: core-first-to-try
+        priority: 2
+        slots: [actors]
+        fr: "La dernière fois qu'un nouveau logiciel ou une nouvelle façon de faire est arrivé chez vous, qui l'a essayé en premier et l'a montré aux autres ? Et quand cette personne dit qu'une chose marche, est-ce que les autres l'écoutent ?"
+        en: "The last time new software or a new way of working came in, who tried it first and showed the others? And when that person says something works, do the others listen?"
+        expect:
+          business:
+            - {fr: "qui l'a essayé en premier (nom, poste)", en: "who tried it first (name, role)"}
+          workflow:
+            - {fr: "ce qui est arrivé, et comment cette personne l'a montré aux autres", en: "what came in, and how that person showed the others"}
+          implementation:
+            - {fr: "qui les autres écoutent quand il dit qu'une chose marche", en: "who the others listen to when they say something works"}
+        keywords: [premier, essayé, montré, nouveau, logiciel, écoutent, first, tried, listen]
 
   - id: core-signal-flow
     phase: signal-flow

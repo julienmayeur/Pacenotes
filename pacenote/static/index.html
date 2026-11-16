@@ -69,6 +69,11 @@
               <span id="ask-label" class="ask-label"></span>
               <p id="ask-text" class="ask-text"></p>
             </section>
+            <!-- the use case maps to a person: "Could Claire be keen to try this kind of tool?" (ambassadors.py) -->
+            <p id="ambassador-ask" class="ambassador-ask hidden" aria-live="polite">
+              <span class="amb-label" data-i18n="focus.ambassadorLabel"></span>
+              <span id="ambassador-text" class="amb-text"></span>
+            </p>
 
             <!-- secondary, quiet: what is still missing / already heard, the answer so far -->
             <div class="details">
@@ -195,6 +200,11 @@
     <div class="console-row recipes hidden" id="console-recipes">
       <span class="ls-title" data-i18n="console.recipes"></span>
       <ul id="console-recipe-list" class="recipe-list"></ul>
+    </div>
+    <!-- potential ambassadors heard so far (interviewer only) -->
+    <div class="console-row recipes hidden" id="console-ambassadors">
+      <span class="ls-title" data-i18n="console.ambassadors"></span>
+      <ul id="console-ambassador-list" class="recipe-list"></ul>
     </div>
     <div class="console-row links" id="console-links"></div>
     <div class="console-row paths" id="console-paths"></div>

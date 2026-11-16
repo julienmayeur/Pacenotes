@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Mapping
 
-from . import briefs, i18n
+from . import ambassadors, briefs, horizons, i18n
 from . import phases as P
 from . import recipes as recipe_lib
 from .contract import CATALOG_DESCRIPTIONS, SLOT_DESCRIPTIONS, SLOT_KEYS, SLOT_RUNG
@@ -99,7 +99,8 @@ state at least one of its facts; "" for anything not said ("unknown" for yes/no 
 said (names, tools, numbers), in {lang_name}; evidence = a short corrected quote. Never guess, never \
 fill from the client background.
 - org: people around the CEO: person, role, department, reports_to, time_split (share of time on \
-judgment and decisions vs repetitive glue: chasing status, re-keying, jumping between systems), notes.
+judgment and decisions vs repetitive glue: chasing status, re-keying, jumping between systems), notes, \
+adoption_signal (see Potential ambassadors below).
 - flows: information passing between people or departments: sender, receiver, what, channel \
 (email, phone, WhatsApp, Teams, fax, meeting, paper, ERP), cadence, wait (how long the receiver \
 waits), who_waits, confidential (part of it must stay with the sender: prices, margins), \
@@ -161,7 +162,63 @@ def catalog_list() -> str:
 
 def maps_guide(state: SessionState) -> str:
     return PHASES_GUIDE.format(phase_list=phase_list()) + "\n" + MAPS_GUIDE.format(
-        lang_name=LANG_NAME[state.language], catalog=catalog_list())
+        lang_name=LANG_NAME[state.language], catalog=catalog_list()) + "\n" + horizons_guide(state)
+
+
+HORIZONS_GUIDE = """\
+# Horizons (internal framing; never say "horizon" or H1/H2/H3 to the CEO)
+Every opportunity the interview uncovers sits on one horizon: {horizons}. Most follow-ups serve \
+h1: today's work on a real recent case, with its numbers, so a pilot can start this week. Keep \
+an h2 or h3 idea the CEO raises (note it in plan_delta.priorities with its horizon, e.g. "(h2) …"), \
+without promising anything.
+"""
+
+POSTURE_GUIDE = """\
+# Pace (from the desk research; operator-only: never mention it, never read it out)
+The pre-study set this interview's posture to {posture}: {posture_note}
+{rationale}\
+- Aim the follow-ups and queue edits accordingly: {posture_rule}
+"""
+
+POSTURE_RULES = {
+    "explorer": "gentle pace. The sector is behind: stay on one visible, low-risk improvement of today's "
+                "work (h1), in a reassuring tone (\"we try it together\"); no competitor pressure; ask about "
+                "the future only if time allows.",
+    "pragmatic": "steady pace. One measured improvement of today's work (h1), and one dated option for the "
+                 "next quarter (h2) when the CEO opens one.",
+    "urgent": "brisk pace. Competitors already report results: inaction is the risk. Get today's quick "
+              "improvement (h1) and the workflow redesign for the next quarter (h2) in parallel, ask what "
+              "competitors changed, and who sponsors the work on the CEO's side.",
+}
+POSTURE_NOTES = {"explorer": "explorer (sector behind, gentle approach)",
+                 "pragmatic": "pragmatic (one measured step now, one dated option next)",
+                 "urgent": "urgent (competitors already have results: move fast)"}
+
+AMBASSADORS_GUIDE = """\
+# Potential ambassadors (who could carry a first pilot)
+A pilot spreads through a colleague the others listen to, not through the consultant or the CEO.
+- In the org map, `adoption_signal` = a short quote of what the CEO said that makes this person a \
+potential ambassador: tries new tools or software first, shows the others how, is listened to when \
+they say something works, complains about a repetitive task they would gladly hand over, or would \
+be keen to try a tool on their work. "" when nothing like that was said. Only the CEO's words, \
+never an inference from a role; never record reluctance, criticism or personal judgments.
+- When the CEO puts a named person (or a role) on a use case's work, once the current rung is \
+covered, a good follow-up asks whether that person would be keen to try this kind of tool, in the \
+CEO's words ("Claire, elle aurait envie d'essayer ce genre d'outil ?"). The screen may already \
+suggest it under the question: do not repeat it once asked.
+"""
+
+
+def horizons_guide(state: SessionState) -> str:
+    """Horizon framing, the posture (when the pre-study or the interviewer set one) and the
+    ambassador rules, for the live prompts."""
+    out = HORIZONS_GUIDE.format(horizons=horizons.HORIZON_GUIDE)
+    if state.posture in POSTURE_RULES:
+        rationale = (state.posture_rationale or "").strip()
+        out += "\n" + POSTURE_GUIDE.format(posture=state.posture, posture_note=POSTURE_NOTES[state.posture],
+                                           rationale=f"{rationale}\n" if rationale else "",
+                                           posture_rule=POSTURE_RULES[state.posture])
+    return out + "\n" + AMBASSADORS_GUIDE
 
 
 SLOTS_GUIDE = """\
@@ -357,6 +414,8 @@ def state_snapshot(state: SessionState) -> dict:
         "use_cases": use_cases_snapshot(state),
         "maps": maps_snapshot(state),
         "recipe_matches": recipe_matches_snapshot(state),
+        "potential_ambassadors": [{k: e[k] for k in ("person", "role", "use_case", "quote")}
+                                  for e in ambassadors.candidates(state)],
         "plan_notes": {k: v for k, v in state.plan_notes.items() if v},
     }
 
@@ -383,7 +442,7 @@ def build_sync_user(
 
 PLAN_HEADING_KEYS = ("context", "priorities", "workflows", "quick_wins", "plan_30_60_90", "risks", "budget", "log",
                      "current_state", "bottlenecks", "metrics", "timeline",
-                     "use_cases", "details", "recipe_candidates", "open_items")
+                     "use_cases", "details", "recipe_candidates", "open_items", "adoption")
 
 
 def plan_headings(lang: str, overlay: Mapping[str, str] | None = None) -> dict[str, str]:
@@ -452,6 +511,9 @@ state.use_cases (their slots hold what was captured live), add the ones the tran
 merge duplicates. A use case of the state that was never discussed is not part of the proposal: \
 list it in open_items instead. Order does not matter (the app ranks them). For each:
 - id: short slug; title: short and concrete.
+- horizon: {horizons}. h1 only when it can start this week on today's work (the source is \
+reachable, the workflow was described on a real case); the plan groups opportunities by horizon \
+under plain words, so never write "horizon" or H1/H2/H3 in any text.
 - architecture: exactly ONE sentence (one full stop, at most about 45 words) with the real \
 names: what the agent watches, what it does on each trigger, where it writes, whom it notifies. \
 Like "An agent watches the orders mailbox; on each bakery order email it extracts the bakery, \
@@ -557,6 +619,23 @@ person before they enter the library. Empty list when every opportunity has a re
 {other_recipes}
 </other_recipes>
 
+# Adoption plan: how the first pilot spreads
+A pilot spreads through a respected colleague, not through the consultant or the CEO: one \
+lighthouse use case, visible beyond its user, carried by one ambassador, told as demo, proven \
+value, then spread.
+- adoption.lighthouse: the id of the opportunity to start with: an h1 one, high volume, a human \
+who validates, a metric already counted, a gain others will see.
+- adoption.ambassador: the person (name or role) who would pilot it, only as heard in the \
+interview (state.potential_ambassadors lists who the CEO put on each use case and what he said \
+about them); evidence = the CEO's quote. Nobody named: ambassador and evidence "", question = the \
+question to ask to find one ("Qui, dans l'équipe, aurait envie d'essayer en premier ?"), ask = who \
+to ask it. Never pick someone the CEO described as reluctant.
+- adoption.demo: week 1: what is shown on a real case from yesterday, to the ambassador then to \
+the CEO (no slides). adoption.proven: week 4: the metric against its baseline on real cases, in \
+shadow mode. adoption.spread: week 8 and after: the ambassador presents the result to the team \
+(not us), in which existing meeting, and which team or workflow is next. Short, concrete, with the \
+client's names; "" when nothing supports it.
+{pace}
 # Other fields
 - context: 2 to 4 sentences: who the client is, what the interview covered, the CEO's goals as \
 he stated them. Facts only.
@@ -578,8 +657,29 @@ use case's `model` provider and `sourcing` from it and from the stated facts.
 """
 
 
+PLAN_PACE = """\
+The pace (operator guidance from the desk research; never mention it, never name it in any text): \
+{rule} Concretely: {plan_rule}
+"""
+PLAN_PACE_RULES = {
+    "explorer": "propose one h1 opportunity as the lighthouse, worded gently; other ideas stay h2 or h3, with no figures "
+                "promised.",
+    "pragmatic": "one h1 lighthouse with its measured proof, and at most one dated h2 option.",
+    "urgent": "the h1 lighthouse and the h2 workflow redesign run in parallel; name the sponsor on the client's side "
+              "in open_items when it is not known; an h3 idea, if any, says what it would take.",
+}
+
+
+def plan_pace(state: SessionState) -> str:
+    if state.posture not in POSTURE_RULES:
+        return ""
+    return PLAN_PACE.format(rule=POSTURE_NOTES[state.posture] + ".", plan_rule=PLAN_PACE_RULES[state.posture])
+
+
 def build_plan_system(state: SessionState, glossary: str, context: str = "") -> str:
     return PLAN_SYSTEM.format(
+        horizons=horizons.HORIZON_GUIDE,
+        pace=plan_pace(state),
         streams=describe_streams(state),
         target=state.target_minutes,
         client=state.client,

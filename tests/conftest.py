@@ -87,11 +87,11 @@ def plan_fact(value="", evidence="", status=None, question="", ask=""):
             "question": question, "ask": ask}
 
 
-def plan_use_case(uid="bakery-orders", title="Saisie des commandes", impact=4, feasibility=3, **slots):
+def plan_use_case(uid="bakery-orders", title="Saisie des commandes", impact=4, feasibility=3, horizon="h1", **slots):
     """A contract-valid PlanUseCase dict: every slot "to confirm" unless given (slot=plan_fact(...))."""
     from pacenote.contract import SLOT_KEYS
 
-    return {"id": uid, "title": title, "pattern": "act_on_behalf",
+    return {"id": uid, "title": title, "horizon": horizon, "pattern": "act_on_behalf",
             "human_decision": "Claire valide les commandes atypiques.",
             "success": {"statement": "Les commandes sont saisies le jour même.",
                         "check": "Délai de saisie avant / après, vérifié par Claire."},
@@ -108,13 +108,33 @@ def plan_use_case(uid="bakery-orders", title="Saisie des commandes", impact=4, f
             "feasibility": {"score": feasibility, "reason": "Boîte mail accessible."}}
 
 
+ADOPTION_KEYS = ("lighthouse", "ambassador", "evidence", "question", "ask", "demo", "proven", "spread")
+
+
 def plan_doc(*use_cases, context="Brioche & Four distribue des fours Fornaxa.", open_items=None, current_state=None, bottlenecks=None,
-             metrics=None, timeline=None, recipe_candidates=None):
+             metrics=None, timeline=None, recipe_candidates=None, adoption=None):
     return {"context": context,
             "current_state": current_state or {"people": [], "flows": [], "systems": [], "stores": [], "decisions": []},
             "bottlenecks": bottlenecks or [], "metrics": metrics or [], "use_cases": list(use_cases),
-            "timeline": timeline or [], "open_items": open_items or [],
+            "timeline": timeline or [], "adoption": adoption or {k: "" for k in ADOPTION_KEYS},
+            "open_items": open_items or [],
             "recipe_candidates": recipe_candidates or []}
+
+
+@pytest.fixture(autouse=True)
+def _no_ambassador_file_in_the_repo(monkeypatch):
+    """Finalizing a session records the potential ambassadors in its client folder: never in the
+    repo's fixtures or example client (tests that check the file work on a copy under tmp_path)."""
+    from pacenote import ambassadors
+
+    real = ambassadors.record
+
+    def guarded(client_path, state, session=""):
+        if Path(client_path).resolve().is_relative_to(ROOT):
+            return ambassadors.load(client_path)
+        return real(client_path, state, session)
+
+    monkeypatch.setattr(ambassadors, "record", guarded)
 
 
 @pytest.fixture(autouse=True)

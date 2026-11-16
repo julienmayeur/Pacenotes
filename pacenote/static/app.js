@@ -284,6 +284,7 @@ function renderCurrent(swap = false) {
     (li, r) => { if (!r.sep) fillRung(li, r, names); });
 
   renderAsk(cur, changed);
+  renderAmbassadorAsk(cur);
   renderMissing(cur, changed, names);
   renderSummary(cur, changed, names);
 
@@ -326,6 +327,14 @@ function renderAsk(cur, changed) {
     askFlash = setTimeout(() => box.classList.remove("fresh"), 1100);
   }
   lastAsk = text;
+}
+
+/** "Could Claire be keen to try this kind of tool?": shown once the current use case maps to a person,
+ *  in the display language, quiet under the focal follow-up. */
+function renderAmbassadorAsk(cur) {
+  const a = cur && S.mode === "interview" ? cur.ambassador : null;
+  setClass($("ambassador-ask"), "hidden", !a);
+  setText($("ambassador-text"), a ? t("focus.ambassadorAsk", { person: a.person }) : "");
 }
 
 /** The live answer: grows as the fast pass appends pieces, tightens when a full sync rewrites it. */
@@ -623,6 +632,17 @@ function renderRecipes() {
     + (r.missing && r.missing.length ? `<br><small>${esc(t("console.recipeMissing"))} : ${esc(r.missing.slice(0, 3).join(" · "))}</small>` : "")
     + `</li>`).join("");
   if ($("console-recipe-list").innerHTML !== html) $("console-recipe-list").innerHTML = html;
+  renderConsoleAmbassadors();
+}
+
+// "Potential ambassadors" in the interviewer console: who, for which use case, the CEO's words
+function renderConsoleAmbassadors() {
+  const list = S.ambassadors || [];
+  setClass($("console-ambassadors"), "hidden", !list.length);
+  const html = list.map((a) => `<li><b>${esc(a.person)}</b>${a.role ? ` <span class="muted">· ${esc(a.role)}</span>` : ""}`
+    + (a.use_case ? ` <span class="fit">${esc(t("console.ambassadorUseCase", { useCase: a.use_case }))}</span>` : "")
+    + (a.quote ? `<br><small>« ${esc(a.quote)} »</small>` : "") + `</li>`).join("");
+  if ($("console-ambassador-list").innerHTML !== html) $("console-ambassador-list").innerHTML = html;
 }
 
 // --- languages: the same <language-select> component on the consent screen, header and console.

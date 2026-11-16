@@ -1,0 +1,46 @@
+# Horizon questions, shipped with the app (pacenote/horizons.py). When the pre-study gives the client
+# a posture (or the interviewer sets one in the admin), clients.tailor_questionnaire adds the
+# posture's questions at the end of the `return` phase, with the posture's priorities:
+#   - explorer (gentle): only the two-year question, if time allows; no competitor pressure;
+#   - pragmatic: both, important;
+#   - urgent (competitors already report results): both, must-have, competitors first.
+# Without a posture, none of them is asked. Same wording rules as core/questions.yaml: a story on a
+# real case, no AI vocabulary (tests/test_questions.py checks this file too).
+
+postures:
+  explorer: {hz-two-years: 3}
+  pragmatic: {hz-two-years: 2, hz-competitors: 2}
+  urgent: {hz-competitors: 1, hz-two-years: 1}
+
+theme:
+  id: horizons
+  phase: return
+  title: {fr: Et après, en: What comes next}
+  questions:
+    - id: hz-competitors
+      priority: 2
+      slots: [baseline]
+      fr: "Vos deux ou trois principaux concurrents : savez-vous s'ils ont changé leur façon de prendre les commandes ou de répondre aux clients ces deux dernières années ? Qu'est-ce que vos clients vous en ont dit ?"
+      en: "Your two or three main competitors: do you know whether they changed the way they take orders or answer customers in the last two years? What have your customers told you about it?"
+      expect:
+        business:
+          - {fr: "les concurrents cités, par leur nom", en: "the competitors named"}
+          - {fr: "ce qu'ils ont changé, et ce que les clients en disent", en: "what they changed, and what customers say about it"}
+        workflow:
+          - {fr: "où vous l'avez appris (un client, un salon, la presse)", en: "where you heard it (a customer, a trade fair, the press)"}
+        implementation:
+          - {fr: "ce que vos clients attendent désormais (délai, prix, réponse le soir)", en: "what your customers now expect (lead time, price, an answer in the evening)"}
+      keywords: [concurrent, concurrents, clients, changé, délai, competitor, competitors]
+    - id: hz-two-years
+      priority: 3
+      slots: [target]
+      fr: "Si tout cela marche, que feriez-vous dans deux ans que vous ne pouvez pas faire aujourd'hui : un nouveau service, un nouveau marché, une autre façon de travailler ?"
+      en: "If all this works, what would you do in two years that you cannot do today: a new service, a new market, a different way of working?"
+      expect:
+        business:
+          - {fr: "ce qu'il ferait dans deux ans (service, marché, organisation)", en: "what he would do in two years (service, market, organisation)"}
+        workflow:
+          - {fr: "qui dans l'équipe le porterait", en: "who in the team would carry it"}
+        implementation:
+          - {fr: "ce qui manque aujourd'hui pour s'y mettre", en: "what is missing today to start on it"}
+      keywords: [deux ans, demain, nouveau, marché, service, two years, market]

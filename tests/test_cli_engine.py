@@ -125,7 +125,7 @@ def test_write_plan_doc_asks_for_the_plan_schema_at_plan_effort(tmp_path, state)
     assert argv[argv.index("--effort") + 1] == "high"
     schema = json.loads(argv[argv.index("--json-schema") + 1])
     assert set(schema["required"]) == {"context", "current_state", "bottlenecks", "metrics", "use_cases", "timeline",
-                                       "open_items", "recipe_candidates"}
+                                       "adoption", "open_items", "recipe_candidates"}
 
 
 def test_find_claude(tmp_path, monkeypatch):

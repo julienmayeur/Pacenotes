@@ -29,7 +29,8 @@ from .clients import (
     set_next_client,
     slug_from_name,
 )
-from . import fsutil, i18n, planview
+from . import ambassadors, fsutil, i18n, planview
+from . import horizons as horizons_lib
 from . import metrics as metrics_lib
 from .autofill import (DEFAULT_AUTOFILL_MODEL, FIELDS as AUTOFILL_FIELDS, RELATIONS, AutofillManager, dead_links,
                        mark_manual_edits, merge_into_sheet)
@@ -88,6 +89,30 @@ class MeasurementBody(BaseModel):
     date: str | None = None  # YYYY-MM-DD, default today
     note: str = ""
     version: int  # the metrics.yaml version the page rendered (optimistic lock: a stale page gets 409)
+
+
+class PostureBody(BaseModel):
+    posture: str = ""  # explorer, pragmatic, urgent; "" = the pre-study's score decides
+
+
+class AmbassadorsEdit(BaseModel):
+    entries: list[dict] = []  # the list as edited (each: id, person, role, use_case, quote)
+    removed: list[str] = []  # ids the interviewer removed (never brought back by the interview)
+
+
+def prestudy_view(preplan: dict, info: ClientInfo) -> dict | None:
+    """The pre-study as the admin shows it (operator-only): the facts, each competitor signal marked
+    counted or not (a URL and a date are required), the score and the posture in force."""
+    pre = preplan.get("prestudy")
+    posture, origin = horizons_lib.effective_posture(info.posture_override, preplan)
+    if not isinstance(pre, dict):
+        return {"prestudy": None, "score": None, "posture": posture, "origin": origin,
+                "override": info.posture_override} if posture else None
+    counted = {id(c) for c in horizons_lib.counted_signals(pre.get("competitors"))}
+    pre = {**pre, "competitors": [{**c, "counted": id(c) in counted} for c in pre.get("competitors") or []
+                                  if isinstance(c, dict)]}
+    return {"prestudy": pre, "score": horizons_lib.score_prestudy(preplan.get("prestudy")), "posture": posture,
+            "origin": origin, "override": info.posture_override}
 
 
 class ProfileEdit(BaseModel):
@@ -160,9 +185,13 @@ def admin_router(clients_dir: Path, manager: ResearchManager, sessions_dir: Path
         d = cdir(slug)
         preplan = load_preplan(d) or {}
         research_md, preplan_md = read(d / "research.md"), read(d / "preplan.md")
+        info = load_info(clients_dir, slug)
+        for c in preplan.get("use_cases") or []:
+            if isinstance(c, dict):
+                c["horizon"] = horizons_lib.preplan_horizon(c)
         return {
             "slug": slug,
-            "info": load_info(clients_dir, slug).model_dump(),
+            "info": info.model_dump(),
             "next": get_next_client() == slug,
             "preplan_md": preplan_md, "preplan_html": _render(preplan_md),
             "research_md": research_md, "research_html": _render(research_md),
@@ -171,6 +200,8 @@ def admin_router(clients_dir: Path, manager: ResearchManager, sessions_dir: Path
             "use_cases": preplan.get("use_cases", []),
             "seed_questions": preplan.get("seed_questions", []),
             "sources": preplan.get("sources", []),
+            "prestudy": prestudy_view(preplan, info),  # operator-only: never on a client-facing page
+            "ambassadors": ambassadors.load(d),
             "history": list_history(d),
             "profiles": {c.name: load_profile(d, c.name) for c in load_info(clients_dir, slug).contacts if c.name.strip()},
             "research": manager.status(slug),
@@ -207,6 +238,27 @@ def admin_router(clients_dir: Path, manager: ResearchManager, sessions_dir: Path
         except ClientError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return await detail(slug)
+
+    @r.put("/admin/api/clients/{slug}/posture")
+    async def set_posture(slug: str, body: PostureBody) -> dict:
+        """The interviewer's pace for this client: wins over the pre-study's score ("" gives it back)."""
+        cdir(slug)
+        try:
+            info = ClientInfo.model_validate({**load_info(clients_dir, slug).model_dump(),
+                                              "posture_override": body.posture})
+            save_info(clients_dir, slug, info)
+        except (ClientError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return await detail(slug)
+
+    # --- potential ambassadors (pacenote/ambassadors.py): clients/<slug>/ambassadors.json -------------
+    @r.put("/admin/api/clients/{slug}/ambassadors")
+    async def ambassadors_edit(slug: str, body: AmbassadorsEdit) -> dict:
+        d = cdir(slug)
+        try:
+            return ambassadors.save_edit(d, body.entries, body.removed)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     # --- auto-fill of the client sheet (pacenote/autofill.py) ------------------------------------
     @r.get("/admin/api/autofill")

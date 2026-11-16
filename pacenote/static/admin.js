@@ -212,11 +212,117 @@ function fillResearch(d, keepEdits) {
       ? `<span class="rung"><b>${esc(t(`focus.rungs.${r}`))}</b>${esc(q.expect[r].join(" · "))}</span>` : "").join("")}</div></li>`).join("")
     || `<li class="muted">${esc(t("admin.noQuestions"))}</li>`;
   $("cases").innerHTML = (d.use_cases || []).map((u) => `<tr><td><b>${esc(u.title)}</b><br><span class="muted small">${esc(u.description)}</span></td>
-    <td class="num">${esc(u.value)}/5</td><td class="num">${esc(u.feasibility)}/5</td><td>${esc(u.kind === "quick_win" ? t("admin.quickWin") : t("admin.bigBet"))}${u.already_done ? ` · ${esc(t("admin.alreadyDone"))}` : ""}</td></tr>`).join("");
+    <td class="num">${esc(u.value)}/5</td><td class="num">${esc(u.feasibility)}/5</td><td>${esc(u.kind === "quick_win" ? t("admin.quickWin") : t("admin.bigBet"))}${u.already_done ? ` · ${esc(t("admin.alreadyDone"))}` : ""}</td>
+    <td>${u.horizon ? `<span class="hz hz-${esc(u.horizon)}">${esc(t(`admin.horizon.${u.horizon}`))}</span>` : ""}</td></tr>`).join("");
+  renderPrestudy(d);
+  if (!keepEdits || !ambDirty) renderAmbassadors(d.ambassadors);
   $("history").innerHTML = (d.history || []).map((h) => `<li><span class="v">${esc(h.version)}</span>
     <button class="ghost" data-view="${esc(h.version)}">${esc(t("admin.view"))}</button><button class="ghost" data-restore="${esc(h.version)}">${esc(t("admin.restore"))}</button></li>`).join("")
     || `<li class="muted">${esc(t("admin.noHistory"))}</li>`;
 }
+
+// --- pre-study: the sector, its adoption of AI, the interview's pace (operator-only) -------------------
+const POSTURES = ["explorer", "pragmatic", "urgent"];
+const MAX_POINTS = { a: 3, b: 3, c: 2, d: 2 };
+function renderPrestudy(d) {
+  const v = d.prestudy;  // {prestudy, score, posture, origin, override} or null
+  const sel = $("posture-override");
+  const opts = [["", t("admin.prestudy.overrideAuto")], ...POSTURES.map((p) => [p, t(`admin.prestudy.postures.${p}`)])];
+  sel.innerHTML = opts.map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join("");
+  sel.value = (d.info && d.info.posture_override) || "";
+  const box = $("prestudy");
+  if (!v) { box.innerHTML = `<p class="empty">${esc(t("admin.prestudy.empty"))}</p>`; return; }
+  const p = v.prestudy, sc = v.score;
+  let html = "";
+  if (v.posture) {
+    html += `<div class="posture posture-${esc(v.posture)}"><span class="pill">${esc(t(`admin.prestudy.postures.${v.posture}`))}</span>`
+      + (sc ? ` <span class="score">${esc(t("admin.prestudy.score", { total: sc.total }))}</span>` : "")
+      + ` <span class="muted small">· ${esc(t(v.origin === "manual" ? "admin.prestudy.manual" : "admin.prestudy.fromPrestudy"))}</span>`
+      + `<p class="hint">${esc(t(`admin.prestudy.postureHints.${v.posture}`))}</p></div>`;
+  }
+  if (sc) {
+    html += `<ul class="criteria">${["a", "b", "c", "d"].map((k) => `<li><span>${esc(t(`admin.prestudy.criteria.${k}`))}</span>`
+      + `<b>${esc(sc.criteria[k])}/${MAX_POINTS[k]}</b></li>`).join("")}</ul>`
+      + (sc.modulators || []).map((m) => `<p class="muted small">${esc(t(`admin.prestudy.modulators.${m}`))}</p>`).join("");
+  }
+  if (p) {
+    if (p.rationale) html += `<h3>${esc(t("admin.prestudy.rationale"))}</h3><p>${esc(p.rationale)}</p>`;
+    const pct = p.sector_adoption_pct;
+    const src = p.adoption_source && /^https?:/i.test(p.adoption_source.url || "")
+      ? ` <a href="${safeHref(p.adoption_source.url)}" target="_blank" rel="noopener">${esc(p.adoption_source.title || host(p.adoption_source.url))}</a>` : "";
+    html += `<h3>${esc(t("admin.prestudy.adoption"))}</h3><p><b>${pct == null ? esc(t("admin.prestudy.unknownFigure")) : `${esc(pct)} %`}</b>`
+      + `${p.sector ? ` · ${esc(p.sector)}` : ""}${p.size_band ? ` · ${esc(p.size_band)}` : ""}</p>`
+      + (p.adoption_note || src ? `<p class="small">${esc(p.adoption_note || "")}${src}</p>` : "");
+    const comps = p.competitors || [];
+    html += `<h3>${esc(t("admin.prestudy.competitors"))}</h3>` + (comps.length ? `<ul class="competitors">${comps.map((c) => `<li class="${c.counted ? "" : "not-counted"}">`
+      + `<b>${esc(c.competitor)}</b> — ${esc(c.signal)}<br><span class="small">${esc(t("admin.prestudy.result"))} `
+      + `${c.result ? `<b>${esc(c.result)}</b>` : esc(t("admin.prestudy.noResult"))}`
+      + `${c.url ? ` · <a href="${safeHref(c.url)}" target="_blank" rel="noopener">${esc(host(c.url))}</a>` : ""}${c.date ? ` · ${esc(c.date)}` : ""}`
+      + `${c.counted ? "" : ` · <i>${esc(t("admin.prestudy.notCounted"))}</i>`}</span></li>`).join("")}</ul>`
+      : `<p class="muted small">${esc(t("admin.prestudy.noCompetitors"))}</p>`);
+    html += `<p class="small"><b>${esc(t("admin.prestudy.pressure"))}</b> ${esc(t(`admin.prestudy.levels.${p.market_pressure}`))}`
+      + `${p.pressure_note ? ` — ${esc(p.pressure_note)}` : ""}<br><b>${esc(t("admin.prestudy.exposure"))}</b> `
+      + `${esc(t(`admin.prestudy.levels.${p.task_exposure}`))}${p.exposure_note ? ` — ${esc(p.exposure_note)}` : ""}</p>`;
+  }
+  box.innerHTML = html;
+}
+$("posture-override").addEventListener("change", async () => {
+  try {
+    detail = await api(`/admin/api/clients/${encodeURIComponent(current)}/posture`, "PUT", { posture: $("posture-override").value });
+    sheet.posture_override = detail.info.posture_override;
+    renderPrestudy(detail);
+    $("posture-state").textContent = t("admin.prestudy.overrideSaved");
+  } catch (err) { $("posture-state").textContent = t("admin.error", { error: err.message }); }
+});
+
+// --- potential ambassadors: the interview fills, a hand edit wins, a removed person never comes back --
+let amb = { entries: [], removed: [] };
+let ambDirty = false;
+function renderAmbassadors(data) {
+  amb = { entries: JSON.parse(JSON.stringify((data && data.entries) || [])), removed: [] };
+  ambDirty = false;
+  drawAmbassadors();
+}
+function drawAmbassadors() {
+  $("ambassadors-empty").classList.toggle("hidden", amb.entries.length > 0);
+  $("ambassadors").innerHTML = amb.entries.map((e, i) => `<tr data-i="${i}">
+    <td><input class="a-person" value="${esc(e.person)}"><span class="by small">${e.by ? esc(t(`admin.ambassadors.by.${e.by}`)) : ""}</span></td>
+    <td><input class="a-role" value="${esc(e.role)}"></td><td><input class="a-use" value="${esc(e.use_case)}"></td>
+    <td><textarea class="a-quote" rows="3">${esc(e.quote)}</textarea></td>
+    <td><button class="ghost" data-arm="${i}" title="${esc(t("admin.remove"))}">×</button></td></tr>`).join("");
+}
+function ambassadorsNow() {
+  return [...$("ambassadors").children].map((tr) => ({ ...amb.entries[Number(tr.dataset.i)],
+    person: tr.querySelector(".a-person").value, role: tr.querySelector(".a-role").value,
+    use_case: tr.querySelector(".a-use").value, quote: tr.querySelector(".a-quote").value }));
+}
+$("ambassadors").addEventListener("input", () => { ambDirty = true; $("amb-state").textContent = ""; });
+$("ambassadors").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-arm]");
+  if (!b) return;
+  const entries = ambassadorsNow();
+  const [gone] = entries.splice(Number(b.dataset.arm), 1);
+  if (gone && gone.id) amb.removed.push(gone.id);
+  amb.entries = entries;
+  ambDirty = true;
+  drawAmbassadors();
+});
+$("amb-add").addEventListener("click", () => {
+  amb.entries = [...ambassadorsNow(), { id: "", person: "", role: "", use_case: "", quote: "" }];
+  ambDirty = true;
+  drawAmbassadors();
+  const rows = $("ambassadors").querySelectorAll(".a-person");
+  if (rows.length) rows[rows.length - 1].focus();
+});
+$("amb-save").addEventListener("click", async () => {
+  try {
+    const saved = await api(`/admin/api/clients/${encodeURIComponent(current)}/ambassadors`, "PUT",
+      { entries: ambassadorsNow(), removed: amb.removed });
+    detail.ambassadors = saved;
+    renderAmbassadors(saved);
+    $("amb-state").textContent = t("admin.ambassadors.saved");
+  } catch (err) { $("amb-state").textContent = t("admin.error", { error: err.message }); }
+});
 
 function watchResearch(r) {
   clearInterval(poll);

@@ -12,9 +12,10 @@ import markdown as md_lib
 from markdown.extensions import Extension
 from markdown.treeprocessors import Treeprocessor
 
-from . import briefs, fsutil
+from . import ambassadors, briefs, fsutil
 from . import recipes as recipe_lib
 from .contract import SLOT_KEYS, Fact, Measure, PlanDoc, PlanUseCase, Recipe
+from .horizons import HORIZONS, checked_horizon
 from .prompts import state_headings
 from .srt import load_srt, parse_srt
 from .state import SessionState
@@ -189,6 +190,33 @@ def ranked(doc: PlanDoc, library: dict | None = None) -> list[PlanUseCase]:
 
     return sorted(doc.use_cases, key=lambda u: (-recipe_rank(u, library), -tier(u),
                                                 -_score(u.impact.score) * _score(u.feasibility.score), order[id(u)]))
+
+
+def by_horizon(cases: list[PlanUseCase]) -> list[tuple[str, list[PlanUseCase]]]:
+    """Ranked opportunities grouped by horizon (this week, this quarter, within two years), the
+    ranking kept inside each group; empty groups left out."""
+    return [(h, [u for u in cases if u.horizon == h]) for h in HORIZONS if any(u.horizon == h for u in cases)]
+
+
+def apply_horizons(doc: PlanDoc, state: SessionState | None = None, library: dict | None = None) -> PlanDoc:
+    """Horizon and adoption rules, whatever the model wrote: an opportunity tagged h1 that was scored
+    hard to do (feasibility 1 or 2) moves to h2; the lighthouse is an h1 opportunity (the best ranked
+    one when the model named none, or one that is not h1); when nobody was named as its ambassador but
+    the interview put someone on that work, with a quote, that person is proposed, quoted."""
+    cases = [u.model_copy(update={"horizon": checked_horizon(u.horizon, _score(u.feasibility.score))})
+             for u in doc.use_cases]
+    doc = doc.model_copy(update={"use_cases": cases})
+    a = doc.adoption
+    order = ranked(doc, library)
+    light = next((u for u in cases if u.id == a.lighthouse.strip()), None)
+    if light is None or light.horizon != "h1":
+        light = next((u for u in order if u.horizon == "h1"), None) or light or (order[0] if order else None)
+    update: dict = {"lighthouse": light.id if light is not None else ""}
+    if state is not None and light is not None and not a.ambassador.strip():
+        found = ambassadors.for_use_case(state, light.id)
+        if found is not None:
+            update |= {"ambassador": found["person"], "evidence": found["quote"], "question": "", "ask": ""}
+    return doc.model_copy(update={"adoption": a.model_copy(update=update)})
 
 
 def _one_line(text: str) -> str:
@@ -439,7 +467,8 @@ def render_plan_md(doc: PlanDoc, state: SessionState) -> str:
 
     library = _library(None)
     cs = doc.current_state
-    cases = ranked(doc, library)
+    groups = by_horizon(ranked(doc, library))
+    cases = [u for _, us in groups for u in us]  # numbered horizon by horizon
     metric_by_case = {u.id: _metric_of(doc, u) for u in cases}
     out = [f"# {h['title']} — {state.client}", "", f"## {h['context']}", "",
            doc.context.strip() or f"_{tr('plan.toComplete')}_", ""]
@@ -501,24 +530,28 @@ def render_plan_md(doc: PlanDoc, state: SessionState) -> str:
         out.append(f"_{tr('plan.metrics.none')}_")
     out += ["", f"## {h['use_cases']}", ""]
 
-    # 4. opportunities
-    if cases:
-        out += [f"| {tr('plan.table.rank')} | {tr('plan.table.useCase')} | {tr('plan.table.pattern')} | "
+    # 4. opportunities, grouped by horizon in plain words (this week / this quarter / within two years)
+    rank = {u.id: i for i, u in enumerate(cases, 1)}
+    for hz, us in groups:
+        out += [f"### {tr(f'plan.horizon.{hz}')}", "", f"_{tr(f'plan.horizon.{hz}Hint')}_", "",
+                f"| {tr('plan.table.rank')} | {tr('plan.table.useCase')} | {tr('plan.table.pattern')} | "
                 f"{tr('plan.table.impact')} | {tr('plan.table.feasibility')} | {tr('plan.table.why')} | "
                 f"{tr('plan.table.recipe')} |",
                 "|---|---|---|---|---|---|---|"]
-        for i, u in enumerate(cases, 1):
+        for u in us:
             why = tr("plan.scoreWhy", impact=_one_line(u.impact.reason) or tr("plan.toConfirm"),
                      feasibility=_one_line(u.feasibility.reason) or tr("plan.toConfirm"))
-            out.append(f"| {i} | {_one_line(u.title)} | {tr(f'plan.patterns.{u.pattern}')} | {score(u.impact)} | "
+            out.append(f"| {rank[u.id]} | {_one_line(u.title)} | {tr(f'plan.patterns.{u.pattern}')} | {score(u.impact)} | "
                        f"{score(u.feasibility)} | {why} | {_one_line(recipe_cell(u))} |")
-    else:
+        out.append("")
+    if not cases:
         out.append(tr("plan.noUseCases"))
     out += ["", f"## {h['details']}", ""]
     for i, u in enumerate(cases, 1):
         sl = u.slots
         metric = metric_by_case.get(u.id)
         out += [f"### {i}. {u.title.strip()}", "",
+                field("horizon", tr(f"plan.horizon.{u.horizon}")), "",
                 field("pattern", tr(f"plan.patterns.{u.pattern}")), "",
                 field("recipe", recipe_line(u)), "",
                 field("humanDecision", u.human_decision.strip() or tr("plan.toConfirm")), "",
@@ -581,6 +614,21 @@ def render_plan_md(doc: PlanDoc, state: SessionState) -> str:
     out += [f"## {h['timeline']}", ""] + table(
         [tr("plan.timeline.week"), tr("plan.timeline.milestone"), tr("plan.timeline.proof")],
         [[str(w), m, pr] for w, m, pr in steps]) + [""]
+
+    # 7. adoption: one lighthouse, its ambassador, demo -> proven value -> spread
+    a = doc.adoption
+    light = next((u for u in cases if u.id == a.lighthouse), None)
+    out += [f"## {h['adoption']}", "", f"_{tr('plan.adoption.intro')}_", "",
+            field("lighthouse", light.title.strip() if light is not None else tr("plan.toConfirm")), ""]
+    if a.ambassador.strip():
+        quote = a.evidence.strip()
+        who = a.ambassador.strip() + (f" — « {quote} »" if quote else f" _({tr('plan.toConfirm')})_")
+    else:
+        who = tr("plan.confirmLine", question=a.question.strip() or tr("plan.adoption.findQuestion"),
+                 ask=a.ask.strip() or unknown)
+    out += [field("ambassador", who), ""]
+    out += [f"{n}. **{tr(f'plan.adoption.{k}')}** — {_one_line(v) or tr(f'plan.adoption.default.{k}')}"
+            for n, (k, v) in enumerate((("demo", a.demo), ("proven", a.proven), ("spread", a.spread)), 1)] + [""]
 
     rows = open_items(doc, tr, library)
     out += [f"## {h['open_items']}", ""]

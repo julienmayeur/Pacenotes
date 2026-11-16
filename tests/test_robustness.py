@@ -195,11 +195,16 @@ def test_research_admin_and_client_sheet_writes_are_atomic(tmp_path, monkeypatch
     from pacenote import fsutil
     from pacenote.research import ResearchOutput, write_outputs
 
+    from .test_admin import RESULT
+
+    PRESTUDY = RESULT["prestudy"]
+
     written = []
     real = fsutil.atomic_write_text
     monkeypatch.setattr(fsutil, "atomic_write_text", lambda p, t: written.append(Path(p).name) or real(p, t))
     out = ResearchOutput.model_validate({"summary": "s", "research_md": "# R", "preplan_md": "# P",
-                                         "use_cases": [], "seed_questions": [], "sources": []})
+                                         "use_cases": [], "seed_questions": [], "sources": [],
+                                         "prestudy": PRESTUDY})
     write_outputs(tmp_path, out, "m")
     assert {"research.md", "preplan.md", "preplan.json"} <= set(written)
 

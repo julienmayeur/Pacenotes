@@ -114,8 +114,10 @@
 
           <nav class="tabs" id="tabs">
             <button data-tab="preplan" class="on" data-i18n="admin.tabs.preplan"></button>
+            <button data-tab="prestudy" data-i18n="admin.tabs.prestudy"></button>
             <button data-tab="research" data-i18n="admin.tabs.research"></button>
             <button data-tab="questions" data-i18n="admin.tabs.questions"></button>
+            <button data-tab="ambassadors" data-i18n="admin.tabs.ambassadors"></button>
             <button data-tab="history" data-i18n="admin.tabs.history"></button>
             <button data-tab="metrics" data-i18n="admin.tabs.metrics"></button>
           </nav>
@@ -128,6 +130,14 @@
               <div class="actions"><button class="primary" data-save="preplan" data-i18n="admin.save"></button>
                 <button class="ghost" data-cancel="preplan" data-i18n="admin.cancel"></button></div>
             </div>
+          </div>
+          <!-- operator-only: the sector pre-study and the interview's pace (pacenote/horizons.py) -->
+          <div class="tab hidden" data-tab="prestudy">
+            <p class="muted small" data-i18n="admin.prestudy.operatorOnly"></p>
+            <div id="prestudy" class="prestudy"></div>
+            <label class="posture-pick"><span data-i18n="admin.prestudy.override"></span>
+              <select id="posture-override"></select>
+              <span id="posture-state" class="muted small"></span></label>
           </div>
           <div class="tab hidden" data-tab="research">
             <div class="doc-actions"><button class="ghost" data-edit="research" data-i18n="admin.edit"></button></div>
@@ -143,7 +153,8 @@
             <ul id="seed" class="seed"></ul>
             <h3 data-i18n="admin.useCases"></h3>
             <table class="cases"><thead><tr><th data-i18n="admin.col.useCase"></th><th data-i18n="admin.col.value"></th>
-              <th data-i18n="admin.col.feasibility"></th><th data-i18n="admin.col.kind"></th></tr></thead>
+              <th data-i18n="admin.col.feasibility"></th><th data-i18n="admin.col.kind"></th>
+              <th data-i18n="admin.col.horizon"></th></tr></thead>
               <tbody id="cases"></tbody></table>
           </div>
           <!-- metric monitoring: clients/<slug>/metrics.yaml (pacenote metrics seed / add / import) -->
@@ -152,6 +163,18 @@
             <p id="metrics-empty" class="muted small hidden" data-i18n="admin.metrics.empty"></p>
             <p id="metrics-error" class="error"></p>
             <div id="metrics" class="metrics"></div>
+          </div>
+          <!-- potential ambassadors (pacenote/ambassadors.py): clients/<slug>/ambassadors.json, local only -->
+          <div class="tab hidden" data-tab="ambassadors">
+            <p class="muted small" data-i18n="admin.ambassadors.hint"></p>
+            <p id="ambassadors-empty" class="muted small hidden" data-i18n="admin.ambassadors.empty"></p>
+            <table class="cases ambassadors"><thead><tr><th data-i18n="admin.ambassadors.person"></th>
+              <th data-i18n="admin.ambassadors.role"></th><th data-i18n="admin.ambassadors.useCase"></th>
+              <th data-i18n="admin.ambassadors.quote"></th><th></th></tr></thead>
+              <tbody id="ambassadors"></tbody></table>
+            <div class="actions"><button class="ghost" id="amb-add" data-i18n="admin.ambassadors.add"></button>
+              <button class="primary" id="amb-save" data-i18n="admin.ambassadors.save"></button>
+              <span id="amb-state" class="muted small"></span></div>
           </div>
           <div class="tab hidden" data-tab="history">
             <p class="muted small" data-i18n="admin.historyHint"></p>

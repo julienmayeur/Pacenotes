@@ -170,6 +170,13 @@ body {
 .ask-text { margin: 0; font-size: var(--fs-xl); line-height: 1.22; font-weight: 650; letter-spacing: -.01em;
   color: var(--ink); text-wrap: pretty; }
 
+/* the ambassador question: quiet, under the focal follow-up */
+.ambassador-ask { margin: calc(-1 * var(--sp-2)) 0 var(--sp-4); padding: var(--sp-2) var(--sp-4); border-radius: 10px;
+  border: 1px dashed var(--rule); font-size: var(--fs-md, 17px); line-height: 1.35; color: var(--ink); }
+.ambassador-ask.hidden { display: none; }
+.ambassador-ask .amb-label { display: block; font-size: var(--fs-xs); letter-spacing: .12em; text-transform: uppercase;
+  color: var(--muted); font-weight: 600; margin-bottom: 2px; }
+
 /* --- secondary details: quiet, compact ------------------------------------------------- */
 .details { display: grid; gap: var(--sp-3); }
 @media (min-width: 1100px) { .details { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); align-items: start; } }

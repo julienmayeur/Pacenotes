@@ -134,13 +134,24 @@ RESULT = {
     "research_md": "# Brioche & Four\n\nDistributeur Fornaxa [1].\n\n## Sources\n[1] Fornaxa — https://www.fornaxa.example",
     "preplan_md": "# Pré-plan\n\n## Cas d'usage\n| cas | valeur |\n|---|---|\n| Saisie des commandes | 5 |",
     "use_cases": [{"title": "Saisie automatique des commandes des boulangeries", "description": "Mail -> ERP",
-                   "value": 5, "feasibility": 4, "kind": "quick_win", "already_done": False}],
+                   "value": 5, "feasibility": 4, "kind": "quick_win", "horizon": "h1", "already_done": False}],
     "seed_questions": [{"id": "orders-email", "fr": "Racontez-moi la dernière commande reçue par mail.",
                         "en": "Walk me through the last order received by email.", "priority": 1,
                         "use_case": "Saisie automatique des commandes des boulangeries",
                         "expect": {"business": ["combien de commandes par mail"],
                                    "workflow": ["qui les ressaisit", "où ça coince"],
                                    "implementation": ["dans quel ERP", "format des mails"]}}],
+    "prestudy": {"sector": "Distribution d'équipements de boulangerie", "size_band": "10-49 salariés",
+                 "sector_adoption_pct": 13, "adoption_source": {"title": "Statistique nationale",
+                                                                "url": "https://stats.example/ia-2025"},
+                 "adoption_note": "13 % des entreprises du commerce utilisent l'IA en 2025.",
+                 "competitors": [{"competitor": "Fournil Pro", "signal": "devis instantané en ligne",
+                                  "result": "délai de devis divisé par 3", "url": "https://fournil.example/news",
+                                  "date": "2026-03"}],
+                 "market_pressure": "moderate", "pressure_note": "Les boulangers comparent les délais.",
+                 "task_exposure": "high", "exposure_note": "Commandes par mail ressaisies.",
+                 "regulated": False, "ceo_uses_ai": "unknown",
+                 "rationale": "Secteur en retard mais un concurrent a déjà un résultat publié."},
     "sources": [{"title": "Fornaxa", "url": "https://www.fornaxa.example"}],
 }
 
@@ -285,7 +296,7 @@ def test_preplan_seed_questions_join_the_interview_on_the_ladder(clients):
     assert st.focus_id == "capacity-limit"  # the interview still starts with the capacity question
     ctx = cfg.questionnaire.context
     assert "Distribution Fornaxa" in ctx and "Marc (PDG)" in ctx and "Le PDG veut parler des commandes." in ctx
-    assert "Saisie automatique des commandes des boulangeries (value 5/5, feasibility 4/5, quick win)" in ctx
+    assert "Saisie automatique des commandes des boulangeries (value 5/5, feasibility 4/5, quick win, h1)" in ctx
     assert "hypotheses" in ctx
     assert "Pre-plan from desk research" in build_sync_system(st, cfg.glossary, ctx)
     assert "Le PDG veut parler des commandes." in build_fast_system(st, cfg.glossary, ctx)

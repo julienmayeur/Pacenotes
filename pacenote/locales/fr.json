@@ -47,7 +47,9 @@
     "readAt": "analyse à la lecture {{n}}",
     "followups": "Relances déjà posées",
     "whereLine": "{{answered}} répondues · {{open}} ouvertes · {{pct}} % couvert · {{left}} restant",
-    "jump": "↓ Question en cours"
+    "jump": "↓ Question en cours",
+    "ambassadorLabel": "À demander aussi",
+    "ambassadorAsk": "Est-ce que {{person}} aurait envie d'essayer ce genre d'outil ?"
   },
   "where": {
     "title": "Où on en est",
@@ -120,7 +122,9 @@
       "partial": "adéquation partielle",
       "none": "écartée"
     },
-    "recipeMissing": "manque"
+    "recipeMissing": "manque",
+    "ambassadors": "Ambassadeurs potentiels",
+    "ambassadorUseCase": "pour {{useCase}}"
   },
   "interview": {
     "bannerDone": "C'est parfait, j'ai ce qu'il me faut. Je m'occupe du plan.",
@@ -144,7 +148,8 @@
       "bottlenecks": "Où l'information se perd",
       "metrics": "Indicateurs",
       "timeline": "Calendrier d'engagement",
-      "recipe_candidates": "Recettes candidates (brouillons)"
+      "recipe_candidates": "Recettes candidates (brouillons)",
+      "adoption": "Plan d'adoption"
     },
     "status": {
       "answered": "répondu",
@@ -191,7 +196,10 @@
       "recipeSignals": "Signaux qui montrent qu'elle s'applique",
       "recipePreconditions": "Prérequis",
       "recipeMetrics": "Indicateurs",
-      "recipeProof": "Preuve"
+      "recipeProof": "Preuve",
+      "horizon": "Quand",
+      "lighthouse": "Pour commencer",
+      "ambassador": "Ambassadeur du pilote"
     },
     "table": {
       "rank": "#",
@@ -358,6 +366,26 @@
         "partial": "adéquation partielle",
         "none": "écartée"
       }
+    },
+    "horizon": {
+      "h1": "Cette semaine",
+      "h2": "Ce trimestre",
+      "h3": "D'ici deux ans",
+      "h1Hint": "Le travail d'aujourd'hui, mesuré sur des cas réels : on peut commencer cette semaine.",
+      "h2Hint": "Faire évoluer un processus ou un rôle, pas à pas dans les mois qui viennent.",
+      "h3Hint": "Là où cela pourrait mener l'entreprise, gardé comme une option : rien n'est promis."
+    },
+    "adoption": {
+      "intro": "Un premier cas d'usage, porté par un collègue que les autres écoutent : une démonstration, une valeur prouvée, puis la diffusion.",
+      "demo": "Démonstration (semaine 1)",
+      "proven": "Valeur prouvée (semaine 4)",
+      "spread": "Diffusion (semaine 8 et après)",
+      "findQuestion": "Qui, dans l'équipe, aurait envie de l'essayer en premier ?",
+      "default": {
+        "demo": "Montré sur un vrai cas de la veille, d'abord à la personne qui l'utilisera, puis à vous.",
+        "proven": "La mesure face au chiffre d'aujourd'hui, sur des cas réels, l'équipe gardant la décision finale.",
+        "spread": "L'utilisateur pilote présente le résultat à l'équipe ; on choisit alors l'équipe ou le processus suivant."
+      }
     }
   },
   "offline": {
@@ -411,7 +439,9 @@
       "research": "Recherche & sources",
       "questions": "Questions pour l'entretien",
       "history": "Versions",
-      "metrics": "Indicateurs"
+      "metrics": "Indicateurs",
+      "prestudy": "Pré-étude",
+      "ambassadors": "Ambassadeurs"
     },
     "questionsHint": "Ces questions sont ajoutées à l'entretien (thème « Pistes IA identifiées », juste après le premier thème), chacune creusée Business › Workflow › Implémentation comme les autres.",
     "useCases": "Cas d'usage",
@@ -419,7 +449,8 @@
       "useCase": "Cas d'usage",
       "value": "Valeur",
       "feasibility": "Faisabilité",
-      "kind": "Type"
+      "kind": "Type",
+      "horizon": "Quand"
     },
     "historyHint": "Chaque nouvelle recherche garde la version précédente ici.",
     "badge": {
@@ -585,6 +616,75 @@
         "reached": "cible atteinte",
         "on_track": "progresse vers la cible",
         "off_track": "pas de progrès"
+      }
+    },
+    "horizon": {
+      "h1": "Cette semaine",
+      "h2": "Ce trimestre",
+      "h3": "D'ici deux ans"
+    },
+    "prestudy": {
+      "operatorOnly": "Pour vous seulement : règle le rythme de l'entretien, jamais montré au client.",
+      "empty": "Pas encore de pré-étude : lancez la recherche pour étudier le secteur et son adoption de l'IA.",
+      "posture": "Rythme",
+      "postures": {
+        "explorer": "Explorateur · en douceur",
+        "pragmatic": "Pragmatique",
+        "urgent": "Urgent · aller vite"
+      },
+      "postureHints": {
+        "explorer": "Le secteur est en retard : d'abord une amélioration visible et sans risque, sur un ton rassurant.",
+        "pragmatic": "Une amélioration mesurée maintenant, une option datée pour le trimestre suivant.",
+        "urgent": "Les concurrents ont déjà des résultats : l'amélioration du jour et la refonte suivante en parallèle."
+      },
+      "score": "Score {{total}}/10",
+      "fromPrestudy": "d'après la pré-étude",
+      "manual": "choisi par vous",
+      "criteria": {
+        "a": "Adoption du secteur",
+        "b": "Concurrents avec résultats",
+        "c": "Pression du marché",
+        "d": "Exposition des tâches"
+      },
+      "adoption": "Adoption de l'IA dans le secteur",
+      "unknownFigure": "aucun chiffre officiel trouvé",
+      "competitors": "Concurrents",
+      "noCompetitors": "Aucun signal concurrent trouvé.",
+      "result": "Résultat :",
+      "noResult": "aucun résultat publié",
+      "notCounted": "non compté : sans URL ou sans date",
+      "pressure": "Pression du marché :",
+      "exposure": "Exposition des tâches :",
+      "levels": {
+        "none": "nulle",
+        "moderate": "modérée",
+        "strong": "forte",
+        "low": "faible",
+        "medium": "moyenne",
+        "high": "élevée"
+      },
+      "modulators": {
+        "ceo_uses_ai": "Le dirigeant utilise déjà des outils d'IA : un cran plus vite.",
+        "regulated": "Secteur réglementé : un rythme plus lent, la même urgence."
+      },
+      "rationale": "Pourquoi",
+      "override": "Rythme de l'entretien",
+      "overrideAuto": "D'après la pré-étude",
+      "overrideSaved": "Rythme enregistré."
+    },
+    "ambassadors": {
+      "hint": "Les personnes que les entretiens ont désignées comme ambassadeurs potentiels d'un premier pilote, avec les mots du dirigeant. Gardé sur ce Mac uniquement. Vos modifications sont conservées ; une personne retirée ne revient jamais.",
+      "empty": "Personne pour l'instant : l'entretien les propose quand le dirigeant nomme qui fait le travail.",
+      "person": "Personne",
+      "role": "Rôle",
+      "useCase": "Cas d'usage",
+      "quote": "Ce qu'a dit le dirigeant",
+      "add": "+ Ajouter une personne",
+      "save": "Enregistrer",
+      "saved": "Enregistré.",
+      "by": {
+        "agent": "issu de l'entretien",
+        "manual": "modifié par vous"
       }
     }
   },

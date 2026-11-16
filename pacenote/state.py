@@ -62,7 +62,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-from . import fsutil, i18n
+from . import ambassadors, fsutil, i18n
 from . import phases as P
 from . import recipes as recipe_lib
 from .contract import (CATALOG_CATEGORIES, MAP_KINDS, PLAN_SECTIONS, RUNGS, SLOT_KEYS, SLOT_RUNG, FastResult,
@@ -362,6 +362,12 @@ class SessionState(BaseModel):
     use_cases: list[UseCaseState] = Field(default_factory=list)
     maps: dict[str, list[MapRecord]] = Field(default_factory=lambda: {k: [] for k in MAP_KINDS})
     recipe_matches: list[RecipeMatchState] = Field(default_factory=list)
+    # the interview's pace from the pre-study (horizons.py), operator-only: explorer, pragmatic, urgent
+    posture: str | None = None
+    posture_rationale: str = ""
+    # ambassadors.py: question id -> the person the screen suggested asking about ("could X be keen
+    # to try this kind of tool?"), recorded when the focus leaves that question, so it is suggested once
+    ambassador_prompted: dict[str, str] = Field(default_factory=dict)
     # phases (phases.py): the current one, when it started, seconds spent in the ones left, budgets
     phase: str | None = None
     phase_since: float | None = None
@@ -427,6 +433,8 @@ class SessionState(BaseModel):
                              key=lambda x: P.PHASE_INDEX[x.phase]),
             use_cases=[UseCaseState(id=u.id, titles=dict(u.title.root)) for u in q.use_cases],
             phase_budgets=P.budgets(q.target_minutes, q.phase_minutes),
+            posture=q.posture,
+            posture_rationale=q.posture_rationale,
         )
         st.coverage = st.computed_coverage()
         st._refill_next()
@@ -1136,6 +1144,8 @@ class SessionState(BaseModel):
         old = self.focus_id
         if (left := self.get(old)) is not None:
             left.thread_at = time.time()  # joins the thread, at the bottom
+            if (suggested := ambassadors.prompt_for(self, old)) is not None:
+                self.ambassador_prompted[old] = suggested["person"]
         if self.phase is None:
             self.phase = left.phase if left is not None else self.current_phase
         # phase by phase: the current phase while it is not done, then the next one (phases.py)

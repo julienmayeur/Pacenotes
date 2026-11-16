@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
@@ -209,6 +209,10 @@ class Questionnaire(BaseModel):
     use_cases: list[UseCaseDef] = Field(default_factory=list)
     phase_minutes: dict[str, float] | None = None  # minutes per phase (phases.DEFAULT_MINUTES), scaled
     core_questions: bool = True  # merge the app's core questions (phases 1-4) when tailoring
+    # the interview's pace (horizons.py): explorer, pragmatic or urgent. Set when tailoring from the
+    # pre-study's score or the interviewer's override (client.yaml); may also be written here by hand.
+    posture: Literal["explorer", "pragmatic", "urgent"] | None = None
+    posture_rationale: str = ""  # operator-only: why this pace (never shown to the client)
     themes: list[ThemeDef]
 
     @field_validator("phase_minutes")

@@ -36,9 +36,9 @@ def maps(**kinds) -> MapsUpdate:
 
 
 def org(rid="claire", person="Claire", role="", department="", reports_to="", time_split="", notes="",
-        evidence="Claire s'occupe de l'import"):
+        evidence="Claire s'occupe de l'import", adoption_signal=""):
     return {"id": rid, "person": person, "role": role, "department": department, "reports_to": reports_to,
-            "time_split": time_split, "notes": notes, "evidence": evidence}
+            "time_split": time_split, "notes": notes, "adoption_signal": adoption_signal, "evidence": evidence}
 
 
 def flow(rid="price-ok", sender="Claire", receiver="PDG", what="validation de prix", wait="", ceo="waits_on_ceo",

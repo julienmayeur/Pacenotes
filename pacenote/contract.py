@@ -144,6 +144,9 @@ class OrgFact(_Strict):
     reports_to: str  # name or role
     time_split: str  # share of time on judgment / decisions vs repetitive glue (chasing, re-keying), as said
     notes: str
+    # the CEO's words that make this person a potential ambassador for a first pilot (tries new tools
+    # first, shows others, is listened to, would be keen to try a tool on their work), quoted; "" when none
+    adoption_signal: str
     evidence: str
 
 
@@ -382,9 +385,13 @@ class RecipeCandidate(_Strict):
     sourcing: Sourcing
 
 
+Horizon = Literal["h1", "h2", "h3"]  # horizons.py: execution now / emerging / foresight
+
+
 class PlanUseCase(_Strict):
     id: str
     title: str
+    horizon: Horizon  # h1 = can start this week, h2 = this quarter, h3 = within two years
     pattern: Pattern  # route & distil, act on behalf, status without asking, decision brief, capture & find again
     human_decision: str  # the decision the human keeps (the human stays in the loop on it)
     success: Success
@@ -517,6 +524,20 @@ class Metric(_Strict):
     target: Measure  # the pilot target
 
 
+class AdoptionPlan(_Strict):
+    """How the first pilot spreads: one lighthouse use case, carried by a colleague the others listen
+    to, told as demo -> proven value -> spread (the ambassador announces it, not the consultant)."""
+
+    lighthouse: str  # id of the opportunity to start with (an h1 one)
+    ambassador: str  # the person (name or role) who pilots it, as heard in the interview; "" when nobody was named
+    evidence: str  # the CEO's quote supporting that choice ("" when none)
+    question: str  # when no ambassador was named: the question to ask to find one ("" otherwise)
+    ask: str  # who to ask it (a name or role heard; "" when unknown)
+    demo: str  # week 1: what is shown, on which real case, to whom
+    proven: str  # week 4: the value proven (the metric against its baseline, on real cases)
+    spread: str  # week 8 and after: who announces it to the team, which team or workflow is next
+
+
 class TimelineStep(_Strict):
     week: int
     milestone: str
@@ -532,12 +553,17 @@ class PlanDoc(_Strict):
     metrics: list[Metric]
     use_cases: list[PlanUseCase]
     timeline: list[TimelineStep]  # week 1 thin slice, week 4 checkpoint, week 8 go / kill
+    adoption: AdoptionPlan  # the lighthouse, its ambassador, demo -> proven value -> spread
     open_items: list[OpenItem]  # open items not tied to one slot (budget, sponsor, security rules...)
     recipe_candidates: list[RecipeCandidate]  # drafts for the opportunities no library recipe fits
 
 
 def empty_current_state() -> CurrentState:
     return CurrentState(people=[], flows=[], systems=[], stores=[], decisions=[])
+
+
+def empty_adoption() -> AdoptionPlan:
+    return AdoptionPlan(lighthouse="", ambassador="", evidence="", question="", ask="", demo="", proven="", spread="")
 
 
 assert tuple(PlanSlots.model_fields) == SLOT_KEYS  # one schema for the interview and the plan

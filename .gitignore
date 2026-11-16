@@ -15,6 +15,10 @@ clients.example/*/preplan.json
 clients.example/*/history/
 clients.example/*/people/
 clients.example/*/metrics.yaml
+clients.example/*/ambassadors.json
+
+# Potential ambassadors (people named in an interview) are local only, wherever they land
+ambassadors.json
 clients.example/*/.*.lock
 
 # Recordings and transcripts (tests build synthetic ones at run time)

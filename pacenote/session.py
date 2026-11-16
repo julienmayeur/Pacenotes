@@ -21,12 +21,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
-from . import fsutil, i18n, translate
+from . import ambassadors, fsutil, i18n, translate
 from . import phases as P
 from . import recipes as recipe_lib
 from .capture import ReplaySource, Source
 from .contract import ContractError
-from .finalize import apply_recipes, assemble_plan, render_plan_md, write_plan_files
+from .finalize import apply_horizons, apply_recipes, assemble_plan, render_plan_md, write_plan_files
 from .llm import Engine, SyncFailed, offline_plan, offline_plan_doc
 from .prompts import (
     build_fast_system,
@@ -765,6 +765,7 @@ class Session:
                 await self.sync_once(force=True)
             finally:
                 self.state.mode = prev
+        self.record_ambassadors()
         before = self.state.mode
         self.state.mode = "generating"
         self.persist()
@@ -797,6 +798,14 @@ class Session:
         await self.notify()
         return files
 
+    def record_ambassadors(self) -> None:
+        """The potential ambassadors this interview surfaced go to clients/<slug>/ambassadors.json
+        (local, git-ignored; edited in the admin, where a hand edit wins)."""
+        try:
+            ambassadors.record(self.client.dir, self.state, self.session_dir.name)
+        except Exception:  # a label file must never block the plan
+            log.exception("could not record the potential ambassadors")
+
     def generate_plan(self) -> dict[str, str]:
         if self.wispr_text is None and (self.session_dir / "wispr.txt").exists():
             self.wispr_text = (self.session_dir / "wispr.txt").read_text(encoding="utf-8")
@@ -804,6 +813,7 @@ class Session:
         user = build_plan_user(self.state, self.transcript.merged(), self.wispr_text)
         if hasattr(self.engine, "write_plan_doc"):  # the integration proposal, structured then rendered
             doc = apply_recipes(self.engine.write_plan_doc(system, user, state=self.state))  # recipe-first rules
+            doc = apply_horizons(doc, self.state)  # horizon guard, lighthouse, ambassador
             body = render_plan_md(doc, self.state)
             return write_plan_files(self.session_dir, assemble_plan(body, self.state), self.state, doc=doc)
         body = self.engine.write_plan(system, user, state=self.state)  # legacy engines: Markdown as returned
@@ -902,6 +912,8 @@ class Session:
                        "use_case": ({"id": uc.id, "title": uc.title(shown), "missing": cur.missing_slots()}
                                     if (uc := st.get_use_case(cur.use_case)) else None),
                        "thread": thread(cur),
+                       # "Could Claire be keen to try this kind of tool?": the use case maps to a person
+                       "ambassador": ambassadors.prompt_for(st),
                        "since": st.focus_since}
         upcoming = [qv(q) for q in (st.get(i) for i in self._upcoming_ids()) if q is not None]
         streams = [
@@ -941,6 +953,7 @@ class Session:
             "next": upcoming,
             "phases": self.phases_view(shown),
             "recipes": self.recipes_view(shown),  # console only: "Possible recipes"
+            "ambassadors": ambassadors.candidates(st),  # console only: "Potential ambassadors"
             # the interview thread above the current question: what was asked or answered, in order
             "history": [{**qv(q), **summary(q), "thread": thread(q, 20), "thread_at": q.thread_at,
                          "skipped": q.status == "removed"} for q in st.history()],
