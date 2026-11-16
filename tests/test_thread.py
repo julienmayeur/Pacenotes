@@ -179,7 +179,7 @@ def test_next_key_moves_on_and_logs_the_reason(tmp_path):
         upcoming = http.get("/api/state").json()["next"][0]["id"]
         view = http.post("/api/next").json()
         assert view["current"]["id"] == upcoming != first
-    assert s.focus_changes[-1] == {**s.focus_changes[-1], "from": first, "to": upcoming, "reason": "FDE pressed next"}
+    assert s.focus_changes[-1] == {**s.focus_changes[-1], "from": first, "to": upcoming, "reason": "interviewer pressed next"}
 
 
 def test_next_key_after_an_auto_advance_does_not_skip_a_question(tmp_path):
@@ -190,7 +190,7 @@ def test_next_key_after_an_auto_advance_does_not_skip_a_question(tmp_path):
         s.state.get(first).status = "answered"
         s._advance("answered, 4 s of silence")  # auto-advance…
         second = s.state.focus_id
-        await s.next_question(seen=first)  # …and the FDE presses n, still looking at the first one
+        await s.next_question(seen=first)  # …and the interviewer presses n, still looking at the first one
         assert s.state.focus_id == second
         await s.next_question(seen=second)
         assert s.state.focus_id not in (first, second)

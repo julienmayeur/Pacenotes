@@ -235,7 +235,7 @@ def test_translation_cache_keeps_entries_saved_meanwhile(tmp_path, state):
     assert len(cache) == len(set(found.values())) + 1  # one entry per distinct source text
 
 
-# --- people research: an FDE edit made while the agent runs is kept -------------------------------
+# --- people research: an interviewer edit made while the agent runs is kept -------------------------------
 
 
 def test_people_rerun_keeps_an_edit_made_while_it_ran(tmp_path):
@@ -251,13 +251,13 @@ def test_people_rerun_keeps_an_edit_made_while_it_ran(tmp_path):
     first = PeopleManager(clients, claude_bin=str(script))
     assert first.wait(first.start("brioche-four", "Jean Exemple", "", info).slug, 20).status == "done"
 
-    def fde_edits_meanwhile(urls):  # runs after the agent answered, before the card is merged
+    def interviewer_edits_meanwhile(urls):  # runs after the agent answered, before the card is merged
         card = load_profile(cdir, "Jean Exemple")
         save_profile_edit(cdir, "Jean Exemple",
                           card["facts"] + [{"category": "interest", "value": "Passionné de voile"}], [])
         return set()
 
-    again = PeopleManager(clients, claude_bin=str(script), check_links=fde_edits_meanwhile)
+    again = PeopleManager(clients, claude_bin=str(script), check_links=interviewer_edits_meanwhile)
     job = again.wait(again.start("brioche-four", "Jean Exemple", "", info, force=True).slug, 20)
     assert job.status == "done", job.error
     values = [f["value"] for f in load_profile(cdir, "Jean Exemple")["facts"]]

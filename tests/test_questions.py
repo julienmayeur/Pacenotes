@@ -1,6 +1,6 @@
 """The questions the CEO hears: concrete, capacity-first, no AI jargon, each mapped to its slots.
 
-The CEO meets a forward-deployed engineer for the first time and does not know how AI could help,
+The CEO meets a consulting engineer for the first time and does not know how AI could help,
 so every question asks about his work (who, which software or file, how often, how long), never
 about technology, and feeds the integration slots the plan is written from.
 """

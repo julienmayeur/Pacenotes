@@ -184,7 +184,7 @@ def test_skip_phase_key_moves_to_the_next_phase(tmp_path):
     assert stale["current"]["id"] == "core-who-comes"
     assert session.state.phases_skipped == ["wealth"]
     log = (tmp_path / "s" / "sync_log.jsonl").read_text()
-    assert "FDE skipped to the next phase" in log
+    assert "interviewer skipped to the next phase" in log
     js = (ROOT / "pacenote" / "static" / "app.js").read_text()
     assert 'k === "p"' in js and "/api/next-phase" in js
 

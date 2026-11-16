@@ -2,7 +2,7 @@
 
 One `claude -p` run (Sonnet by default: a few searches and page reads, answered in well under a
 minute; `--autofill-model` / PACENOTE_AUTOFILL_MODEL), web search and web fetch only, the answer held
-to a JSON schema. It returns either several `candidates` when the name is ambiguous (the FDE picks
+to a JSON schema. It returns either several `candidates` when the name is ambiguous (the interviewer picks
 one, then it runs again for that company), or `fields`: each found field with its value, the URL
 of the page that states it and a confidence from 0 to 1, plus the `linked_entities` (brands it
 distributes, parent, subsidiaries, the brand's entity in this country…).
@@ -13,8 +13,8 @@ website is not an error: it is moved to the linked entity it belongs to (separat
 and the company's own site is looked for among the pages the agent read.
 
 The answer lands in the sheet directly (merge_into_sheet), field by field, with its provenance:
-only fields that are empty or were filled by the agent are written; a value the FDE typed
-(provenance "manual", or any value without provenance) is never overwritten; a field the FDE cleared
+only fields that are empty or were filled by the agent are written; a value the interviewer typed
+(provenance "manual", or any value without provenance) is never overwritten; a field the interviewer cleared
 is empty again, so it is nobody's and the next run fills it.
 
 Never invent: a field without a source page, or below MIN_CONFIDENCE, is dropped; URLs that are
@@ -53,7 +53,7 @@ DEFAULT_AUTOFILL_MODEL = "claude-sonnet-5-5"
 AUTOFILL_EFFORT = "medium"
 AUTOFILL_TIMEOUT = 5 * 60.0
 CACHE_SECONDS = 30 * 60.0  # the same name asked again within this window reuses the answer
-MAX_RUNNING = 2  # older runs are stopped beyond this (the FDE kept typing)
+MAX_RUNNING = 2  # older runs are stopped beyond this (the interviewer kept typing)
 MAX_JOBS = 30
 MIN_CONFIDENCE = 0.3  # below: dropped
 LOW_CONFIDENCE = 0.6  # below: shown as "low confidence", left out of "accept all"
@@ -123,7 +123,7 @@ assert set(FoundFields.model_fields) == set(FIELDS)
 
 
 AUTOFILL_SYSTEM = """\
-You fill in a client sheet for a forward-deployed engineer who is about to meet a company. From \
+You fill in a client sheet for a consulting engineer who is about to meet a company. From \
 the company name (and what the engineer already knows), identify the company on the web and \
 return public facts about it.
 
@@ -383,8 +383,8 @@ def separate_brand_sites(result: dict) -> dict:
 
 
 def is_manual(info, name: str) -> bool:
-    """A field the FDE owns: marked manual, or holding a value Auto-fill did not put there. An empty
-    (or whitespace-only) field is nobody's: a manual value the FDE cleared goes back to the agent."""
+    """A field the interviewer owns: marked manual, or holding a value Auto-fill did not put there. An empty
+    (or whitespace-only) field is nobody's: a manual value the interviewer cleared goes back to the agent."""
     if not _clean(getattr(info, name, "")):
         return False
     prov = (info.provenance or {}).get(name)
@@ -396,7 +396,7 @@ def is_manual(info, name: str) -> bool:
 def merge_into_sheet(info, result: dict | None):
     """Write the agent's answer into the client sheet: every field that is empty or agent-filled
     takes the new value with its provenance (source, confidence); manual fields are never touched.
-    Linked entities are merged by name: manual ones and the ones the FDE removed stay as they are.
+    Linked entities are merged by name: manual ones and the ones the interviewer removed stay as they are.
     Returns (the new ClientInfo, the fields written)."""
     from .clients import LinkedEntity
 
@@ -439,7 +439,7 @@ def merge_into_sheet(info, result: dict | None):
 
 def mark_manual_edits(old, new):
     """A sheet saved from the form: a company field whose value changed while its provenance was
-    left as it was is the FDE's edit, so it becomes manual; same for a linked entity. A field the FDE
+    left as it was is the interviewer's edit, so it becomes manual; same for a linked entity. A field the interviewer
     cleared (empty or whitespace only) loses its provenance: it is no longer his, the agent refills it.
     (Removing a linked entity with × is different: it stays in removed_entities, never brought back.)"""
     prov = dict(new.provenance or {})

@@ -2,7 +2,7 @@
 
 // Everything on this page updates IN PLACE: lists are keyed and only changed items are touched,
 // new items fade in, nothing is re-ordered while people talk (the server freezes the upcoming
-// list), and the current question only changes when the FDE moves on.
+// list), and the current question only changes when the interviewer moves on.
 
 // Every string comes from the shared helper (static/i18n.js, catalogs in pacenote/locales/).
 // ONE display language at a time, everywhere: the selector top right (<language-select bind="ui">)
@@ -112,14 +112,14 @@ function render(state) {
 
 // --- the interview panel ------------------------------------------------------------------------
 // The card shows `shownId`, NOT whatever the last poll said: polls only update it in place. When the
-// server moves the focus (answered + silence, or an FDE control), the card collapses into the thread
+// server moves the focus (answered + silence, or an interviewer control), the card collapses into the thread
 // with its summary and the next question slides in. Polls arriving meanwhile are applied at the end.
 const COLLAPSE_MS = 320, SLIDE_MS = 330;
 let shownId;                 // undefined until the first render; null = no question left
 let transitioning = false;
 let follow = true;           // keep the current card in view; false once the user scrolled up to read
 let programmaticUntil = 0;   // scroll events before this come from us
-const expanded = new Set();  // history items opened by the FDE
+const expanded = new Set();  // history items opened by the interviewer
 
 function renderInterview() {
   const cur = S.current;
@@ -613,7 +613,7 @@ function renderChrome() {
   renderRecipes();
 }
 
-// "Possible recipes" in the FDE console: title, fit, what is still missing (quiet: hidden when none)
+// "Possible recipes" in the interviewer console: title, fit, what is still missing (quiet: hidden when none)
 function renderRecipes() {
   const list = S.recipes || [];
   setClass($("console-recipes"), "hidden", !list.length);
@@ -709,7 +709,7 @@ async function post(path, body) {
 
 async function act(action) {
   if (!S || busy) return;
-  // the question the FDE is looking at (not the newest state): a key pressed during a transition
+  // the question the interviewer is looking at (not the newest state): a key pressed during a transition
   // never acts on the question that is only sliding in
   if (transitioning && ["next", "answered", "skip", "phase"].includes(action)) return;
   busy = true;

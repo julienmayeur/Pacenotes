@@ -1,4 +1,4 @@
-"""FastAPI app: the full-screen page, an SSE stream of state, and FDE controls."""
+"""FastAPI app: the full-screen page, an SSE stream of state, and interviewer controls."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ class WisprBody(BaseModel):
 
 
 class LanguageBody(BaseModel):
-    ui: str | None = None  # FDE screen language (needs a locale file)
+    ui: str | None = None  # interviewer screen language (needs a locale file)
     interview: str | None = None  # questions, follow-ups, summaries, plan (any language)
     speech: list[str] | None = None  # speech locales, before the interview starts
 
@@ -58,7 +58,7 @@ def create_app(session: Session, auto_start: bool = False, research: ResearchMan
             # Server shutting down (Ctrl-C): stop listening, flush the last cues, save.
             await session.shutdown()
 
-    app = FastAPI(title="FDE kickoff", lifespan=lifespan, docs_url=None, redoc_url=None)
+    app = FastAPI(title="Pacenote", lifespan=lifespan, docs_url=None, redoc_url=None)
     app.add_middleware(SameOriginGuard, bind_host=bind_host)  # no other web page can drive it (web_guard.py)
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     app.include_router(i18n.api_router())  # catalogs for static/i18n.js (any screen)
@@ -129,7 +129,7 @@ def create_app(session: Session, auto_start: bool = False, research: ResearchMan
 
     @app.post("/api/next")
     async def next_question(body: NextBody | None = None) -> dict:
-        """Move on to the next question (n / Enter on the page). `from` = the question the FDE was
+        """Move on to the next question (n / Enter on the page). `from` = the question the interviewer was
         looking at; ignored if the focus already moved on."""
         if session.state.mode not in ("interview", "finalize"):
             raise HTTPException(status_code=409, detail="not interviewing")

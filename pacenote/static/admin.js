@@ -278,7 +278,7 @@ $("stop-research").addEventListener("click", () => api(`/admin/api/clients/${enc
 // --- the company cells: filled by Auto-fill, double-click to edit ---------------------------------------
 // Auto-fill (pacenote/autofill.py) runs after the company name is typed (debounced, and on leaving
 // the field), right after a client is created, and from the button. Its answer lands straight in the
-// cells and is saved, with its provenance (source, confidence). A value the FDE edits becomes
+// cells and is saved, with its provenance (source, confidence). A value the interviewer edits becomes
 // "manual" and is never overwritten by a later run, even after a reload (provenance is in client.yaml).
 // To edit: double-click a cell (or Enter on it); Enter or leaving saves, Esc cancels.
 const GROUPS = {
@@ -366,7 +366,7 @@ function startCellEdit(cell) {
   const k = cell.dataset.field;
   editInline(cell.querySelector(".cv"), sheet[k] || "", { long: cell.classList.contains("long"), onSave: async (v) => {
     sheet[k] = v;
-    if (v) sheet.provenance[k] = { by: "manual" };  // the FDE's value: Auto-fill never overwrites it
+    if (v) sheet.provenance[k] = { by: "manual" };  // the interviewer's value: Auto-fill never overwrites it
     else delete sheet.provenance[k];  // cleared: no longer his, the next run fills it
     renderCells();
     await saveSheet();
@@ -427,7 +427,7 @@ const autofill = {
   job: null,          // last view of the current run
   timer: null, poll: null,
   lastKey: null,      // name|lang|candidate of the last request: the same one is not sent again
-  nameTyped: false,   // the FDE typed in the name since the sheet was opened
+  nameTyped: false,   // the interviewer typed in the name since the sheet was opened
   applied: new Set(), // runs already written into the sheet
   written: null,      // what the last apply wrote: {fields, linked}
 
@@ -456,7 +456,7 @@ const autofill = {
   async request({ force = false, candidate = null }) {
     const name = $("f-name").value.trim();
     if (!this.enabled || !current || name.length < 2) return;
-    if (!candidate && !force && this.fillable().length === 0) return;  // every field is the FDE's
+    if (!candidate && !force && this.fillable().length === 0) return;  // every field is the interviewer's
     const lang = $("f-language").value || "fr";
     const key = `${fold(name)}|${lang}|${fold(candidate && (candidate.website || candidate.name))}`;
     if (!force && key === this.lastKey) return;  // same name again: no new run
@@ -464,7 +464,7 @@ const autofill = {
     clearTimeout(this.timer);
     if (this.job && this.job.status === "running") this.stop();
     const forSlug = current;
-    // what the FDE typed is trusted and not searched again
+    // what the interviewer typed is trusted and not searched again
     const hints = Object.fromEntries(SHEET_FIELDS.filter((k) => k in sheet && isManual(k) && String(sheet[k] || "").trim()).map((k) => [k, sheet[k]]));
     try {
       const job = await api("/admin/api/autofill", "POST", { name, lang, force, candidate, hints });

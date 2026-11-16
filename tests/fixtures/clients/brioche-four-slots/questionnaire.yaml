@@ -4,7 +4,7 @@
 # Seed questionnaire — Brioche & Four (bakery equipment distributor)
 #
 # How to write questions here (the app relies on it):
-#   - The CEO meets a forward-deployed engineer for the first time. He has heard of AI but does
+#   - The CEO meets a consulting engineer for the first time. He has heard of AI but does
 #     not know how to use it, so he cannot say what success looks like in the abstract nor imagine
 #     what could be taken off his team's hands. Ask about his work, never about technology.
 #   - Start from CAPACITY: what stops the company from taking more customers, orders or volume, or a
@@ -80,7 +80,7 @@ context: >-
   Brioche & Four distributes professional bakery equipment (Fornaxa deck ovens, dough mixers,
   proofers) in France to independent bakeries: it takes their orders, holds stock, delivers
   and installs the equipment, and runs the after-sales service (breakdowns, repairs, spare
-  parts). We are a forward-deployed engineering team scoping where software and AI can remove
+  parts). We are a consulting engineering team scoping where software and AI can remove
   manual work (order intake, stock, supply, delivery, after-sales, data) and what return on
   investment the CEO expects. The CEO is not technical and has never worked with AI: start
   from what limits the company's capacity (more bakeries, more orders, new regions) and what

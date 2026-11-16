@@ -8,7 +8,7 @@ clients/<slug>/
                        company facts (HQ city, headcount, description, products, leadership,
                        LinkedIn, working languages), linked brands / entities, and per-field
                        provenance (agent or manual), all filled by "Auto-fill" (pacenote/autofill.py);
-                       who we meet, the FDE's notes, whether the pre-plan feeds the interview
+                       who we meet, the interviewer's notes, whether the pre-plan feeds the interview
   people/<contact>.json  the interviewee profile cards (pacenote/people.py), regenerated, not in git
   research.md          research with sources            } written by "Lancer la recherche"
   preplan.md           the pre-plan (editable)          } (pacenote/research.py); previous
@@ -63,7 +63,7 @@ class LinkedEntity(BaseModel):
     linkedin_url: str = ""
     source_url: str = ""
     confidence: float | None = None
-    by: str = "agent"  # "agent" (filled by Auto-fill) or "manual" (edited by the FDE: never overwritten)
+    by: str = "agent"  # "agent" (filled by Auto-fill) or "manual" (edited by the interviewer: never overwritten)
 
 
 class ClientInfo(BaseModel):
@@ -89,7 +89,7 @@ class ClientInfo(BaseModel):
     # per company field: {"by": "agent"|"manual", "source_url", "confidence"}. A field with a value
     # and no entry counts as manual: Auto-fill never overwrites it.
     provenance: dict[str, dict] = Field(default_factory=dict)
-    removed_entities: list[str] = Field(default_factory=list)  # linked entities the FDE removed (keys)
+    removed_entities: list[str] = Field(default_factory=list)  # linked entities the interviewer removed (keys)
     contacts: list[Contact] = Field(default_factory=list)
     notes: str = ""  # what we will talk about: context, goals, topics, constraints
     use_preplan: bool = True  # seed the interview with the pre-plan's questions
@@ -235,7 +235,7 @@ TEMPLATE_G = """\
 
 Known mishearings from the speech recognisers. Format: what is heard → what was said.
 
-- "5D", "EV", "FD", "effet dé" → **FDE** (forward-deployed engineer)
+- "pace note", "base note", "pass notes" → **Pacenote**
 """
 
 
@@ -397,7 +397,7 @@ def tailor_questionnaire(q: Questionnaire, info: ClientInfo | None, preplan: dic
                          profiles: dict[str, dict] | None = None) -> Questionnaire:
     """The interview's questionnaire for this client: the seed questionnaire plus the app's core
     questions (phases 1-4, merge_core), plus the pre-plan's seed questions as a theme right after the
-    first one (parked in the deep dives), and a richer background for the model (client sheet, FDE
+    first one (parked in the deep dives), and a richer background for the model (client sheet, interviewer
     notes, pre-plan summary and use cases)."""
     q = merge_core(q)
     themes = list(q.themes)
@@ -438,7 +438,7 @@ def client_context(base: str, info: ClientInfo | None, preplan: dict | None,
             if cards:
                 parts.append("Who we meet (public professional profiles, from desk research):\n" + "\n".join(cards))
         if info.notes.strip():
-            parts.append("FDE notes (what we want to talk about):\n" + info.notes.strip())
+            parts.append("interviewer notes (what we want to talk about):\n" + info.notes.strip())
     if preplan:
         summary = str(preplan.get("summary") or "").strip()
         cases = preplan.get("use_cases") or []

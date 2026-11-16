@@ -1,6 +1,6 @@
 """The plan's new sections (current state with the communication map, where the signal is lost,
 metrics, typed opportunities, timeline), the offline map drawing, and the dated knowledge briefs
-(capabilities, FDE practice): staleness, plan prompt, footer, refresh."""
+(capabilities, delivery practice): staleness, plan prompt, footer, refresh."""
 
 from __future__ import annotations
 
@@ -156,7 +156,7 @@ def test_plan_prompt_carries_the_dated_briefs_and_the_maps():
     cap = briefs.load_brief("capabilities")
     assert f"capability brief, as of {cap.as_of_text}" in system
     assert "<capability_brief>" in system and "computer use" in system.lower()
-    assert "<fde_practice>" in system and "kill criteria" in system
+    assert "<delivery_practice>" in system and "kill criteria" in system
     assert "never claim a capability it does not contain" in system
     assert "route_distil" in system and "decision_brief" in system and "NEVER invent a number" in system
     user = build_plan_user(st, [], None)
@@ -176,13 +176,13 @@ def test_briefs_are_dated_sourced_and_flag_staleness(tmp_path, monkeypatch, caps
         assert not b.stale(b.as_of)
         assert b.stale(date.fromordinal(b.as_of.toordinal() + 31))
     assert "(unconfirmed)" in briefs.load_brief("capabilities").body
-    assert "vendor-reported" in briefs.load_brief("fde-practice").body
+    assert "vendor-reported" in briefs.load_brief("delivery-practice").body
     old = tmp_path / "k"
     old.mkdir()
     (old / "capabilities.md").write_text("---\nas_of: 2026-01-01\nsources: []\n---\n# Old\n", encoding="utf-8")
-    (old / "fde-practice.md").write_text("no front matter\n", encoding="utf-8")
+    (old / "delivery-practice.md").write_text("no front matter\n", encoding="utf-8")
     monkeypatch.setenv("PACENOTE_KNOWLEDGE_DIR", str(old))
-    assert {b.name for b in briefs.stale_briefs(date(2026, 11, 4))} == {"capabilities", "fde-practice"}
+    assert {b.name for b in briefs.stale_briefs(date(2026, 11, 4))} == {"capabilities", "delivery-practice"}
     assert main(["capabilities", "show"]) == 0
     out = capsys.readouterr().out
     assert "[!!] capabilities brief: as of 2026-01-01" in out and "pacenote capabilities refresh" in out

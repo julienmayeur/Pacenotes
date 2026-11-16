@@ -91,5 +91,5 @@ def test_new_client_scaffold_is_loadable(tmp_path):
 
     assert main(["new-client", "acme", "--name", "ACME", "--clients-dir", str(tmp_path)]) == 0
     cfg = load_client(tmp_path, "acme")
-    assert cfg.questionnaire.client == "ACME" and "FDE" in cfg.glossary
+    assert cfg.questionnaire.client == "ACME" and "Pacenote" in cfg.glossary
     assert main(["new-client", "Bad Slug", "--name", "x", "--clients-dir", str(tmp_path)]) == 2

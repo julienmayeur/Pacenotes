@@ -79,7 +79,7 @@ class ResearchOutput(_Strict):
 
 
 RESEARCH_SYSTEM = """\
-You are a senior forward-deployed engineer preparing a kickoff interview with the CEO of a \
+You are a senior consulting engineer preparing a kickoff interview with the CEO of a \
 client company. Before the meeting, research the company on the web and write a pre-plan: how \
 this company could become AI-native.
 
@@ -134,7 +134,7 @@ def build_research_prompt(info: ClientInfo, questionnaire_context: str, themes: 
             ("Products and brands", info.products), ("Leadership", info.leadership),
             ("LinkedIn", info.linkedin_url), ("Working languages", info.working_languages)) if value)
         + f"People we will meet: {people}\n\n"
-        f"Notes from the FDE (what we want to talk about: context, goals, topics, constraints):\n"
+        f"Notes from the interviewer (what we want to talk about: context, goals, topics, constraints):\n"
         f"{info.notes.strip() or '(none)'}\n\n"
         f"Background already in the interview questionnaire:\n{questionnaire_context.strip() or '(none)'}\n\n"
         f"Themes the interview already covers: {', '.join(themes) or '(none)'}\n\n"

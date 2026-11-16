@@ -106,7 +106,7 @@ async def _run_session(tmp_path, client_cfg):
         assert "<state>" in c["user"] and "<new_transcript>" in c["user"]
     assert len(seen_seqs) == 2 * 27  # everything delivered exactly once
     # glossary + rules are in the (cached, stable) system prompt
-    assert "5D" in calls[0]["system"] and "Fornaxa" in calls[0]["system"]
+    assert "clôde" in calls[0]["system"] and "Fornaxa" in calls[0]["system"]
     assert calls[0]["system"] == calls[-1]["system"]
     # later syncs carry the previous context for continuity
     assert "(start of interview)" in calls[0]["user"]

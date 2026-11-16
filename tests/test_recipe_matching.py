@@ -1,5 +1,5 @@
 """Live recipe matching: the full sync returns recipe_matches, merged per (recipe, use case) with the
-same optimistic versioning as the slots and maps; the prompts carry the catalogue; the FDE console
+same optimistic versioning as the slots and maps; the prompts carry the catalogue; the interviewer console
 (never the question card) shows "Possible recipes"."""
 
 from __future__ import annotations

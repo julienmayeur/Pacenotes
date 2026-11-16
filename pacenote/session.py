@@ -394,24 +394,24 @@ class Session:
         self.persist()
 
     async def next_question(self, seen: str | None = None) -> str | None:
-        """FDE pressed n / Enter. `seen` is the question the FDE was looking at: if the focus has
+        """interviewer pressed n / Enter. `seen` is the question the interviewer was looking at: if the focus has
         already moved on since (e.g. an auto-advance a second earlier), the key press is ignored
         rather than skipping the new question too."""
         if seen is not None and seen != self.state.focus_id:
             return self.state.focus_id
-        self._advance("FDE pressed next")
+        self._advance("interviewer pressed next")
         await self.notify()
         return self.state.focus_id
 
     async def next_phase(self, seen: str | None = None) -> str | None:
-        """FDE pressed p: close the current phase and move to the next one's first question (the
+        """interviewer pressed p: close the current phase and move to the next one's first question (the
         current card joins the thread, as with n). `seen`: as for next_question."""
         if seen is not None and seen != self.state.focus_id:
             return self.state.focus_id
         old = self.state.focus_id
         new = self.state.skip_phase()
-        self.focus_changes.append({"t": time.time(), "from": old, "to": new, "reason": "FDE skipped to the next phase"})
-        self._log_sync({"kind": "focus", "from": old, "to": new, "reason": "FDE skipped to the next phase",
+        self.focus_changes.append({"t": time.time(), "from": old, "to": new, "reason": "interviewer skipped to the next phase"})
+        self._log_sync({"kind": "focus", "from": old, "to": new, "reason": "interviewer skipped to the next phase",
                         "phase": self.state.phase})
         self.persist()
         await self.notify()
@@ -448,7 +448,7 @@ class Session:
                 "maps": {k: st.map_count(k) for k in st.maps}}
 
     def recipes_view(self, shown: str) -> list[dict]:
-        """FDE console only (never the question card): "Possible recipes", the library recipes the
+        """interviewer console only (never the question card): "Possible recipes", the library recipes the
         interview fits so far, strong first, with what is still missing for each."""
         lib = getattr(self, "_recipe_library", None)
         if lib is None:
@@ -699,7 +699,7 @@ class Session:
         ok = self.state.mark_answered(qid)
         if ok and was_focus:
             self.focus_changes.append({"t": time.time(), "from": old, "to": self.state.focus_id,
-                                       "reason": "marked answered by the FDE"})
+                                       "reason": "marked answered by the interviewer"})
         self.persist()
         await self.notify()
         return ok
@@ -710,7 +710,7 @@ class Session:
         ok = self.state.skip(qid)
         if ok and was_focus:
             self.focus_changes.append({"t": time.time(), "from": old, "to": self.state.focus_id,
-                                       "reason": "skipped by the FDE"})
+                                       "reason": "skipped by the interviewer"})
         self.persist()
         await self.notify()
         return ok
@@ -736,7 +736,7 @@ class Session:
     async def finalize(self) -> dict[str, str]:
         """Stop capture, run a last sync on the tail, then write plan.md + plan.json. One run at a
         time: a second call while one runs returns {}. If even the offline draft cannot be written,
-        the session goes back to "finalize" with the error shown, so the FDE can retry."""
+        the session goes back to "finalize" with the error shown, so the interviewer can retry."""
         self._ensure_async()
         if self._finalizing or self.state.mode == "generating":
             return {}
@@ -757,7 +757,7 @@ class Session:
                     pass
         self.stop_capture()
         if self.state.mode == "interview":
-            self.state.force_enough("FDE ended the interview")
+            self.state.force_enough("interviewer ended the interview")
         if self.transcript.since(self.last_synced_seq):
             prev = self.state.mode
             self.state.mode = "finalize"

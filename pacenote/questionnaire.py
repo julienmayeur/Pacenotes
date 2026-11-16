@@ -201,7 +201,7 @@ class Questionnaire(BaseModel):
     client: str
     slug: str
     language: Lang = "fr"  # interview language by default (questions, plan); any language code
-    ui_language: str | None = None  # FDE screen language by default (else `language`, else English)
+    ui_language: str | None = None  # interviewer screen language by default (else `language`, else English)
     speech_locales: list[str] | None = None  # speech locales, e.g. [de-DE, en-US] (default fr-FR + en-US)
     target_minutes: int = 15
     consent: Texts

@@ -4,8 +4,8 @@ Every screen, prompt and output file goes through this module (Python) or its br
 `static/i18n.js` (front end). Nothing else holds translated strings or language rules.
 
 Three languages per session, persisted in the session state and resolved here:
-  * ui        - the FDE's screen chrome (buttons, labels). Needs a locale file.
-  * interview - what the FDE asks and reads: questions, follow-ups, "Ce qui manque" items,
+  * ui        - the interviewer's screen chrome (buttons, labels). Needs a locale file.
+  * interview - what the interviewer asks and reads: questions, follow-ups, "Ce qui manque" items,
                 summaries, plan notes and the final plan. Any language: questionnaire variants
                 are used when present, Claude translates the rest on the fly.
   * speech    - the yap locales listening to the room (e.g. ["de-DE", "en-US"]).

@@ -58,7 +58,7 @@ def _language_opts(p: argparse.ArgumentParser) -> None:
                    help="language of the questions, follow-ups, summaries and plan (default: the "
                         "questionnaire's language); missing variants are translated by Claude")
     p.add_argument("--ui-language", default=os.environ.get("PACENOTE_UI_LANGUAGE"),
-                   help="FDE screen language (default: the client's language); switchable live with `l`")
+                   help="interviewer screen language (default: the client's language); switchable live with `l`")
 
 
 def _engine_opts(p: argparse.ArgumentParser) -> None:
@@ -165,7 +165,7 @@ def build_parser() -> argparse.ArgumentParser:
                                               "date, or refresh them with a web-research Claude run")
     cap.add_argument("action", choices=("show", "refresh"), nargs="?", default="show")
     cap.add_argument("--brief", choices=(*briefs.BRIEFS, "all"), default="capabilities",
-                     help="which brief to refresh: capabilities (default), fde-practice, or all")
+                     help="which brief to refresh: capabilities (default), delivery-practice, or all")
     cap.add_argument("--model", default=os.environ.get("PACENOTE_RESEARCH_MODEL", DEFAULT_MODEL))
     cap.add_argument("--claude-bin", default=None)
     cap.add_argument("-v", "--verbose", action="store_true")
@@ -345,7 +345,7 @@ def _serve(session: Session, args, auto_start: bool) -> int:
         session.on_plan_written = lambda files: print(_plan_written(files), flush=True)
     app = create_app(session, auto_start=auto_start, bind_host=args.host, claude_bin=getattr(args, "claude_bin", None))
     url = f"http://{args.host}:{args.port}/"
-    print(f"\n  FDE kickoff — {session.state.client}\n  UI:       {url}\n  Admin:    {url}admin\n"
+    print(f"\n  Pacenote — {session.state.client}\n  UI:       {url}\n  Admin:    {url}admin\n"
           f"  Session:  {session.session_dir}\n"
           f"  Engine:   {session.engine.name}\n  Stop:     Ctrl-C (stops listening and saves)\n")
     if not args.no_browser:
@@ -580,7 +580,7 @@ def cmd_admin(args) -> int:
                            sessions_dir=args.sessions_dir, autofill_model=args.autofill_model,
                            people_model=args.people_model, bind_host=args.host)
     url = f"http://{args.host}:{args.port}/admin"
-    print(f"\n  FDE kickoff — administration\n  Admin: {url}\n  Clients: {args.clients_dir.resolve()}\n")
+    print(f"\n  Pacenote — administration\n  Admin: {url}\n  Clients: {args.clients_dir.resolve()}\n")
     if not args.no_browser:
         try:
             webbrowser.open(url)

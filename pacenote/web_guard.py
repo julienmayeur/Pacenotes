@@ -1,6 +1,6 @@
 """Same-origin guard for the local web apps (`pacenote run` / `pacenote replay` / `pacenote admin`).
 
-Why: the interview server listens on the Mac while the FDE browses the web. Without a check, any
+Why: the interview server listens on the Mac while the interviewer browses the web. Without a check, any
 page open in the browser could POST to http://127.0.0.1:8765/api/start (a "no-cors" fetch or an
 auto-submitted form) and start listening, end the interview or launch admin agents; with DNS
 rebinding it could also read the live transcript. Two cheap rules close that:

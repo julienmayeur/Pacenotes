@@ -3,7 +3,7 @@
 pacenote/knowledge/
   capabilities.md   "what agents can do today": the plan never claims a capability absent from it,
                     and its per-use-case model choice leans on it; the plan footer states its date
-  fde-practice.md   "how value is proven": baselines, pilot targets, first verified win, kill
+  delivery-practice.md   "how value is proven": baselines, pilot targets, first verified win, kill
                     criteria, buy before build
 
 Each file starts with YAML front matter (`as_of:`, `sources:`). Both are tracked. A brief older
@@ -27,7 +27,7 @@ from pydantic import BaseModel, ConfigDict
 from . import fsutil
 
 KNOWLEDGE_DIR = Path(__file__).parent / "knowledge"
-BRIEFS = {"capabilities": "capabilities.md", "fde-practice": "fde-practice.md"}
+BRIEFS = {"capabilities": "capabilities.md", "delivery-practice": "delivery-practice.md"}
 STALE_DAYS = 30
 REFRESH_TIMEOUT = 20 * 60.0
 _FRONT = re.compile(r"^---\s*\n(.*?)\n---\s*\n?(.*)$", re.S)
@@ -130,14 +130,14 @@ OpenAI, xAI) for extraction, reasoning, latency, cost, data residency. Prefer pr
 release. Mark an item **(unconfirmed)** when only one source supports it; mark vendor figures \
 (vendor-reported). Remove what is no longer true. Keep it under about 900 words, English, Markdown, \
 starting with "# What agents can do today" and a short paragraph on how the plan uses it.""",
-    "fde-practice": """\
-You maintain a short, dated brief "How value is proven (FDE practice)" that a planning model reads to \
-write a forward-deployed engineering plan for a non-technical SME. Use web search and web fetch to \
-check every item of the current brief and add what changed: how FDE teams (OpenAI, Anthropic, \
+    "delivery-practice": """\
+You maintain a short, dated brief "How value is proven (delivery practice)" that a planning model reads to \
+write a consulting engineering plan for a non-technical SME. Use web search and web fetch to \
+check every item of the current brief and add what changed: how vendor delivery teams (OpenAI, Anthropic, \
 Mistral, Palantir, independent practitioners) measure value (baselines, pilot targets, first verified \
 win on real cases, kill criteria, shadow rollout, embed length), and independent studies of AI pilot \
 returns. Mark vendor figures **vendor-reported** and single-source items (unconfirmed). Keep it under \
-about 700 words, English, Markdown, starting with "# How value is proven (FDE practice)", and end \
+about 700 words, English, Markdown, starting with "# How value is proven (delivery practice)", and end \
 with a short section "What the plan does with it".""",
 }
 

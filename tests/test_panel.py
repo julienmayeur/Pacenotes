@@ -37,9 +37,9 @@ def test_history_is_the_questions_that_left_the_focus_in_order(state):
     first = state.focus_id
     state.apply_fast_result(_fast(upd(first, "partial", "", piece="On ressaisit tout à la main")))
     assert state.history() == []  # the current question is never in the thread above itself
-    state.advance("FDE pressed next")
+    state.advance("interviewer pressed next")
     second = state.focus_id
-    state.advance("FDE pressed next")
+    state.advance("interviewer pressed next")
     assert [q.id for q in state.history()] == [first, second]
     assert state.history()[0].answer == "On ressaisit tout à la main"
 
@@ -50,7 +50,7 @@ def test_spontaneous_answer_joins_the_thread_and_the_focus_goes_below_it(state):
     state.apply_fast_result(_fast(upd(other, "partial", "", piece="Le stock est dans Excel")))
     assert [q.id for q in state.history()] == [other]
     time.sleep(0.01)
-    state.advance("FDE pressed next")
+    state.advance("interviewer pressed next")
     assert [q.id for q in state.history()][-1] == first  # the question just left is at the bottom
 
 
@@ -99,7 +99,7 @@ def test_view_exposes_the_live_summary_and_the_thread_without_a_recent_block(tmp
     assert s.view()["current"]["summary"] == "Ressaisie manuelle : 3 pers., 2 h/j"
     assert s.view()["current"]["summary_by"] == "sync"
 
-    st.advance("FDE pressed next")
+    st.advance("interviewer pressed next")
     view = s.view()
     assert "recent" not in view  # no separate answered/recent block any more
     [h] = view["history"]
@@ -173,7 +173,7 @@ def test_ending_the_interview_shows_no_restarting_capture_problem(tmp_path, clie
                                       fast_enabled=False))
         await s.start()
         await asyncio.sleep(0.3)
-        await s.finalize()  # "FDE ended the interview"
+        await s.finalize()  # "interviewer ended the interview"
         await asyncio.sleep(0.3)
         s.ingest_once()  # a late poll must not resurrect the problem nor restart listening
         view = s.view()
@@ -181,7 +181,7 @@ def test_ending_the_interview_shows_no_restarting_capture_problem(tmp_path, clie
         return s, view
 
     s, view = asyncio.run(run())
-    assert view["mode"] == "done" and view["enough_data_reason"] == "FDE ended the interview"
+    assert view["mode"] == "done" and view["enough_data_reason"] == "interviewer ended the interview"
     assert view["capture_problems"] == []
     assert view["listening"]["stopped"]
     assert all(x["stopped"] and x["problem"] is None for x in view["listening"]["streams"])

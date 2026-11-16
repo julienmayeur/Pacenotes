@@ -50,9 +50,9 @@ def slot_list() -> str:
 
 QUESTION_STYLE = """\
 # How every question and follow-up is worded
-The CEO meets a forward-deployed engineer for the first time. He has heard of AI but does not \
+The CEO meets a consulting engineer for the first time. He has heard of AI but does not \
 know how to use it: he cannot say what success looks like in the abstract, nor imagine what could \
-be taken off his team's hands. So the FDE asks about his work, never about technology:
+be taken off his team's hands. So the interviewer asks about his work, never about technology:
 - Start from capacity: what stops the company from taking more customers, orders or volume, or \
 a new market, and what eats the team's time today.
 - Ask for concrete, operational detail on a real case, ideally one from last week: who does it \
@@ -60,7 +60,7 @@ a new market, and what eats the team's time today.
 information comes from and where it goes next.
 - Get the target out of the capacity discussion, never as an abstract goal: "if this took half \
 the time, what would you do with it: how many more orders or customers could you take?"
-- No AI vocabulary in anything the FDE asks: never "IA"/"AI", "intelligence artificielle", \
+- No AI vocabulary in anything the interviewer asks: never "IA"/"AI", "intelligence artificielle", \
 "agent", "automatiser"/"automate"/"automation", "LLM", "bot", "algorithme"/"algorithm" (use cases, \
 slots and the plan use them internally; the questions do not).
 - One point per follow-up, short, in the CEO's own words.
@@ -187,10 +187,10 @@ list when nothing new.
 
 
 SYNC_SYSTEM = """\
-You are the live co-pilot of a forward-deployed engineer (FDE) who is interviewing \
+You are the live co-pilot of a consulting engineer who is interviewing \
 the CEO of {client} for about {target} minutes, to scope an engagement and write a plan. \
 Every 30-45 seconds you receive the newest slice of a live transcript plus the current \
-interview state, and you return one JSON object that updates that state. The FDE reads \
+interview state, and you return one JSON object that updates that state. The interviewer reads \
 your output on a screen while talking, so it must be accurate and calm: a wrong "answered" \
 flag or a jumpy question list derails the interview.
 
@@ -200,7 +200,7 @@ flag or a jumpy question list derails the interview.
 
 # How the transcript is produced
 {streams}
-- There are no speaker labels. Infer who speaks from content: the FDE asks questions, the CEO \
+- There are no speaker labels. Infer who speaks from content: the interviewer asks questions, the CEO \
 answers.
 - The microphone also picks up the room: a TV or radio, people nearby, phone calls. Ignore \
 anything unrelated to the interview (for example a TV programme about politicians or \
@@ -212,12 +212,12 @@ obvious ones from context. Never invent facts, figures or names that were not sa
 {glossary}
 
 # The current question is locked
-state.current_question is the original question on screen. It stays there until the FDE moves \
+state.current_question is the original question on screen. It stays there until the interviewer moves \
 on. Never reword, reorder or remove it, and never put it in next_questions. Under it, the screen \
 shows a thread: the answer pieces captured so far and the follow-up questions asked.
 
 # Dig down the ladder, one follow-up at a time
-For each question the FDE digs down a ladder, rung by rung:
+For each question the interviewer digs down a ladder, rung by rung:
 1. business: the problem or goal, why it matters, what it costs.
 2. workflow: the real steps of the last concrete case, who does what, handoffs, where it breaks, \
 how long, how often.
@@ -276,7 +276,7 @@ missing.
 priorities, workflows (current processes and pain points), quick_wins, risks, budget (amounts, \
 ranges, constraints the CEO mentioned), open_points. Do not repeat state.plan_notes.
 - clean_passages: a cleaned, readable version of this slice (best stream, glossary applied), \
-one item per speaker turn: start (mm:ss), speaker (fde, client or unknown), lang, text. Drop \
+one item per speaker turn: start (mm:ss), speaker (fde = the interviewer, client or unknown), lang, text. Drop \
 noise, the room (TV, nearby voices) and unrelated chatter.
 - enough_data: true only when all priority-1 questions are answered and every theme has \
 coverage of at least about 0.6, or when the time budget is used up and the remaining gaps can \
@@ -408,7 +408,7 @@ def state_headings(state: SessionState) -> dict[str, str]:
 PLAN_SECTION_ORDER = ("context", "priorities", "workflows", "quick_wins", "plan_30_60_90", "risks", "budget")
 
 PLAN_SYSTEM = """\
-You are a senior forward-deployed engineer turning a {target}-minute kickoff interview with the \
+You are a senior consulting engineer turning a {target}-minute kickoff interview with the \
 CEO of {client} into a FACTUAL INTEGRATION PROPOSAL: for each use case, how an agent would be \
 wired into their real systems and what it would change, measured. It is not a summary of the \
 interview. The readers are the CEO and his team, then the engineer who builds it.
@@ -434,7 +434,7 @@ Write every text value in {lang_name} (translate what was said in another langua
 `evidence` stay as said). Return one JSON object matching the schema.
 
 # The rule: facts come from the interview, everything else is "to confirm"
-- A fact is "stated" only when it was said in this interview by the CEO (or by the FDE and \
+- A fact is "stated" only when it was said in this interview by the CEO (or by the interviewer and \
 confirmed by the CEO). `value` keeps names, tools and figures as said (glossary-corrected); \
 `evidence` is a short quote from the transcript that supports it.
 - The client background and the pre-plan come from desk research: hypotheses, never facts.
@@ -571,10 +571,10 @@ use case's `model` provider and `sourcing` from it and from the stated facts.
 {capabilities}
 </capability_brief>
 
-# How value is proven (FDE practice, as of {practice_as_of})
-<fde_practice>
+# How value is proven (delivery practice, as of {practice_as_of})
+<delivery_practice>
 {practice}
-</fde_practice>
+</delivery_practice>
 """
 
 
@@ -583,7 +583,7 @@ def build_plan_system(state: SessionState, glossary: str, context: str = "") -> 
         streams=describe_streams(state),
         target=state.target_minutes,
         client=state.client,
-        context=f"Client background (desk research and FDE notes, not facts from the CEO):\n{context.strip()}\n"
+        context=f"Client background (desk research and interviewer notes, not facts from the CEO):\n{context.strip()}\n"
         if context.strip() else "",
         glossary=glossary.strip() or "(none)",
         lang_name=LANG_NAME[state.language],
@@ -604,7 +604,7 @@ def plan_recipe_fields(state: SessionState, library: dict | None = None) -> dict
 
 
 def brief_fields() -> dict[str, str]:
-    cap, practice = briefs.load_brief("capabilities"), briefs.load_brief("fde-practice")
+    cap, practice = briefs.load_brief("capabilities"), briefs.load_brief("delivery-practice")
     return {"cap_as_of": cap.as_of_text if cap else "unknown",
             "capabilities": cap.body if cap else "(no capability brief: claim no specific capability)",
             "practice_as_of": practice.as_of_text if practice else "unknown",
@@ -634,9 +634,9 @@ def build_plan_user(state: SessionState, transcript: list[Segment], wispr_text: 
 # --- fast incremental pass ---------------------------------------------------------
 
 FAST_SYSTEM = """\
-You run the live interview thread of a kickoff between a forward-deployed engineer (FDE) and \
+You run the live interview thread of a kickoff between a consulting engineer and \
 the CEO of {client}. A few seconds after someone speaks you get the newest transcript lines and \
-the question on screen with its thread so far. Your output is shown to the FDE at once: the new \
+the question on screen with its thread so far. Your output is shown to the interviewer at once: the new \
 piece of answer is appended under the question, then ONE follow-up question to ask next. Be \
 fast, literal and conservative.
 
@@ -646,7 +646,7 @@ Each message is independent: rely only on the state and lines in that message.
 
 Transcript:
 {streams}
-A gibberish line looks like "tornay, avic, so more". No speaker labels: the FDE asks, the CEO answers. The \
+A gibberish line looks like "tornay, avic, so more". No speaker labels: the interviewer asks, the CEO answers. The \
 microphone also picks up the room (TV, radio, people nearby): ignore anything unrelated to the \
 interview. Fix mishearings with this glossary and never invent facts:
 {glossary}
@@ -677,7 +677,7 @@ already covered.
   - rung: business, workflow or implementation: where the digging is now. Move down only when \
 the current rung is mostly covered (or the CEO cannot say more); "done" when implementation is \
 covered too.
-  - follow_up: ONE short natural follow-up question in {lang_name} for the FDE to ask now, \
+  - follow_up: ONE short natural follow-up question in {lang_name} for the interviewer to ask now, \
 digging into the original question on the current rung, aimed at its first missing item. When \
 the answer is vague, ask for a concrete recent example, a number, a name or a tool, in the CEO's \
 own words, following the wording rules above. Never repeat one from the thread. "" when the \
@@ -692,9 +692,9 @@ as a concrete story question.
 - coverage: only for themes these lines improved, score 0.0 to 1.0. Empty list if nothing changed.
 - noise: the ids (e.g. "57" for a line tagged #57) of new lines that are not part of the \
 interview: a TV or radio, nearby voices, off-topic chatter. Do NOT list the gibberish lines of the \
-other recogniser (they are filtered already), nor anything the FDE or the CEO says. Usually empty.
-Keep the output short: it is shown to the FDE as soon as it arrives.
-If the new lines are only the FDE asking, small talk or noise, return empty question_updates.
+other recogniser (they are filtered already), nor anything the interviewer or the CEO says. Usually empty.
+Keep the output short: it is shown to the interviewer as soon as it arrives.
+If the new lines are only the interviewer asking, small talk or noise, return empty question_updates.
 """
 
 
@@ -708,7 +708,7 @@ def build_fast_system(state: SessionState, glossary: str, context: str = "") -> 
         slots_guide=SLOTS_GUIDE.format(slot_list=slot_list(), lang_name=LANG_NAME[state.language]),
         maps_guide=maps_guide(state),
     )
-    if context.strip():  # client sheet, FDE notes, pre-plan: lets follow-ups use the client's own terms
+    if context.strip():  # client sheet, interviewer notes, pre-plan: lets follow-ups use the client's own terms
         ctx = context.strip()
         if len(ctx) > FAST_CONTEXT_CHARS:
             ctx = ctx[:FAST_CONTEXT_CHARS].rsplit("\n", 1)[0] + "\n…"

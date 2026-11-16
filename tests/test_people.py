@@ -308,7 +308,7 @@ def test_edits_are_manual_and_survive_a_rerun(clients, tmp_path):
     assert [(f["value"], f["by"]) for f in roles] == [("Président-directeur général de Brioche & Four", "manual")]
     assert not any(f["category"] == "career" for f in card["facts"])
     assert "role: Président-directeur général de Brioche & Four" in calls(log)[-1]["stdin"]  # trusted, not searched again
-    # the FDE clears his manual role (whitespace only): dropped, not remembered as removed, refilled next run
+    # the interviewer clears his manual role (whitespace only): dropped, not remembered as removed, refilled next run
     facts = card["facts"]
     manual_role = next(f for f in facts if f["category"] == "role")
     card = http.put("/admin/api/clients/brioche-four/people/Jean Exemple",
@@ -422,7 +422,7 @@ const { chromium } = require('playwright');
   await p.reload();
   await p.waitForSelector('.pcard dl.facts dd');
   out.afterReload = await p.textContent('.pcard dl.facts dd .cv');
-  // the FDE clears his edited role: dropped (not a ×), the next run fills it again
+  // the interviewer clears his edited role: dropped (not a ×), the next run fills it again
   await p.dblclick(dd);
   await p.fill(dd + ' .inline', '  ');
   const c = p.waitForResponse(r => r.url().includes('/people/') && r.request().method() === 'PUT');

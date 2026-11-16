@@ -47,7 +47,7 @@ def interview_log_md(state: SessionState) -> str:
     if state.passages:
         lines.append("### " + tr("plan.cleanedExcerpts"))
         lines.append("")
-        who = {"fde": "FDE", "client": "CEO", "unknown": "?"}
+        who = {"fde": "Interviewer", "client": "CEO", "unknown": "?"}
         for p in state.passages:
             lines.append(f"- `{p.start}` **{who.get(p.speaker, p.speaker)}** : {p.text}")
         lines.append("")
@@ -176,7 +176,7 @@ def apply_recipes(doc: PlanDoc, library: dict | None = None) -> PlanDoc:
 def ranked(doc: PlanDoc, library: dict | None = None) -> list[PlanUseCase]:
     """Recipe-backed opportunities first (strong fit proven elsewhere, strong, partial, then new
     candidates): reusing what already worked is the surest return. Then back-office, high-volume,
-    measurable work (FDE practice: that is where the return is), then impact x feasibility (both
+    measurable work (delivery practice: that is where the return is), then impact x feasibility (both
     justified from the interview); ties keep the model's order."""
     library = _library(library)
     order = {id(u): i for i, u in enumerate(doc.use_cases)}
@@ -664,7 +664,7 @@ def md_to_html(text: str) -> str:
 
     def hold(m: re.Match) -> str:
         blocks.append(m.group(1))
-        return f"\nFDEMERMAIDBLOCK{len(blocks) - 1}\n"
+        return f"\nPNMERMAIDBLOCK{len(blocks) - 1}\n"
 
     body = md_lib.markdown(loosen_lists(_MERMAID_BLOCK.sub(hold, text or "")),
                            extensions=["tables", "sane_lists", _NoRawHtml()])
@@ -672,7 +672,7 @@ def md_to_html(text: str) -> str:
         svg = mermaid_svg(src)
         figure = (f'<figure class="comm-map">{svg or ""}<details class="mermaid-src"{"" if svg else " open"}>'
                   f"<summary>Mermaid</summary><pre><code>{html.escape(src)}</code></pre></details></figure>")
-        body = body.replace(f"<p>FDEMERMAIDBLOCK{i}</p>", figure)
+        body = body.replace(f"<p>PNMERMAIDBLOCK{i}</p>", figure)
     return body
 
 

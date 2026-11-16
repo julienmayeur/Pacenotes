@@ -41,7 +41,7 @@
     "summaryBy": {
       "fast": "fast pass",
       "sync": "full sync",
-      "manual": "FDE"
+      "manual": "you"
     },
     "updated": "updated {{s}} s ago",
     "readAt": "analysed up to line {{n}}",

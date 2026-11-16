@@ -1,6 +1,6 @@
 ---
 as_of: 2026-11-04
-title: How value is proven (FDE practice)
+title: How value is proven (delivery practice)
 sources:
   - {title: "OpenAI: What FDE means at OpenAI (June 2026)", url: "https://openai.com/"}
   - {title: "CNBC: Anthropic and AWS program to train 10,000 forward-deployed engineers (2026-10-15)", url: "https://www.cnbc.com/"}
@@ -9,13 +9,13 @@ sources:
   - {title: "MIT NANDA: The GenAI Divide, State of AI in Business 2025 (August 2025)", url: "https://nanda.media.mit.edu/"}
 ---
 
-# How value is proven (FDE practice)
+# How value is proven (delivery practice)
 
 Dated brief given to the plan writer as "how value is proven". Figures marked **vendor-reported**
 come from the vendor itself; never present them to the client as independent results. Refresh with
-`pacenote capabilities refresh --brief fde-practice`.
+`pacenote capabilities refresh --brief delivery-practice`.
 
-## What the forward-deployed teams measure
+## What vendor delivery teams measure
 
 - OpenAI: FDEs are judged on production adoption, measurable workflow impact and eval-driven
   feedback. Vendor-reported: about 48% time saved on directed test generation; Thrive Holdings
@@ -31,7 +31,7 @@ come from the vendor itself; never present them to the client as independent res
   problems, then a small first contract that expands once value is proven (the 5-day median and
   about 70% conversion come from one weak source).
 
-## Independent FDE practice
+## Independent practice
 
 - First 30 days deliver: a workflow map, a target KPI with its baseline, a data inventory, an
   eval baseline and a working thin slice.

@@ -4,7 +4,7 @@ For a contact of the client sheet ("Who we meet": name + role) and the company, 
 run (Sonnet by default, like Auto-fill: a dozen searches and page reads, answered in about a
 minute; `--people-model` / PACENOTE_PEOPLE_MODEL), web search and web fetch only, the answer held to a
 JSON schema, no API key in its environment, stoppable. It returns either several `candidates`
-when the name fits several people (the FDE picks one, then it runs again for that person), or a
+when the name fits several people (the interviewer picks one, then it runs again for that person), or a
 list of `facts`: current role and tenure, career, education, public talks / posts / interviews /
 articles, interests shared in a professional context, languages, location (city or region only),
 mutual context with the engineer's own company (only when PACENOTE_ENGINEER_CONTEXT describes it), and
@@ -19,7 +19,7 @@ and facts taken from personal social networks or login walls.
 
 The card is saved straight away (no accept step) in clients/<slug>/people/<contact>.json (not in
 git, like the research output), per fact with its provenance: a re-run replaces the agent's facts
-only; facts the FDE edited (manual) stay, and facts the FDE removed don't come back.
+only; facts the interviewer edited (manual) stay, and facts the interviewer removed don't come back.
 """
 
 from __future__ import annotations
@@ -66,7 +66,7 @@ SINGLE = ("role", "tenure", "location")  # one value each
 
 # Who the engineer is (their company, what it does), for the mutual_context facts. Optional: set
 # PACENOTE_ENGINEER_CONTEXT (or pass engineer_context=) to e.g. "Acme Labs (acme.example), a software
-# company that sends forward-deployed engineers to its clients". Unset, no mutual context is sought.
+# company that sends consulting engineers to its clients". Unset, no mutual context is sought.
 ENGINEER_CONTEXT_ENV = "PACENOTE_ENGINEER_CONTEXT"
 
 
@@ -110,7 +110,7 @@ assert set(Fact.model_fields["category"].annotation.__args__) == set(CATEGORIES)
 
 
 PEOPLE_SYSTEM = """\
-You prepare a forward-deployed engineer for a meeting. From a person's name, role and company, \
+You prepare a consulting engineer for a meeting. From a person's name, role and company, \
 find who this person is professionally, from public sources, and return a short profile card.
 
 Use web search and web fetch, and be quick: about five to ten searches and a few pages. Look for: \
@@ -370,7 +370,7 @@ _LOCKS_GUARD = threading.Lock()
 
 
 def _profile_lock(path: Path) -> threading.Lock:
-    """One lock per card file: an FDE edit and a finishing research run never overwrite each other."""
+    """One lock per card file: an interviewer edit and a finishing research run never overwrite each other."""
     with _LOCKS_GUARD:
         return _LOCKS.setdefault(Path(path).resolve(), threading.Lock())
 
@@ -383,8 +383,8 @@ def _write(path: Path, profile: dict) -> dict:
 
 def merge_profile(old: dict | None, name: str, role: str, result: dict, model: str,
                   candidate: dict | None = None) -> dict:
-    """The new card: the agent's facts replace the previous agent facts; facts the FDE edited stay,
-    facts the FDE removed are not brought back. Candidates (homonyms) keep the previous facts."""
+    """The new card: the agent's facts replace the previous agent facts; facts the interviewer edited stay,
+    facts the interviewer removed are not brought back. Candidates (homonyms) keep the previous facts."""
     old = old or {}
     manual = [f for f in old.get("facts", []) if f.get("by") == "manual" and _clean(f.get("value"))]
     removed = list(old.get("removed", []))
@@ -403,9 +403,9 @@ def merge_profile(old: dict | None, name: str, role: str, result: dict, model: s
 
 
 def save_profile_edit(client_path: Path, name: str, facts: list[dict], removed: list[str]) -> dict:
-    """The FDE edited the card (double-click on a fact, or removed one): changed or new facts
+    """The interviewer edited the card (double-click on a fact, or removed one): changed or new facts
     become manual, removed ones (×) are remembered so a re-run doesn't bring them back. A fact the
-    FDE cleared (empty or whitespace only) is dropped but not remembered: the next run may fill it."""
+    interviewer cleared (empty or whitespace only) is dropped but not remembered: the next run may fill it."""
     path = profile_path(client_path, name)
     with _profile_lock(path):
         return _save_profile_edit(path, facts, removed)
@@ -580,7 +580,7 @@ class PeopleManager:
                 raise RuntimeError("stopped")
             job.result = result
             path = profile_path(cdir, job.name)
-            with _profile_lock(path):  # re-read: the FDE may have edited the card while the agent ran
+            with _profile_lock(path):  # re-read: the interviewer may have edited the card while the agent ran
                 current = load_profile(cdir, job.name)
                 if result["status"] != "not_found" or current is None:
                     job.profile = _write(path, merge_profile(current, job.name, job.role, result, self.model,

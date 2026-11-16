@@ -5,7 +5,6 @@ Claude uses this list to correct the transcript before extracting answers.
 Format: what the recogniser writes → what was actually said. Add to it after every warm-up.
 
 ## Us / the engagement
-- "5D", "cinq D", "EV", "FD", "effet dé", "F D E" → **FDE** (forward-deployed engineer)
 - "Claude" heard as "clôde", "Claude e", "close" → **Claude** (the AI model)
 
 ## Client and brand

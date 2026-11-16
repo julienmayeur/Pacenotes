@@ -65,7 +65,7 @@ class CandidateBody(BaseModel):
 
 class AutofillBody(BaseModel):
     name: str
-    hints: dict[str, str] = {}  # the values the FDE typed (manual): trusted, never searched again
+    hints: dict[str, str] = {}  # the values the interviewer typed (manual): trusted, never searched again
     candidate: CandidateBody | None = None  # picked among the candidates of a previous run
     lang: str = "fr"  # language of the descriptive values (the interview language)
     force: bool = False  # the button: run again even when a recent answer exists
@@ -92,7 +92,7 @@ class MeasurementBody(BaseModel):
 
 class ProfileEdit(BaseModel):
     facts: list[dict] = []  # the card as edited (each fact: id, category, value, source_url, confidence, by)
-    removed: list[str] = []  # ids of facts the FDE removed
+    removed: list[str] = []  # ids of facts the interviewer removed
 
 
 def _render(text: str) -> str:
@@ -396,7 +396,7 @@ def create_admin_app(clients_dir: Path, claude_bin: str | None = None, model: st
     """The admin panel on its own (`pacenote admin`), without an interview session."""
     from .web_guard import SameOriginGuard
 
-    app = FastAPI(title="FDE kickoff — admin", docs_url=None, redoc_url=None)
+    app = FastAPI(title="Pacenote — admin", docs_url=None, redoc_url=None)
     app.add_middleware(SameOriginGuard, bind_host=bind_host)  # no other web page can drive it
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     app.include_router(admin_router(clients_dir, manager or ResearchManager(clients_dir, claude_bin, model),

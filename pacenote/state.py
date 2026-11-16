@@ -3,7 +3,7 @@
 Focus (the question on screen):
   * `focus_id` is the question being asked. It is LOCKED while it is being answered: no
     model result can replace, reorder, reword or remove it. A rewording proposed for it is
-    shown as a follow-up probe under it instead. It only changes when the FDE moves on
+    shown as a follow-up probe under it instead. It only changes when the interviewer moves on
     (n / Enter, "answered", "skip"), or after it is answered and the room has been silent
     for a few seconds (decided by the session, which knows about silence).
   * `next_questions` is the upcoming list (focus excluded).
@@ -14,13 +14,13 @@ ERP, email, Excel, data, integrations, volumes) -> done. `expect` lists the conc
 each rung needs; `covered` = those heard so far (only grows); `rung` only moves down the ladder.
 The `thread` under the original question alternates captured answer pieces and ONE follow-up
 question at a time: answer piece, follow-up, answer piece, follow-up… A pending follow-up is
-never swapped under the FDE; the next one is appended only after the next answer piece.
+never swapped under the interviewer; the next one is appended only after the next answer piece.
 
 Locking rules (enforced here, whatever the model returns):
   * "answered" locks a question: status, answer and wording never change again; it cannot be
     removed or moved, and it never reappears in the upcoming list.
   * "answered" == ladder done. A question with `expect` items can only get there once at least
-    half of all its expected details are covered; otherwise it stays "partial" (the FDE can
+    half of all its expected details are covered; otherwise it stays "partial" (the interviewer can
     still mark it, or move on with n / Enter).
   * Use cases and integration slots (contract.SLOT_KEYS): a question attached to a use case gets
     its required slots as `expect` items (labels from the locale files). Those items are covered
@@ -37,7 +37,7 @@ Locking rules (enforced here, whatever the model returns):
   * Phases (phases.py): every question belongs to one of seven ordered phases. The focus moves
     phase by phase: a phase ends when its questions are answered or skipped, when its maps hold
     enough facts (once one of its questions was asked), when its time budget is spent, or when the
-    FDE skips it (`p`). The phase only changes at a focus change, so the current card is never
+    interviewer skips it (`p`). The phase only changes at a focus change, so the current card is never
     interrupted. Queue edits may only add / reword / reorder / remove questions of the current
     phase; an "add" for a new use case is parked in the deep dives. Answers, slots and maps from
     any phase are always captured: what the CEO says early is kept, the focus does not jump.
@@ -353,7 +353,7 @@ class SessionState(BaseModel):
     consent_en: str = ""
     consent: dict[str, str] = Field(default_factory=dict)  # every language (fr/en mirrored)
     source_language: str = ""  # language the questionnaire was written in (expect items)
-    ui_language: str = ""  # FDE screen language ("" = same as `language` when it has a locale file)
+    ui_language: str = ""  # interviewer screen language ("" = same as `language` when it has a locale file)
     speech_locales: list[str] = Field(default_factory=lambda: list(i18n.DEFAULT_SPEECH))  # yap locales
     i18n_overlay: dict[str, dict[str, str]] = Field(default_factory=dict)  # lang -> machine-translated keys
     translation: dict = Field(default_factory=dict)  # {lang, status: running|done|error, count, error}
@@ -367,7 +367,7 @@ class SessionState(BaseModel):
     phase_since: float | None = None
     phase_spent: dict[str, float] = Field(default_factory=dict)
     phase_budgets: dict[str, float] = Field(default_factory=dict)  # seconds per phase
-    phases_skipped: list[str] = Field(default_factory=list)  # phases the FDE ended with `p`
+    phases_skipped: list[str] = Field(default_factory=list)  # phases the interviewer ended with `p`
     focus_id: str | None = None  # the question being asked (locked while answered)
     focus_since: float | None = None
     focus_history: list[str] = Field(default_factory=list)
@@ -685,7 +685,7 @@ class SessionState(BaseModel):
                     and self.phase_elapsed(now) >= budget)
 
     def phase_done(self, phase: str | None, now: float | None = None) -> bool:
-        """The phase can hand over: nothing left to ask in it, the FDE skipped it, its time budget is
+        """The phase can hand over: nothing left to ask in it, the interviewer skipped it, its time budget is
         spent, or its maps hold enough facts once one of its questions was asked."""
         if phase is None:
             return True
@@ -740,14 +740,14 @@ class SessionState(BaseModel):
         return [q.id for q in order]
 
     def skip_phase(self) -> str | None:
-        """The FDE ends the current phase (`p`): the focus moves to the next phase's first question.
+        """The interviewer ends the current phase (`p`): the focus moves to the next phase's first question.
         The current card joins the thread as with `n`."""
         cur = self.current_phase
         if cur is None:
             return None
         if cur not in self.phases_skipped:
             self.phases_skipped.append(cur)
-        return self.advance("FDE skipped to the next phase")
+        return self.advance("interviewer skipped to the next phase")
 
     def theme_ids(self) -> set[str]:
         return {t.id for t in self.themes}
@@ -1070,7 +1070,7 @@ class SessionState(BaseModel):
     @staticmethod
     def _append_followup(q: QuestionState, text: str, by: str, lang: str = "") -> bool:
         """Append a follow-up only after an answer piece (or as the first entry). A follow-up that
-        is already pending stays: the FDE may be asking it right now."""
+        is already pending stays: the interviewer may be asking it right now."""
         if q.thread and q.thread[-1].kind == "followup":
             return False
         if any(e.kind == "followup" and _fold(e.text) == _fold(text) for e in q.thread):
@@ -1146,7 +1146,7 @@ class SessionState(BaseModel):
             self.focus_history.append(self.focus_id)
             new_phase = self.get(self.focus_id).phase
             if new_phase != self.phase:
-                why = ("skipped by the FDE" if self.phase in self.phases_skipped
+                why = ("skipped by the interviewer" if self.phase in self.phases_skipped
                        else "time budget spent" if self.phase_budget_spent(self.phase)
                        else "maps filled" if self.maps_enough(self.phase or "") else "questions done")
                 self._enter_phase(new_phase, why)
@@ -1156,7 +1156,7 @@ class SessionState(BaseModel):
                                           applied=True, detail=f"{old} -> {self.focus_id} ({reason})"))
         return self.focus_id
 
-    # --- manual overrides from the FDE console ---------------------------------
+    # --- manual overrides from the interviewer console ---------------------------------
     def mark_answered(self, qid: str, note: str = "") -> bool:
         q = self.get(qid)
         if q is None or not q.open:
@@ -1169,7 +1169,7 @@ class SessionState(BaseModel):
         if note:
             q.answer = note
         if qid == self.focus_id:
-            self.advance("marked answered by the FDE")
+            self.advance("marked answered by the interviewer")
         else:
             q.thread_at = q.thread_at or time.time()
             self._drop_from_next(qid)
@@ -1182,12 +1182,12 @@ class SessionState(BaseModel):
             return False
         q.status = "removed"
         if qid == self.focus_id:
-            self.advance("skipped by the FDE")
+            self.advance("skipped by the interviewer")
         else:
             self._drop_from_next(qid)
         return True
 
-    def force_enough(self, reason: str = "FDE decision") -> None:
+    def force_enough(self, reason: str = "interviewer decision") -> None:
         self.enough_data = True
         self.enough_data_reason = self.enough_data_reason or reason
         if self.mode in ("consent", "interview"):

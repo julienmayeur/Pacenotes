@@ -41,7 +41,7 @@
     "summaryBy": {
       "fast": "analyse rapide",
       "sync": "synthèse complète",
-      "manual": "FDE"
+      "manual": "vous"
     },
     "updated": "mis à jour il y a {{s}} s",
     "readAt": "analyse à la lecture {{n}}",

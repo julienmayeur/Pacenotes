@@ -1,14 +1,14 @@
 """On-the-fly translation of the questionnaire into the interview language.
 
-When the FDE picks an interview language that the questionnaire has no variant for (e.g. `de`
-for a questionnaire written in fr/en), everything the FDE reads or Claude copies verbatim is
+When the interviewer picks an interview language that the questionnaire has no variant for (e.g. `de`
+for a questionnaire written in fr/en), everything the interviewer reads or Claude copies verbatim is
 translated once, in a few parallel `claude -p` calls on the fast model (Claude Code CLI, subscription):
 question wordings, `expect` items ("Ce qui manque"), theme titles, the consent line, and the
 interview-language strings of the locale catalog (plan headings, end banner) when there is no
 locale file for that language. Results are stored in the session state and cached on disk per
 source text, so the next session in that language starts translated.
 
-The same path serves the FDE's display language (the screen-language selector, top right): when
+The same path serves the interviewer's display language (the screen-language selector, top right): when
 it differs from the interview language, the questionnaire texts AND the follow-ups generated
 live are translated for display only (`f|` items, stored in `ThreadEntry.texts`). The follow-ups
 are still generated, prompted and written to the plan in the interview language.
@@ -52,7 +52,7 @@ class TranslationResult(_Strict):
 
 
 TRANSLATE_SYSTEM = """\
-You translate short interface and interview texts for a forward-deployed engineer who is about \
+You translate short interface and interview texts for a consulting engineer who is about \
 to interview the CEO of {client}. Translate every item into {lang_name}. Keep the meaning, the \
 tone (spoken, plain, direct: these are questions read aloud to a CEO) and the length. Address \
 the CEO formally (vous, Sie, usted, Lei, u), as in a first business meeting. Keep \

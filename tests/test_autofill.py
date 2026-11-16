@@ -247,12 +247,12 @@ def test_merge_fills_empty_and_agent_fields_never_manual_ones():
                                             "confidence": 0.95}
     assert [(e.name, e.by) for e in new.linked_entities] == [("Fornaxa France", "agent")]
     assert "country" not in written and "sector" in written and "linked:fornaxa france" in written
-    # the FDE edits the website and removes the brand: a re-run changes neither
+    # the interviewer edits the website and removes the brand: a re-run changes neither
     edited = new.model_copy(update={"website": "https://manual-edit.example", "provenance": new.provenance | {"website": {"by": "manual"}},
                                     "linked_entities": [], "removed_entities": ["fornaxa france"]})
     again, _ = merge_into_sheet(edited, r)
     assert again.website == "https://manual-edit.example" and again.linked_entities == []
-    # a manual field cleared by the FDE (empty or whitespace) is no longer his: the next run fills it
+    # a manual field cleared by the interviewer (empty or whitespace) is no longer his: the next run fills it
     for blank in ("", "   \t "):
         cleared = again.model_copy(update={"headcount": blank, "provenance": again.provenance | {"headcount": {"by": "manual"}}})
         refilled, written = merge_into_sheet(cleared, r)
@@ -483,7 +483,7 @@ def test_apply_writes_the_answer_into_the_sheet_and_keeps_manual_values(clients,
     saved = yaml.safe_load((clients / "brioche-four" / "client.yaml").read_text())
     assert saved["provenance"]["legal_name"]["source_url"] == "https://registry.example/brioche-four"  # persisted
     assert saved["linked_entities"][0]["website"] == "https://www.for-naxa.example"
-    # the FDE edits a field from the page (PUT, value changed): it becomes manual
+    # the interviewer edits a field from the page (PUT, value changed): it becomes manual
     info["legal_name"] = "Brioche & Four SAS (édité)"
     assert http.put("/admin/api/clients/brioche-four", json=info).json()["info"]["provenance"]["legal_name"] == {"by": "manual"}
     # a re-run, after a reload (a new app on the same folder): the manual value stays
@@ -494,7 +494,7 @@ def test_apply_writes_the_answer_into_the_sheet_and_keeps_manual_values(clients,
     d = http2.post(f"/admin/api/clients/brioche-four/autofill/{job['id']}/apply", json={}).json()
     assert d["info"]["legal_name"] == "Brioche & Four SAS (édité)" and "legal_name" not in d["written"]
     assert d["info"]["website"] == "https://www.brioche-four.example"
-    # the FDE clears his manual legal name (whitespace only): provenance reset, persisted, refilled next run
+    # the interviewer clears his manual legal name (whitespace only): provenance reset, persisted, refilled next run
     info = d["info"] | {"legal_name": "   "}
     info["provenance"] = info["provenance"] | {"legal_name": {"by": "manual"}}
     assert "legal_name" not in http2.put("/admin/api/clients/brioche-four", json=info).json()["info"]["provenance"]
@@ -590,7 +590,7 @@ def test_admin_js_shows_no_hard_coded_text():
     assert not re.findall(r"textContent\s*=\s*[\"'][^\"']*[A-Za-zÀ-ÿ]{3,}", code)
 
 
-# --- the browser: the agent fills, the FDE double-clicks to edit (Playwright, when available) ----------------
+# --- the browser: the agent fills, the interviewer double-clicks to edit (Playwright, when available) ----------------
 
 BROWSER = r"""
 const { chromium } = require('playwright');
@@ -609,7 +609,7 @@ const { chromium } = require('playwright');
   await p.waitForFunction(() => document.querySelector('#f-name').value === 'Brioche & Four');
   await p.waitForFunction(() => !document.querySelector('#autofill').classList.contains('hidden'));
   out.button = await p.textContent('#autofill-run');
-  // the FDE types the country first (double-click, type, Enter): it must never be overwritten
+  // the interviewer types the country first (double-click, type, Enter): it must never be overwritten
   await p.dblclick(cell('country'));
   await p.fill(cell('country') + ' .inline', 'Belgique');
   let w = saved(); await p.keyboard.press('Enter'); await w;
@@ -656,7 +656,7 @@ const { chromium } = require('playwright');
   out.reload = { sector: await val('sector'), country: await val('country'),
                  sectorTitle: await p.getAttribute(cell('sector'), 'title') };
   out.navs = await p.evaluate(() => performance.getEntriesByType('navigation').length);
-  // the FDE clears his sector (only spaces): no longer his, the next run fills it again
+  // the interviewer clears his sector (only spaces): no longer his, the next run fills it again
   await p.dblclick(cell('sector'));
   await p.fill(cell('sector') + ' .inline', '   ');
   w = saved(); await p.keyboard.press('Enter'); await w;
@@ -749,14 +749,14 @@ def test_browser_agent_fills_then_double_click_edit(clients, tmp_path, monkeypat
                               "linked": 0}
         assert r["reload"]["sector"] == "Fours et pétrins" and r["reload"]["country"] == "Belgique"
         assert "Auto-fill" in r["reload"]["sectorTitle"] and r["navs"] == 1
-        assert r["clearedTitle"] != r["reload"]["sectorTitle"]  # cleared: no longer shown as the FDE's
+        assert r["clearedTitle"] != r["reload"]["sectorTitle"]  # cleared: no longer shown as the interviewer's
         # cleared → refilled by the agent; the typed country and the removed entity are untouched
         assert r["refill"] == {"sector": "Distribution de fours", "country": "Belgique", "linked": 0}
         saved = yaml.safe_load((clients / "brioche-four" / "client.yaml").read_text())
         assert saved["provenance"]["sector"]["by"] == "agent" and saved["provenance"]["country"] == {"by": "manual"}
         assert saved["provenance"]["website"]["by"] == "agent" and saved["removed_entities"] == ["fornaxa france"]
         assert len(calls(log)) == 4  # candidates, chosen company, forced candidates ×2 (the pick reuses its answer)
-        assert "- country: Belgique" in calls(log)[0]["stdin"]  # what the FDE typed is given as known
+        assert "- country: Belgique" in calls(log)[0]["stdin"]  # what the interviewer typed is given as known
     finally:
         server.should_exit = True
         th.join(timeout=10)

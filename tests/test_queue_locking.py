@@ -55,7 +55,7 @@ def test_locked_question_is_immutable(state):
 def test_locked_question_never_offered_as_next(state):
     state.apply_sync_result(result(question_updates=[upd("strategy-success", "answered", "Fin de la ressaisie")]))
     assert "strategy-success" not in state.next_questions
-    assert state.focus_id == "strategy-success"  # stays on screen until the FDE moves on
+    assert state.focus_id == "strategy-success"  # stays on screen until the interviewer moves on
     rep = state.apply_sync_result(result(next_questions=["strategy-success", "stock-visibility", "import-flow"]))
     assert state.next_questions[0] == "stock-visibility"
     assert "strategy-success" not in state.next_questions

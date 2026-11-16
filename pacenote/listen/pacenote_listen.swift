@@ -454,7 +454,7 @@ func feedFile(_ path: String, into pipeline: Pipeline) throws {
 var signalSources: [DispatchSourceSignal] = []
 
 @main
-struct FdeListen {
+struct PacenoteListen {
     static func main() async {
         let opts = parseArgs()
         let lanes: [Lane]
