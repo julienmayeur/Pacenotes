@@ -49,10 +49,20 @@ prepare (admin) ─► consent ─► interview: capture + follow-ups ─► sto
   question asks who tries new tools first and who the others listen to. Each potential ambassador is kept as a
   light label with the CEO's words, on your Mac only, and you can edit or remove it in the admin
   (your edits are kept; a removed person never comes back).
+- **Guiding the executive on value.** Fifteen minutes with the CEO is not weeks with the staff, so
+  the copilot helps you steer toward value, workflow by workflow. When the CEO describes manual work
+  (someone opens emails by hand and re-keys them into Excel), a short, tactful talking point shows
+  under the follow-up ("Worth saying"): the task brings that person little, it can run on its own, and
+  their time goes to the decisions only they can make. It is about the task, never the person; why it
+  is suggested now stays in your console. Every workflow also needs a baseline (today, with a number)
+  and a success metric (time spent, volume, error rate or delay): when one is missing once the
+  workflow was walked through, the question to get it shows under "Also worth asking".
 - **Plan and PDF export.** When you stop, Claude writes a factual integration proposal
-  (`plan.md` + `plan.json`): current state, bottlenecks, opportunities with one metric each, grouped
-  under "This week", "This quarter" and "Within two years", an adoption plan (the first use case,
-  its pilot ambassador, then demo, proven value and spread), open items and who to ask. Nothing
+  (`plan.md` + `plan.json`): current state, bottlenecks, opportunities with one metric each and the
+  time each gives back (the task that goes away and the decision the person moves up to), grouped
+  under "This week", "This quarter" and "Within two years", an adoption plan in three waves (the
+  volunteers keen to go further prove the first use case; their measured results convince most of
+  the team; then everyone follows), open items and who to ask. Nothing
   that was not said is presented as a fact. Read it in the Plan view and export it to PDF. Metrics can then be tracked per client, and measured results feed a
   library of reusable recipes.
 

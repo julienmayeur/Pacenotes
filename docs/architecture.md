@@ -81,6 +81,7 @@ flowchart LR
 | `research.py`, `autofill.py`, `people.py` | Admin web agents: research + pre-plan + sector pre-study (Opus), client-sheet Auto-fill (Sonnet), interviewee profile cards (Sonnet) with a privacy filter |
 | `horizons.py` | Horizon tags (h1 execution now, h2 emerging, h3 foresight), the pre-study's 0–10 score and posture (explorer / pragmatic / urgent, operator-only), the posture's questions (`core/horizons.yaml`) |
 | `ambassadors.py` | Use case → person links; the interviewee read and the indirect people questions per workflow (merge, wording guard, timing, tone from the pace, template fallback); the local `ambassadors.json` (engine fills, hand edit wins) |
+| `lens.py` | The executive lens: talking points on manual work and metric questions per workflow (merge, wording guard, timing, template fallback for metric questions); what the plan may use of them |
 | `recipes.py`, `metrics.py`, `briefs.py` | Recipe library schema and evidence; per-client metrics with locking; the dated knowledge briefs and their refresh |
 | `i18n.py`, `translate.py`, `locales/` | Catalogs shared with the browser, language resolution, on-the-fly translation through Claude |
 | `static/` | Interview page (`index.html`, `app.js`), admin (`admin.*`), Plan view (`plan.*`), shared `i18n.js` |
@@ -384,13 +385,18 @@ sequenceDiagram
 `PlanDoc` (`contract.py`) is rendered by `finalize.render_plan_md` into `plan.md` and kept as
 `plan.json`. It holds: context; current state (communication map, people, flows, tools, where
 information lives, recurring decisions); bottlenecks (who waits on whom, incl. the two CEO
-patterns); one metric per opportunity (name, unit, how measured, cadence, owner, baseline value and
-date, target); opportunities typed `route_distil`, `act_on_behalf`, `status_without_asking`,
-`decision_brief`, `capture_find_again`, `other`, each with the human decision kept, success statement and
+patterns); one metric per opportunity, of one kind (time spent, volume, error rate, delay: name,
+unit, how measured, cadence, owner, baseline value and date, target); opportunities typed `route_distil`, `act_on_behalf`, `status_without_asking`,
+`decision_brief`, `capture_find_again`, `other`, each with the human decision kept, the time given back
+(the manual task that goes away, for whom, the time freed only from a quoted figure, the decision they
+move up to), success statement and
 check, first verified win on N real cases, what is not claimed, kill criterion, buy / configure /
 build, adoption measure, impact and feasibility scores, architecture in one sentence, steps, model
 provider and the nine slots; the recipe each reuses (`{id, fit, gaps}`) or a draft in
 `recipe_candidates`; an engagement timeline (week 1 thin slice, week 4 checkpoint, week 8 go/kill);
+an adoption plan in three waves (the volunteers prove the lighthouse use case; most of the team,
+started by the lighthouse metric against its baseline; everyone, once most of the company works this
+way), with no label on any individual (a wave that labels people falls back to the default wording);
 open items to confirm with whom to ask; the interview log.
 
 A slot is a fact only when it was said and quoted; otherwise it renders as « À confirmer » with the
