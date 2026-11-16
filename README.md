@@ -2,69 +2,103 @@
 
 Pace notes for your interviews.
 
-In a rally, the co-driver reads the pace notes so the driver keeps their mind on the road. Pacenote
-does that for a forward-deployed engineer (FDE) running a 10–15 minute kickoff interview with a
-client CEO: it drafts the next question and the follow-up, takes the notes and keeps the method,
-so the FDE has a free mind to ask something even better.
+In a rally, the co-driver reads the pace notes so the driver keeps their eyes on the road. Pacenote
+is a live interview copilot for consulting and discovery kickoffs: during a 10–15 minute
+conversation with a client's CEO, it listens, keeps the question on screen, captures the answer,
+proposes the next follow-up, and writes the integration plan when you stop. You keep your mind on
+the conversation.
 
-The app listens on the Mac (Apple's on-device transcription, through a small bundled
-helper), keeps the original question on screen, captures the answer under it piece by piece, and
-proposes one follow-up at a time, from the business case down to the workflow and the
-implementation (people, tools, data, volumes). At the end it writes a factual integration proposal
-(`plan.md` + `plan.json`), read in the app's Plan view and exported to PDF.
+## How it works
 
 ```
-consent ─► interview (fast pass every answer, full sync every ~40 s) ─► « C'est parfait… » ─► plan.md + plan.json ─► Plan view / PDF
+prepare (admin) ─► consent ─► interview: capture + follow-ups ─► stop ─► plan.md + plan.json ─► Plan view / PDF
 ```
 
-- Audio never leaves the Mac; only text goes to Claude, through the Claude Code CLI logged in with
-  a Claude subscription (no API key).
-- An admin page prepares each client (sheet filled from the web, research and pre-plan, profile
-  cards of the people met).
-- The plan's metrics are monitored after the kickoff, and measured results feed a recipe library
-  reused at the next company.
+- **Capture.** A small Swift helper transcribes the microphone on the Mac with Apple's on-device
+  speech recognition, in every spoken language at once (e.g. French and English). The microphone
+  opens only when you click Start on the consent screen. Audio is never stored or sent anywhere.
+- **Question ladder.** The original question stays on screen; the answer is captured under it,
+  piece by piece. Follow-ups dig down a ladder: from the business case (cost, target) to the
+  workflow (trigger, people, steps, handoffs) to the implementation (tools by name, access,
+  volumes).
+- **Follow-ups.** A fast pass a few seconds after each answer proposes one follow-up at a time; a
+  full sync every ~40 s updates the answers, the facts still missing and the maps of who carries
+  which information. Phases order the interview behind the scenes; the CEO never hears a form.
+- **Admin auto-fill.** Before the interview, the admin panel fills the client sheet from public web
+  sources (with provenance per field; your own edits are never overwritten) and prepares profile
+  cards of the people you will meet (professional, publicly self-published facts only).
+- **Research.** A research run writes a short brief and a pre-plan whose use cases become
+  hypotheses to check during the interview.
+- **Plan and PDF export.** When you stop, Claude writes a factual integration proposal
+  (`plan.md` + `plan.json`): current state, bottlenecks, opportunities with one metric each, open
+  items and who to ask. Nothing that was not said is presented as a fact. Read it in the Plan view
+  and export it to PDF. Metrics can then be tracked per client, and measured results feed a
+  library of reusable recipes.
 
-Docs:
-
-- [docs/prd.md](docs/prd.md): the product approach (problem, interview, maps, opportunities,
-  metrics, recipes).
-- [docs/architecture.md](docs/architecture.md): components, data on disk, the live loop, the sync
-  contract and its rules, finalize and the feedback loop, configuration.
+Model calls go through the Claude Code CLI logged in with a Claude subscription (no API key
+needed); only text is sent.
 
 ## Requirements
 
-- macOS 26 (Tahoe) or later for live listening; replay, the tests and the web UI run anywhere
+- macOS 26 (Tahoe) or later for live listening. Replay, the tests and the web UI run anywhere
   Python 3.12+ runs.
 - Python 3.12+.
-- Xcode Command Line Tools (`xcode-select --install`): `pacenote check` builds the speech helper with
-  `swiftc` once, cached in `~/Library/Caches/pacenote/`.
-- The Claude Code CLI, logged in with your Claude subscription (`claude`, then `/login`).
+- Xcode Command Line Tools (`xcode-select --install`): the speech helper is built once with
+  `swiftc` and cached in `~/Library/Caches/pacenote/`.
+- The [Claude Code CLI](https://docs.claude.com/en/docs/claude-code), logged in (`claude`, then
+  `/login`).
+- Optional: a Chrome-family browser for PDF export; Node with the `playwright` package for the
+  real-browser tests.
 
 ## Install
 
 ```bash
+git clone https://github.com/julienmayeur/Pacenotes.git && cd Pacenotes
 python3.12 -m venv .venv && source .venv/bin/activate
-```
-
-```bash
 pip install -e ".[dev]"
 ```
 
-Client data never goes to git: `clients/` and `sessions/` are git-ignored. The repo ships one
-fictional example client, `clients.example/brioche-four/` (a bakery equipment distributor). Copy it
-to try the app:
+## Set up a client
+
+Client files live in `clients/<slug>/` (git-ignored). The repo ships one fictional example,
+`clients.example/brioche-four/` (a bakery equipment distributor). Copy it to try the app:
 
 ```bash
 mkdir -p clients && cp -r clients.example/brioche-four clients/
-```
-
-```bash
 pacenote check --client brioche-four
 ```
 
-`pacenote check` verifies the client files, builds the speech helper, starts listening once for every
-spoken language (downloading a missing speech model, opening the microphone), and makes one tiny
-`claude -p "reply ok"` call. Run it on good Wi-Fi the day before an interview.
+A client folder holds:
+
+| File | Purpose |
+|---|---|
+| `client.yaml` | The client sheet (company, people met, your notes) |
+| `questionnaire.yaml` | Seed questions, phases and languages |
+| `glossary.md` | Expected mishearings (people, products, jargon) → what was said |
+
+Start a new one with `pacenote new-client <slug> --name "Company"`, or in the admin panel.
+
+`pacenote check` verifies the client files, builds the speech helper, opens the microphone once per
+spoken language (downloading missing speech models) and makes one tiny `claude -p` call. Run it on
+good Wi-Fi the day before an interview.
+
+## Configuration
+
+Everything works with defaults. Optional environment variables (names only; see
+[docs/architecture.md](docs/architecture.md#configuration) for defaults and details):
+
+| Variable | What it sets |
+|---|---|
+| `PACENOTE_ENGINE` | `cli` (default), `api` or `offline` |
+| `PACENOTE_CLAUDE_BIN` | Path to the Claude Code CLI |
+| `PACENOTE_MODEL`, `PACENOTE_FAST_MODEL` | Models for full syncs and the plan / the fast pass |
+| `PACENOTE_RESEARCH_MODEL`, `PACENOTE_AUTOFILL_MODEL`, `PACENOTE_PEOPLE_MODEL` | Models for the admin agents |
+| `PACENOTE_LOCALES`, `PACENOTE_INTERVIEW_LANGUAGE`, `PACENOTE_UI_LANGUAGE` | Spoken languages, interview language, screen language |
+| `PACENOTE_CLIENTS_DIR`, `PACENOTE_SESSIONS_DIR` | Data folders (default `clients/`, `sessions/`) |
+| `PACENOTE_HOST`, `PACENOTE_PORT`, `PACENOTE_ADMIN_PORT` | Bind address and ports (default `127.0.0.1`, 8765, 8766) |
+| `PACENOTE_ENGINEER_CONTEXT` | One line about your own company, used by profile cards |
+| `PACENOTE_CHROME` | Browser used for PDF export |
+| `ANTHROPIC_API_KEY` | Only for `--engine api`; the default CLI engine never passes it on |
 
 ## Run
 
@@ -72,70 +106,68 @@ spoken language (downloading a missing speech model, opening the microphone), an
 pacenote run --client brioche-four
 ```
 
-The server starts on http://127.0.0.1:8765. The microphone opens only when you click Start on the
-consent screen. Other languages:
+Open http://127.0.0.1:8765. Other languages:
 
 ```bash
 pacenote run --client acme --locales de-DE,en-US --interview-language de --ui-language en
 ```
 
-Replay a saved session's transcripts instead of the microphone (`--offline` = no model calls):
-
-```bash
-pacenote replay --client brioche-four --srt fr-FR=sessions/brioche-four/<id>/fr.srt --srt en-US=sessions/brioche-four/<id>/en.srt --speed 8 --offline
-```
-
-Prepare clients in the admin panel (http://127.0.0.1:8766/admin; also at `/admin` on a running
+Prepare clients in the admin panel (http://127.0.0.1:8766/admin, also at `/admin` on a running
 interview server):
 
 ```bash
 pacenote admin
 ```
 
+Replay a saved session from its transcripts instead of the microphone (`--offline` makes no model
+calls):
+
+```bash
+pacenote replay --client brioche-four --srt fr-FR=sessions/brioche-four/<id>/fr.srt --speed 8 --offline
+```
+
 ### Keys during the interview
 
 | Key | Action |
 |---|---|
-| `n` / Enter | Next question (or the next phase's first one when this phase is done) |
+| `n` / Enter | Next question |
 | `p` | Close the current phase |
 | `a` | Mark the current question answered and move on |
-| `k` | Skip the current question (no answer yet) |
+| `k` | Skip the current question |
 | `s` | Sync now |
-| `c` | FDE console (languages, Wispr paste, possible recipes, Stop & generate plan) |
+| `c` | Console (languages, transcript paste, possible recipes, Stop & generate plan) |
 | `t` | Transcript tail |
 | `f` | Full screen |
-| `l` | Next display language |
+| `l` | Next screen language |
 
-## CLI
+### Commands
 
 | Command | What it does |
 |---|---|
 | `pacenote run` | Live interview (microphone, every spoken language, the UI) |
 | `pacenote replay` | Same app, fed from SRT files (`--srt LOCALE=PATH`, `--speed`) |
-| `pacenote finalize --session <id> [--wispr file] [--keep-previous]` | (Re)generate the plan of a saved session |
+| `pacenote finalize --session <id>` | (Re)generate the plan of a saved session |
 | `pacenote purge [--session <id>]` | Delete session data (one session or all of a client's) |
 | `pacenote check` | Pre-flight: client files, speech models and microphone, Claude CLI login |
-| `pacenote soak --minutes 2` | Keep listening for N minutes with the watchdog, no UI or model calls; PASS/FAIL |
+| `pacenote soak --minutes 2` | Listen for N minutes with the watchdog, no UI or model calls; PASS/FAIL |
 | `pacenote new-client <slug> --name "…"` | Scaffold `clients/<slug>/` |
-| `pacenote next [<slug> \| --clear]` | Show or set the next client (default when `--client` is not given) |
+| `pacenote next [<slug> \| --clear]` | Show or set the default client |
 | `pacenote admin` | Admin panel only |
-| `pacenote capabilities [refresh [--brief all]]` | Show the dated knowledge briefs, or refresh them with a web-research run |
-| `pacenote metrics seed\|show\|add\|import <slug> …` | Metrics from the plan, dated measurements, trend |
-| `pacenote recipes list` / `pacenote recipes record <slug> <recipe_id>` | The recipe library; record a client's measured result as evidence |
+| `pacenote capabilities [refresh]` | Show or refresh the dated knowledge briefs the plan writer reads |
+| `pacenote metrics seed\|show\|add\|import <slug>` | Track a client's plan metrics over time |
+| `pacenote recipes list\|record` | The recipe library and its measured evidence |
 
-`python -m pacenote …` works the same. `pacenote <command> --help` lists every option; environment
-variables are in [docs/architecture.md](docs/architecture.md#configuration).
+`pacenote <command> --help` lists every option.
 
-## Before walking into the room
+### Before an interview
 
-1. The day before, on good Wi-Fi: `pacenote check --client <slug>` twice, then
+1. The day before, on good Wi-Fi: `pacenote check --client <slug>`, then
    `pacenote soak --client <slug> --minutes 2`. First runs download speech models and trigger the
-   microphone prompt for your terminal app.
-2. Add expected mishearings (people, software, product names) to `clients/<slug>/glossary.md`.
-3. In the room: `pacenote run`, test the mic (press `t`), stop, `pacenote purge --client <slug>`.
-4. Second screen facing the CEO, full screen (`f`), Do Not Disturb, Mac plugged in
-   (`caffeinate -dims`).
-5. Read the consent line, click Start only after the CEO agrees.
+   microphone permission prompt for your terminal app.
+2. Add expected mishearings to `clients/<slug>/glossary.md`.
+3. In the room: test the microphone (`t`), then `pacenote purge --client <slug>` to clear the test.
+4. Second screen in full screen (`f`), Do Not Disturb on, Mac plugged in (`caffeinate -dims`).
+5. Read the consent line; click Start only once the interviewee agrees.
 
 ## Tests
 
@@ -143,21 +175,32 @@ variables are in [docs/architecture.md](docs/architecture.md#configuration).
 pytest
 ```
 
-Real-browser tests need Node and the `playwright` package (`NODE_PATH=/path/to/node_modules pytest`)
-and are skipped without them.
+The suite runs offline with stand-in `claude` and speech-helper scripts and synthetic transcripts;
+it never opens the microphone. Real-browser tests need Node and the `playwright` package
+(`NODE_PATH=/path/to/node_modules pytest`) and are skipped without them; the PDF test needs a
+Chrome-family browser.
+
+## Privacy
+
+- Audio stays on the Mac: transcription is on-device and no audio is recorded.
+- Client and interview data stay local. `clients/` and `sessions/` are git-ignored; only the
+  fictional `clients.example/` is in the repo. `pacenote purge` deletes sessions on request.
+- Only text (questions, transcript lines, client context) is sent to Claude. `sync_log.jsonl` in each
+  session folder is the exact record of what was sent.
+- Profile cards keep professional, publicly self-published facts only.
 
 ## Layout
 
 ```
 pacenote/          the app (server, session, state, prompts, engines, plan, admin agents, CLI)
-  static/             interview, admin and Plan view pages (HTML/CSS/JS, no framework)
-  listen/             pacenote_listen.swift: the on-device speech helper
-  core/               questions.yaml: core questions merged into every questionnaire
-  knowledge/          dated briefs and recipes/<id>.yaml, the recipe library
-  locales/            fr.json, en.json, shared with the browser
-clients.example/      the fictional example client
-docs/                 prd.md, architecture.md
-tests/                pytest suite; synthetic SRTs in srt_samples.py, frozen questionnaires in fixtures/
+  static/          interview, admin and Plan view pages (HTML/CSS/JS, no framework)
+  listen/          the on-device speech helper (Swift)
+  core/            core questions merged into every questionnaire
+  knowledge/       dated briefs and the recipe library
+  locales/         UI strings (fr, en)
+clients.example/   the fictional example client
+docs/              architecture.md
+tests/             pytest suite and frozen fixtures
 ```
 
 ## License

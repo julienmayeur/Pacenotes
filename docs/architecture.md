@@ -1,12 +1,12 @@
 # Architecture
 
-How Pacenote is built, for an engineer new to the code. The product side (why the interview
-runs this way, what the plan is for) is in [prd.md](prd.md). Examples use the fictional example
+How Pacenote is built, for an engineer new to the code. What it does and how to set it up is in
+the [README](../README.md). Examples use the fictional example
 client in `clients.example/brioche-four/`, a French distributor of bakery equipment.
 
 ## In one paragraph
 
-`pacenote run` starts a local FastAPI server on the Mac. When the FDE clicks Start, the server spawns
+`pacenote run` starts a local FastAPI server on the Mac. When the interviewer clicks Start, the server spawns
 one Swift helper (`pacenote-listen`) that captures the microphone once and transcribes it on-device in
 every spoken language. Transcript lines are merged into one rolling transcript. Two model lanes
 read it through the logged-in Claude Code CLI (`claude -p`): a **fast pass** (Haiku) a few seconds
@@ -20,7 +20,7 @@ into a tracked recipe library that the next interview starts from.
 
 ```mermaid
 flowchart LR
-  subgraph Mac["FDE's Mac (audio never leaves it)"]
+  subgraph Mac["interviewer's Mac (audio never leaves it)"]
     MIC(("Microphone"))
     LISTEN["pacenote-listen<br/>Swift helper<br/>one SpeechTranscriber per locale"]
     subgraph PY["pacenote run (Python, FastAPI, 127.0.0.1:8765)"]
@@ -83,7 +83,7 @@ flowchart LR
 | `i18n.py`, `translate.py`, `locales/` | Catalogs shared with the browser, language resolution, on-the-fly translation through Claude |
 | `static/` | Interview page (`index.html`, `app.js`), admin (`admin.*`), Plan view (`plan.*`), shared `i18n.js` |
 | `core/questions.yaml` | The core questions of phases 1–4, merged into every client questionnaire |
-| `knowledge/` | `capabilities.md`, `fde-practice.md` (dated briefs) and `recipes/<id>.yaml` (the recipe library) |
+| `knowledge/` | `capabilities.md`, `delivery-practice.md` (dated briefs) and `recipes/<id>.yaml` (the recipe library) |
 
 ## Data on disk
 
@@ -106,7 +106,7 @@ sessions/<slug>/<YYYYMMDD-HHMMSS>/   one interview (git-ignored)
   plan.md, plan.json, plan.pdf  the integration proposal (PDF on demand)
 sessions/<slug>/.translations/cache.json   translations reused by the next session in that language
 
-pacenote/knowledge/          tracked: capabilities.md, fde-practice.md, recipes/<id>.yaml
+pacenote/knowledge/          tracked: capabilities.md, delivery-practice.md, recipes/<id>.yaml
 ~/.pacenote/config.json      the "next client" (PACENOTE_CONFIG)
 ~/Library/Caches/pacenote/   the compiled pacenote-listen, one file per source hash (PACENOTE_LISTEN_CACHE)
 ```
@@ -334,7 +334,7 @@ on screen; then the quiet details: « Ce qui manque » (items still missing on t
 the use case's unfilled slots), « Déjà capté », the live answer summary and the follow-ups already
 asked. The upcoming list never reorders while someone talks (2.5 s of silence first). The side
 panel shows time left, coverage, phases with time spent and map counts. The bottom strip shows the
-readable stream only, without lines flagged as noise. The FDE console (`c`) holds languages, the
+readable stream only, without lines flagged as noise. The interviewer console (`c`) holds languages, the
 Wispr paste box, possible recipes, call durations and errors, and Stop & generate plan.
 
 ### Web safety
@@ -350,7 +350,7 @@ authentication: `--host 0.0.0.0` only on a network you control.
 
 ```mermaid
 sequenceDiagram
-    participant FDE
+    participant I as Interviewer
     participant S as session.py
     participant O as Plan writer (Opus, claude -p)
     participant F as finalize.py
@@ -358,19 +358,19 @@ sequenceDiagram
     participant M as metrics.py (metrics.yaml)
     participant R as Recipe library
 
-    FDE->>S: Stop & generate plan (or enough_data then Stop)
+    I->>S: Stop & generate plan (or enough_data then Stop)
     S->>S: stop capture, last sync on the tail
     S->>O: state, maps, slots, recipe matches, clean passages, raw transcript, Wispr text, dated briefs, recipe library
     O-->>S: PlanDoc (strict schema)
     S->>F: apply_recipes(doc): unknown recipe ids nulled, typical ranges never kept as client values
     F->>D: plan.md (+ Mermaid map as inline SVG in the view), plan.json
     Note over S,D: on failure: an offline plan from the live state, never nothing
-    FDE->>M: pacenote metrics seed <slug>
+    I->>M: pacenote metrics seed <slug>
     M->>D: read latest plan.json metrics
     loop weeks of the engagement
-        FDE->>M: pacenote metrics add / import, or admin Metrics tab
+        I->>M: pacenote metrics add / import, or admin Metrics tab
     end
-    FDE->>R: pacenote recipes record <slug> <recipe_id>
+    I->>R: pacenote recipes record <slug> <recipe_id>
     R->>M: baseline, latest value, progress
     R-->>R: evidence entry (anonymised label), status seed → proven
     Note over R: the next interview's live matching and plan rank proven recipes first
@@ -396,7 +396,7 @@ question and the person to ask. A number nobody said is never estimated. Ranking
 measurable, high-volume, then impact × feasibility.
 
 The plan writer receives two dated briefs, `knowledge/capabilities.md` (what agents can do today;
-the plan may not claim anything absent from it) and `knowledge/fde-practice.md` (how value is
+the plan may not claim anything absent from it) and `knowledge/delivery-practice.md` (how value is
 proven). The plan footer states the brief's date; `pacenote check` and the Plan view warn past 30 days;
 `pacenote capabilities refresh` rewrites them with a web-research run.
 
@@ -415,7 +415,7 @@ never client facts), `proof` (first win, shadow mode, kills at weeks 4 and 8), `
 
 - Live: the full sync gets the catalogue in compact form and returns `recipe_matches`, merged per
   (recipe, use case) with versions. Follow-ups may aim at a match's missing precondition or
-  baseline, in story form, never naming the recipe. The FDE console lists possible recipes; the
+  baseline, in story form, never naming the recipe. The interviewer console lists possible recipes; the
   question card never does.
 - Plan: matched recipes in full, the rest compact; recipe-backed metrics reuse the recipe's
   definition.
@@ -451,7 +451,7 @@ Three independent languages per session:
 
 | | What | Default |
 |---|---|---|
-| Display | everything on the FDE screen, one language at a time | the client's interview language when it has a locale file, else English |
+| Display | everything on the interviewer screen, one language at a time | the client's interview language when it has a locale file, else English |
 | Interview | what Claude generates: follow-ups, summaries, plan | the questionnaire's `language` |
 | Spoken | the speech locales listening | questionnaire `speech_locales`, else `fr-FR` + `en-US` |
 
