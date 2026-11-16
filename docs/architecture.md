@@ -78,7 +78,9 @@ flowchart LR
 | `finalize.py` | `PlanDoc` → `plan.md` (with the Mermaid communication map rendered to inline SVG), `plan.json`, interview log, recipe rules (`apply_recipes`), Wispr import |
 | `planview.py` | Plan view data, saved sessions list, PDF export through a headless Chrome-family browser |
 | `questionnaire.py`, `clients.py` | Questionnaire schema and loader; client sheet, scaffold, next client, pre-plan merged into questionnaire and context, core questions merged in |
-| `research.py`, `autofill.py`, `people.py` | Admin web agents: research + pre-plan (Opus), client-sheet Auto-fill (Sonnet), interviewee profile cards (Sonnet) with a privacy filter |
+| `research.py`, `autofill.py`, `people.py` | Admin web agents: research + pre-plan + sector pre-study (Opus), client-sheet Auto-fill (Sonnet), interviewee profile cards (Sonnet) with a privacy filter |
+| `horizons.py` | Horizon tags (h1 execution now, h2 emerging, h3 foresight), the pre-study's 0–10 score and posture (explorer / pragmatic / urgent, operator-only), the posture's questions (`core/horizons.yaml`) |
+| `ambassadors.py` | Use case → person links, the "could X be keen to try this kind of tool?" suggestion, the local `ambassadors.json` (engine fills, hand edit wins) |
 | `recipes.py`, `metrics.py`, `briefs.py` | Recipe library schema and evidence; per-client metrics with locking; the dated knowledge briefs and their refresh |
 | `i18n.py`, `translate.py`, `locales/` | Catalogs shared with the browser, language resolution, on-the-fly translation through Claude |
 | `static/` | Interview page (`index.html`, `app.js`), admin (`admin.*`), Plan view (`plan.*`), shared `i18n.js` |
@@ -94,6 +96,7 @@ clients/<slug>/                 one folder per client (git-ignored; clients.exam
   client.yaml                   client sheet (admin form): company fields with provenance, contacts, notes
   research.md, preplan.md, preplan.json, history/<ts>/   admin research and pre-plan, previous versions
   people/<contact>.json         interviewee profile cards
+  ambassadors.json              potential ambassadors (person or role, use case, the CEO's quote); git-ignored everywhere
   metrics.yaml                  metric definitions from the plan + dated measurements
 
 sessions/<slug>/<YYYYMMDD-HHMMSS>/   one interview (git-ignored)

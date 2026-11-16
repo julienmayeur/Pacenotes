@@ -27,12 +27,27 @@ prepare (admin) ─► consent ─► interview: capture + follow-ups ─► sto
 - **Admin auto-fill.** Before the interview, the admin panel fills the client sheet from public web
   sources (with provenance per field; your own edits are never overwritten) and prepares profile
   cards of the people you will meet (professional, publicly self-published facts only).
-- **Research.** A research run writes a short brief and a pre-plan whose use cases become
-  hypotheses to check during the interview.
+- **Research and pre-study.** A research run writes a short brief and a pre-plan whose use cases
+  become hypotheses to check during the interview, each tagged with a horizon (this week, this
+  quarter, within two years). It also studies the client's industry: how widely its sector uses
+  AI, which competitors adopted it and whether it worked (each signal with its source and date),
+  market pressure and how much of the work is documents and re-keying. That gives the interview a
+  pace, scored out of 10: explorer (gentle, one visible low-risk step), pragmatic, or urgent
+  (competitors already report results). The pace is for you only: you can override it in the admin,
+  and nothing the client sees mentions it.
+- **Pace and horizons in the interview.** The pace sets the tone of the follow-ups and decides which
+  closing questions are asked and how much they matter (what competitors changed, what the company
+  could do in two years).
+- **Potential ambassadors.** When the CEO names the person who does a workflow, the screen suggests
+  asking "Could Claire be keen to try this kind of tool?", once per person. A core question asks
+  who tries new tools first and who the others listen to. Each potential ambassador is kept as a
+  light label with the CEO's words, on your Mac only, and you can edit or remove it in the admin
+  (your edits are kept; a removed person never comes back).
 - **Plan and PDF export.** When you stop, Claude writes a factual integration proposal
-  (`plan.md` + `plan.json`): current state, bottlenecks, opportunities with one metric each, open
-  items and who to ask. Nothing that was not said is presented as a fact. Read it in the Plan view
-  and export it to PDF. Metrics can then be tracked per client, and measured results feed a
+  (`plan.md` + `plan.json`): current state, bottlenecks, opportunities with one metric each, grouped
+  under "This week", "This quarter" and "Within two years", an adoption plan (the first use case,
+  its pilot ambassador, then demo, proven value and spread), open items and who to ask. Nothing
+  that was not said is presented as a fact. Read it in the Plan view and export it to PDF. Metrics can then be tracked per client, and measured results feed a
   library of reusable recipes.
 
 Model calls go through the Claude Code CLI logged in with a Claude subscription (no API key
@@ -75,6 +90,8 @@ A client folder holds:
 | `client.yaml` | The client sheet (company, people met, your notes) |
 | `questionnaire.yaml` | Seed questions, phases and languages |
 | `glossary.md` | Expected mishearings (people, products, jargon) → what was said |
+| `research.md`, `preplan.md`, `preplan.json` | Written by the research run: the brief, the pre-plan, the pre-study |
+| `ambassadors.json` | Potential ambassadors from the interviews, with the CEO's words (edit them in the admin) |
 
 Start a new one with `pacenote new-client <slug> --name "Company"`, or in the admin panel.
 
@@ -135,7 +152,7 @@ pacenote replay --client brioche-four --srt fr-FR=sessions/brioche-four/<id>/fr.
 | `a` | Mark the current question answered and move on |
 | `k` | Skip the current question |
 | `s` | Sync now |
-| `c` | Console (languages, transcript paste, possible recipes, Stop & generate plan) |
+| `c` | Console (languages, transcript paste, possible recipes, potential ambassadors, Stop & generate plan) |
 | `t` | Transcript tail |
 | `f` | Full screen |
 | `l` | Next screen language |
@@ -188,6 +205,8 @@ Chrome-family browser.
 - Only text (questions, transcript lines, client context) is sent to Claude. `sync_log.jsonl` in each
   session folder is the exact record of what was sent.
 - Profile cards keep professional, publicly self-published facts only.
+- Potential ambassadors are a name or role, the use case and the CEO's own words, nothing more.
+  They stay in `clients/<slug>/ambassadors.json`, which git ignores wherever it is.
 
 ## Layout
 
