@@ -365,9 +365,14 @@ class SessionState(BaseModel):
     # the interview's pace from the pre-study (horizons.py), operator-only: explorer, pragmatic, urgent
     posture: str | None = None
     posture_rationale: str = ""
-    # ambassadors.py: question id -> the person the screen suggested asking about ("could X be keen
-    # to try this kind of tool?"), recorded when the focus leaves that question, so it is suggested once
+    # ambassadors.py: question id -> the person the screen suggested an indirect people question about,
+    # recorded when the focus leaves that question, so it is suggested once
     ambassador_prompted: dict[str, str] = Field(default_factory=dict)
+    # the running read of the interviewee (contract.IntervieweeRead) and the indirect people questions
+    # per use case (contract.AmbassadorProbe + read, asked): interviewer-side only, never in the plan
+    interviewee_read: dict[str, str] = Field(default_factory=dict)
+    interviewee_read_at: int = 0  # the transcript line the read was written from
+    ambassador_probes: dict[str, dict] = Field(default_factory=dict)
     # phases (phases.py): the current one, when it started, seconds spent in the ones left, budgets
     phase: str | None = None
     phase_since: float | None = None
@@ -980,6 +985,10 @@ class SessionState(BaseModel):
                     PassageLog(sync=sync_no, start=p.start, speaker=p.speaker, lang=p.lang, text=p.text.strip())
                 )
 
+        # 6b. the interviewee read and the people questions (ambassadors.py)
+        ambassadors.apply_read(self, result.interviewee_read, read, ok)
+        ambassadors.apply_probes(self, result.ambassador_probes, read, ok, reject)
+
         # 7. enough_data is sticky
         if result.enough_data and not self.enough_data:
             self.enough_data = True
@@ -1146,6 +1155,7 @@ class SessionState(BaseModel):
             left.thread_at = time.time()  # joins the thread, at the bottom
             if (suggested := ambassadors.prompt_for(self, old)) is not None:
                 self.ambassador_prompted[old] = suggested["person"]
+                ambassadors.mark_asked(self, left.use_case)
         if self.phase is None:
             self.phase = left.phase if left is not None else self.current_phase
         # phase by phase: the current phase while it is not done, then the next one (phases.py)

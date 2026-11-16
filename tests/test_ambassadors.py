@@ -1,5 +1,5 @@
 """Potential ambassadors: the engine notices when a use case maps to a named person or role, the
-screen suggests "Could <person> be keen to try this kind of tool?" once, and a light label with the
+screen suggests an indirect people question once (test_people_probes.py), and a light label with the
 CEO's words is kept locally (clients/<slug>/ambassadors.json, never in git), editable in the admin:
 the engine fills, a hand edit wins, a removed person never comes back."""
 
@@ -93,8 +93,10 @@ def test_the_screen_suggests_asking_about_the_person_on_the_use_case_question():
     _focus(st, "capacity-limit")
     assert ambassadors.prompt_for(st) is None  # no use case
     _focus(st, "orders-walkthrough")
-    assert ambassadors.prompt_for(st) == {"person": "Claire",
-                                          "use_case": st.get_use_case("bakery-orders").title("fr")}
+    assert ambassadors.prompt_for(st) == {  # no model probe yet: the indirect template, pragmatic tone
+        "person": "Claire", "use_case": st.get_use_case("bakery-orders").title("fr"),
+        "question": "Quand l'équipe adopte une astuce Excel ou un nouvel outil, ça vient plutôt de Claire, "
+                    "ou de quelqu'un d'autre ?", "reason": "", "source": "template"}
 
 
 def test_the_suggestion_is_made_once_per_person():

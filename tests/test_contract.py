@@ -27,6 +27,10 @@ VALID = {
     "clean_passages": [{"start": "00:47", "speaker": "client", "lang": "fr", "text": "On commande à l'usine…"}],
     "enough_data": False,
     "enough_data_reason": "SAV et ROI pas encore couverts",
+    "interviewee_read": {"role": "fondateur", "ai_stance": "curious", "worries": "", "pride": "son équipe ADV",
+                         "politics": "", "tone": "chaleureux, chiffré", "rapport": "established",
+                         "approach": "par la curiosité, sur des cas réels"},
+    "ambassador_probes": [],
 }
 
 

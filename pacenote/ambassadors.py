@@ -2,9 +2,13 @@
 
 A pilot spreads through a respected colleague, not through the consultant or the CEO. During the
 interview the engine notices when a use case maps to a named person or role (the CEO puts them on
-that workflow: the use case's `actors` slot, or its answers, names someone of the org map) and the
-interview screen suggests asking "Could <person> be keen to try this kind of tool?". The CEO's
-answer, and what he says when asked who tries new tools first and who the others listen to (a
+that workflow: the use case's `actors` slot, or its answers, names someone of the org map), and the
+live sync keeps a light read of the interviewee (role, stance on new tools, worries, pride in the
+team, sensitivities, tone, rapport) and writes, per workflow, an indirect people question phrased
+for that person ("when the team picks up a new Excel trick, does it come from Claire?"), never
+head-on, never as an assessment, softer in a sector that has not taken the turn. The interview
+screen shows it under the follow-up once the workflow was walked through (the reason, the
+ambassador angle, stays in the interviewer console). The CEO's answer, and what he says when asked who tries new tools first and who the others listen to (a
 signal-carriers core question), land in the org map's `adoption_signal`, quoted.
 
 Only a light label is kept per person: name or role, the use case, the supporting quote. It is
@@ -19,6 +23,7 @@ from __future__ import annotations
 import json
 import re
 import threading
+import time
 import unicodedata
 from datetime import datetime
 from pathlib import Path
@@ -96,24 +101,185 @@ def links(state) -> list[dict]:
     return out
 
 
-def prompt_for(state, qid: str | None = None) -> dict | None:
-    """The ambassador question to suggest under question `qid` (default: the one in focus), or None:
-    the first person its use case maps to who was not suggested under another question.
-    {person, use_case (title)}."""
+# --- the people question on screen: indirect, phrased for this interviewee, well timed -------------------
+
+TONES = ("explorer", "pragmatic", "urgent")
+WORKFLOW_SLOTS = ("trigger", "actors", "processing", "distribution")  # the workflow rung (contract.SLOT_RUNG)
+MAX_PROBES = 12
+
+# Never in a people question: AI vocabulary (the questions' wording rule) and anything that sounds like
+# an assessment of a person or names the hidden purpose.
+_PROBE_BANNED = [
+    re.compile(r"\b(IA|AI)\b"),  # case-sensitive: "j'ai", "mai" are fine
+    *(re.compile(p, re.I) for p in (
+        r"intelligence artificielle", r"artificial intelligence", r"\bagents?\b", r"automat", r"\bLLMs?\b",
+        r"chat ?gpt", r"\bGPT", r"\b(chat)?bots?\b", r"\brobots?\b", r"algorithm", r"machine learning",
+        r"\bprompts?\b", r"\bcopilot", r"ambassad", r"champion", r"r[ée]sist", r"r[ée]ticen", r"reluctan",
+        r"[ée]valu", r"assess", r"\bscore", r"\bjuge[rz]?\b", r"\bjudge")),
+]
+
+
+def probe_problem(text: str) -> str:
+    """The first word that makes `text` unfit as a people question ("" when it is fine)."""
+    for p in _PROBE_BANNED:
+        if m := p.search(text or ""):
+            return m.group(0)
+    return ""
+
+
+def workflow_discussed(state, use_case: str) -> bool:
+    """The workflow was walked through: one of its workflow-rung slots (trigger, actors, processing,
+    distribution) holds what the CEO said."""
+    u = state.get_use_case(use_case)
+    return u is not None and any(u.filled(k) for k in WORKFLOW_SLOTS)
+
+
+def tone(state) -> str:
+    """The sector's pace sets how direct a people question may be: explorer (laggard sector) = softest,
+    urgent (strong adoption) = more direct. No pre-study: pragmatic."""
+    return state.posture if state.posture in TONES else "pragmatic"
+
+
+def _rapport_ok(state) -> bool:
+    """In a laggard sector the question waits for an established rapport; elsewhere the model's timing
+    (and the workflow guard) decides."""
+    return tone(state) != "explorer" or state.interviewee_read.get("rapport") == "established"
+
+
+def _suggestion(person: str, title: str, question: str, reason: str, source: str) -> dict:
+    return {"person": person, "use_case": title, "question": question, "reason": reason, "source": source}
+
+
+def prompt_for(state, qid: str | None = None, lang: str | None = None) -> dict | None:
+    """The people question to suggest under question `qid` (default: the one in focus), or None:
+    {person, use_case (title), question (to say, interview language), reason (interviewer only; ""
+    for a template: the screen shows its own), source (model | template)}.
+
+    Only on a question about a use case whose workflow was walked through, and in a laggard sector
+    only once rapport is established. The model's probe for that use case wins (when it says "now";
+    "later" and "done" hold it back); without one (no model, or not yet), an indirect template in the
+    tone of the sector. Once per person: a person already suggested under another question is not
+    suggested again; back on the same question, the same suggestion shows. `lang`: the language of
+    the use case title (default: the interview language)."""
     q = state.get(qid or state.focus_id)
     if q is None or not q.use_case or q.status == "removed":
         return None
-    asked_elsewhere = {_fold(p) for k, p in state.ambassador_prompted.items() if k != q.id}
+    if not workflow_discussed(state, q.use_case) or not _rapport_ok(state):
+        return None
+    uc = state.get_use_case(q.use_case)
+    title = uc.title(lang or state.language)
     already = state.ambassador_prompted.get(q.id)
+    asked_elsewhere = {_fold(p) for k, p in state.ambassador_prompted.items() if k != q.id and p}
+    probe = state.ambassador_probes.get(q.use_case)
+    if probe is not None:
+        same = already is not None and _fold(probe.get("person")) == _fold(already)
+        if not probe.get("question") or probe.get("timing") == "done":
+            return None
+        if not same and (already is not None or probe.get("timing") != "now" or probe.get("asked")
+                         or _fold(probe.get("person")) in asked_elsewhere):
+            return None
+        return _suggestion(probe.get("person", ""), title, probe["question"], probe.get("reason", ""), "model")
     for link in links(state):
         if link["use_case"] != q.use_case:
             continue
-        if already and _fold(link["person"]) != _fold(already):
+        if already is not None and _fold(link["person"]) != _fold(already):
             continue
         if _fold(link["person"]) in asked_elsewhere:
             continue
-        return {"person": link["person"], "use_case": link["title"]}
+        question = state.tr()(f"focus.probe.{tone(state)}", person=link["person"])
+        return _suggestion(link["person"], title, question, "", "template")
     return None
+
+
+def mark_asked(state, use_case: str | None) -> None:
+    """The suggestion under a question of `use_case` was on screen when the focus left it."""
+    if use_case and (probe := state.ambassador_probes.get(use_case)) is not None:
+        probe["asked"] = True
+
+
+def apply_read(state, r, read: int, ok) -> None:
+    """Merge the running read of the interviewee: a field the model leaves empty (or unknown) keeps
+    its value; rapport only grows. A read written from an older slice than the stored one is ignored."""
+    if r is None or read < state.interviewee_read_at:
+        return
+    new = r.model_dump() if hasattr(r, "model_dump") else dict(r)
+    old = dict(state.interviewee_read)
+    merged = dict(old)
+    for k, v in new.items():
+        v = _clean(v)
+        if k == "rapport":
+            merged[k] = "established" if "established" in (v, old.get(k)) else v or "building"
+        elif k == "ai_stance":
+            merged[k] = v if v and v != "unknown" else old.get(k) or "unknown"
+        elif v:
+            merged[k] = v
+    if merged != old:
+        state.interviewee_read, state.interviewee_read_at = merged, read
+        ok("read", None, f"{merged.get('rapport', '')}; {merged.get('approach', '')}"[:120])
+
+
+def apply_probes(state, probes, read: int, ok, reject) -> None:
+    """Merge the model's people questions, one per use case. Rejected: an unknown use case, an empty
+    question, wording that sounds like an assessment or uses AI vocabulary (probe_problem), a probe
+    read from an older slice than the stored one. A probe already asked is never reworded; "done"
+    closes it (no template either)."""
+    for p in probes or []:
+        uc = _clean(p.use_case)
+        if state.get_use_case(uc) is None:
+            reject("probe", uc, f"unknown use case {uc!r}")
+            continue
+        old = state.ambassador_probes.get(uc)
+        if old is not None and old.get("read", 0) > read:
+            reject("stale", uc, f"read at line {read}, kept the probe read at line {old['read']}")
+            continue
+        if p.timing == "done":
+            if old is None or old.get("timing") != "done":
+                state.ambassador_probes[uc] = {**(old or {"person": _clean(p.person), "question": "", "reason": ""}),
+                                               "timing": "done", "read": read, "at": time.time(),
+                                               "asked": True if old is None else old.get("asked", False)}
+                ok("probe", uc, "done")
+            continue
+        question = _clean(p.question)
+        if not question:
+            reject("probe", uc, "no question")
+            continue
+        if bad := probe_problem(question):
+            reject("probe", uc, f"wording: {bad!r} (indirect, never an assessment, no AI vocabulary)")
+            continue
+        if old is not None and old.get("asked"):
+            reject("probe", uc, "already asked")
+            continue
+        if old is None and len(state.ambassador_probes) >= MAX_PROBES:
+            reject("probe", uc, f"more than {MAX_PROBES} people questions")
+            continue
+        new = {"person": _clean(p.person), "question": question, "reason": _clean(p.reason), "timing": p.timing,
+               "read": read, "at": time.time(), "asked": False}
+        if old is not None and all(old.get(k) == new[k] for k in ("person", "question", "reason", "timing")):
+            continue
+        state.ambassador_probes[uc] = new
+        ok("probe", uc, f"{p.timing}: {question}"[:120])
+
+
+def probes_view(state, lang: str | None = None) -> list[dict]:
+    """The console's people questions: per workflow, the question, the reason, whether it is held for
+    later or was asked (closed ones left out)."""
+    out = []
+    for uc, p in state.ambassador_probes.items():
+        if p.get("timing") == "done" or not p.get("question"):
+            continue
+        u = state.get_use_case(uc)
+        out.append({"use_case": u.title(lang or state.language) if u else uc, "person": p.get("person", ""),
+                    "question": p["question"], "reason": p.get("reason", ""), "timing": p.get("timing", ""),
+                    "asked": bool(p.get("asked"))})
+    return out
+
+
+def read_view(state) -> dict | None:
+    """The console's one line on the interviewee: tone and approach (None before anything shows)."""
+    r = state.interviewee_read
+    if not (r.get("tone") or r.get("approach")):
+        return None
+    return {"tone": r.get("tone", ""), "approach": r.get("approach", ""), "rapport": r.get("rapport", "building")}
 
 
 def for_use_case(state, use_case: str) -> dict | None:

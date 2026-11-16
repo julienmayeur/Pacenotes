@@ -1,0 +1,184 @@
+[
+ {
+  "question_updates": [],
+  "slots": [],
+  "maps": {
+   "org": [
+    {
+     "id": "claire",
+     "person": "Claire",
+     "role": "assistante ADV",
+     "department": "",
+     "reports_to": "",
+     "time_split": "",
+     "notes": "",
+     "adoption_signal": "",
+     "evidence": "Claire tient l'ADV depuis douze ans"
+    }
+   ],
+   "flows": [],
+   "stores": [],
+   "decisions": [],
+   "catalog": []
+  },
+  "recipe_matches": [],
+  "queue_edits": [],
+  "next_questions": [],
+  "coverage": [],
+  "plan_delta": {
+   "context": [],
+   "priorities": [],
+   "workflows": [],
+   "quick_wins": [],
+   "risks": [],
+   "budget": [],
+   "open_points": []
+  },
+  "clean_passages": [],
+  "enough_data": false,
+  "enough_data_reason": "",
+  "interviewee_read": {
+   "role": "fondateur, a repris l'entreprise de son père",
+   "ai_stance": "wary",
+   "worries": "ne pas brusquer une équipe ancienne",
+   "pride": "son ADV, « elles connaissent chaque boulangerie »",
+   "politics": "",
+   "tone": "chaleureux, prudent",
+   "rapport": "building",
+   "approach": "passer par les habitudes et l'entraide, jamais par le changement"
+  },
+  "ambassador_probes": [
+   {
+    "use_case": "bakery-orders",
+    "person": "Claire",
+    "question": "Quand Excel ou Sage coince à l'ADV, c'est vers Claire que les autres se tournent ?",
+    "reason": "savoir si Claire est la référence outils de l'ADV : pilote des commandes",
+    "timing": "later"
+   }
+  ]
+ },
+ {
+  "question_updates": [],
+  "slots": [
+   {
+    "use_case": "bakery-orders",
+    "slot": "actors",
+    "value": "Claire, à l'ADV, saisit chaque commande",
+    "evidence": "c'est Claire qui ressaisit tout dans Sage"
+   },
+   {
+    "use_case": "bakery-orders",
+    "slot": "trigger",
+    "value": "commandes des boulangeries par email",
+    "evidence": "ça arrive par mail, le matin"
+   }
+  ],
+  "maps": {
+   "org": [],
+   "flows": [],
+   "stores": [],
+   "decisions": [],
+   "catalog": []
+  },
+  "recipe_matches": [],
+  "queue_edits": [],
+  "next_questions": [],
+  "coverage": [],
+  "plan_delta": {
+   "context": [],
+   "priorities": [],
+   "workflows": [],
+   "quick_wins": [],
+   "risks": [],
+   "budget": [],
+   "open_points": []
+  },
+  "clean_passages": [],
+  "enough_data": false,
+  "enough_data_reason": "",
+  "interviewee_read": {
+   "role": "",
+   "ai_stance": "unknown",
+   "worries": "",
+   "pride": "",
+   "politics": "",
+   "tone": "",
+   "rapport": "established",
+   "approach": ""
+  },
+  "ambassador_probes": [
+   {
+    "use_case": "bakery-orders",
+    "person": "Claire",
+    "question": "Quand Excel ou Sage coince à l'ADV, c'est vers Claire que les autres se tournent ?",
+    "reason": "savoir si Claire est la référence outils de l'ADV : pilote des commandes",
+    "timing": "now"
+   },
+   {
+    "use_case": "stock-requests",
+    "person": "Marc",
+    "question": "Marc, il serait réticent à un outil d'IA ?",
+    "reason": "ambassadeur ?",
+    "timing": "now"
+   }
+  ]
+ },
+ {
+  "question_updates": [],
+  "slots": [],
+  "maps": {
+   "org": [
+    {
+     "id": "claire",
+     "person": "Claire",
+     "role": "assistante ADV",
+     "department": "",
+     "reports_to": "",
+     "time_split": "",
+     "notes": "",
+     "adoption_signal": "dès qu'il y a un souci dans Sage, c'est Claire qu'on appelle",
+     "evidence": "Claire tient l'ADV depuis douze ans"
+    }
+   ],
+   "flows": [],
+   "stores": [],
+   "decisions": [],
+   "catalog": []
+  },
+  "recipe_matches": [],
+  "queue_edits": [],
+  "next_questions": [],
+  "coverage": [],
+  "plan_delta": {
+   "context": [],
+   "priorities": [],
+   "workflows": [],
+   "quick_wins": [],
+   "risks": [],
+   "budget": [],
+   "open_points": []
+  },
+  "clean_passages": [],
+  "enough_data": false,
+  "enough_data_reason": "",
+  "interviewee_read": {
+   "role": "",
+   "ai_stance": "curious",
+   "worries": "",
+   "pride": "",
+   "politics": "",
+   "tone": "",
+   "rapport": "building",
+   "approach": ""
+  },
+  "ambassador_probes": [
+   {
+    "use_case": "bakery-orders",
+    "person": "Claire",
+    "question": "",
+    "reason": "",
+    "timing": "done"
+   }
+  ]
+ }
+]

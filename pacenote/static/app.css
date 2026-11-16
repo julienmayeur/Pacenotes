@@ -176,6 +176,7 @@ body {
 .ambassador-ask.hidden { display: none; }
 .ambassador-ask .amb-label { display: block; font-size: var(--fs-xs); letter-spacing: .12em; text-transform: uppercase;
   color: var(--muted); font-weight: 600; margin-bottom: 2px; }
+.ambassador-ask .amb-uc { text-transform: none; letter-spacing: 0; font-weight: 500; }
 
 /* --- secondary details: quiet, compact ------------------------------------------------- */
 .details { display: grid; gap: var(--sp-3); }

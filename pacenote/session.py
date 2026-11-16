@@ -912,8 +912,9 @@ class Session:
                        "use_case": ({"id": uc.id, "title": uc.title(shown), "missing": cur.missing_slots()}
                                     if (uc := st.get_use_case(cur.use_case)) else None),
                        "thread": thread(cur),
-                       # "Could Claire be keen to try this kind of tool?": the use case maps to a person
-                       "ambassador": ambassadors.prompt_for(st),
+                       # the indirect people question tied to this workflow (ambassadors.prompt_for): its
+                       # reason (the ambassador angle) is for the interviewer, shown only in the console
+                       "ambassador": ambassadors.prompt_for(st, lang=shown),
                        "since": st.focus_since}
         upcoming = [qv(q) for q in (st.get(i) for i in self._upcoming_ids()) if q is not None]
         streams = [
@@ -954,6 +955,8 @@ class Session:
             "phases": self.phases_view(shown),
             "recipes": self.recipes_view(shown),  # console only: "Possible recipes"
             "ambassadors": ambassadors.candidates(st),  # console only: "Potential ambassadors"
+            "probes": ambassadors.probes_view(st, shown),  # console only: the people questions and their reasons
+            "read": ambassadors.read_view(st),  # console only: the interviewee's tone and how to ask
             # the interview thread above the current question: what was asked or answered, in order
             "history": [{**qv(q), **summary(q), "thread": thread(q, 20), "thread_at": q.thread_at,
                          "skipped": q.status == "removed"} for q in st.history()],

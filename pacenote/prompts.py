@@ -202,11 +202,70 @@ potential ambassador: tries new tools or software first, shows the others how, i
 they say something works, complains about a repetitive task they would gladly hand over, or would \
 be keen to try a tool on their work. "" when nothing like that was said. Only the CEO's words, \
 never an inference from a role; never record reluctance, criticism or personal judgments.
-- When the CEO puts a named person (or a role) on a use case's work, once the current rung is \
-covered, a good follow-up asks whether that person would be keen to try this kind of tool, in the \
-CEO's words ("Claire, elle aurait envie d'essayer ce genre d'outil ?"). The screen may already \
-suggest it under the question: do not repeat it once asked.
+- Never ask the CEO head-on whether a person would be keen, open or reluctant ("Claire, elle aurait \
+envie d'essayer ce genre d'outil ?" is too direct): the full sync writes indirect people questions, \
+per workflow, and the screen shows them under the follow-up when the time is right.
 """
+
+PEOPLE_GUIDE = """\
+# Reading the interviewee (interviewer-side only: never said out loud, never in the plan)
+Keep a light running read of the person you interview, from the conversation so far, and return \
+the full current view in interviewee_read on every sync (state.interviewee_read is the previous \
+one: keep what still holds, refine it):
+- role: their position and what they answer for; ai_stance: how they talk about new tools and AI \
+(unknown, wary, neutral, curious, keen); worries: what they fear or protect (jobs, quality, cost, \
+control); pride: what they are proud of in their team; politics: the sensitivities you hear (who \
+they protect, tensions, who really decides); tone: how they talk (warm, guarded, numbers first, \
+formal); rapport: "established" once they tell stories at ease, else "building"; approach: one \
+line on how to ask this person about their people.
+- Only what the conversation shows, in plain words, in {lang_name}; "" when nothing shows yet. No \
+diagnosis, no personality labels, nothing private.
+
+# People questions: could the staff behind a workflow carry a first pilot? (never head-on)
+For each workflow (use case) that is a good candidate (a strong or partial recipe match, or \
+repetitive work, re-keying or waiting described on a real case), help the interviewer find out, \
+from the CEO, whether the people doing it could be the pilot's ambassadors: open to trying a new \
+tool, the one the others go to for tricks, listened to when they say something works.
+- Never head-on, never like an assessment of people: no "is Claire resistant?", "would Claire \
+accept it?", "who is good with tools?", never "ambassador", never AI vocabulary. Ask through \
+curiosity about how the team works, in the CEO's register: who on the team likes trying new \
+things, who people go to for an Excel or software trick, how the team handled the last change \
+of software, what Claire would do with an hour back every day.
+- Phrase it for this person, from interviewee_read: a CEO proud of his team hears it as a chance \
+to talk about them; a wary or protective one gets it only through habits and mutual help, never \
+through change; a numbers-first one through time saved.
+- The sector's pace sets how direct it may be: {tone}
+- timing: "now" only when rapport is established AND the workflow was walked through (who does it, \
+how, on a real case) AND the conversation is on that workflow or has just left it; else "later". \
+Never in the opening, never two in a row. "done" when the CEO already told it (who tries new \
+things on that team, how they took the last change): the app stops suggesting it.
+- ambassador_probes: at most one per workflow, use_case = its id in state.use_cases, only new or \
+changed ones (empty list when nothing changed); person = the person or role behind it as heard \
+("" = the team); question = short, ready to say, in {lang_name}; reason = for the interviewer only, \
+a few words in {lang_name}: what the answer would tell ("whether Claire picks up new tools: pilot \
+for the orders"). state.ambassador_probes lists the ones given so far: never change one already \
+asked. What the CEO answers about a person goes in the org map's adoption_signal.
+"""
+
+PROBE_TONES = {
+    "explorer": "softest. The sector has barely taken the turn: wait for an established rapport and a "
+                "workflow fully walked through; go through habits and mutual help (\"when Excel gets in the "
+                "way, who do people turn to?\"), never through new tools, change or the future; keep it "
+                "\"later\" while the CEO sounds wary or protective.",
+    "pragmatic": "indirect, through curiosity about how the team works (who brings the Excel or software "
+                 "tricks, how the last change of software went), once rapport is there.",
+    "urgent": "more direct. The sector already has results: you may ask whether a person would like to be "
+              "the first to try a quicker way, framed as an opportunity for them (\"would it tempt Claire to "
+              "be the first to try a quicker way?\"), still never as an assessment.",
+}
+
+
+def people_guide(state: SessionState) -> str:
+    """The interviewee read and the indirect people questions, in the tone the sector's pace sets
+    (no pre-study: pragmatic). Full sync only (the fast pass returns neither)."""
+    pace = state.posture if state.posture in PROBE_TONES else None
+    rule = PROBE_TONES[pace or "pragmatic"] + ("" if pace else " (no pre-study: the default tone)")
+    return PEOPLE_GUIDE.format(lang_name=LANG_NAME[state.language], tone=rule)
 
 
 def horizons_guide(state: SessionState) -> str:
@@ -301,6 +360,7 @@ locks the question. Otherwise "partial".
 {slots_guide}
 {maps_guide}
 {recipes_guide}
+{people_guide}
 # Output fields
 - question_updates: questions whose status, answer, covered items, rung or follow-up change in \
 this slice (the current question first; also any question the CEO answered spontaneously).
@@ -339,6 +399,7 @@ noise, the room (TV, nearby voices) and unrelated chatter.
 coverage of at least about 0.6, or when the time budget is used up and the remaining gaps can \
 be listed as open points in the plan. Be conservative: once true, the interview ends and plan \
 writing starts. enough_data_reason: one sentence why (or why not yet).
+- interviewee_read and ambassador_probes: see Reading the interviewee and People questions above.
 """
 
 
@@ -355,6 +416,7 @@ def build_sync_system(state: SessionState, glossary: str, context: str = "") -> 
         slots_guide=SLOTS_GUIDE.format(slot_list=slot_list(), lang_name=LANG_NAME[state.language]),
         maps_guide=maps_guide(state),
         recipes_guide=recipes_guide(),
+        people_guide=people_guide(state),
     )
 
 
@@ -384,7 +446,9 @@ def use_cases_snapshot(state: SessionState) -> list[dict]:
             for u in state.use_cases]
 
 
-def state_snapshot(state: SessionState) -> dict:
+def state_snapshot(state: SessionState, for_plan: bool = False) -> dict:
+    """The interview state as the model sees it. `for_plan`: the plan's input, which leaves out the
+    interviewee read and the people questions (interviewer-side only; the plan is read by the CEO)."""
     lang = state.language
 
     def qd(q, thread: bool = False) -> dict:
@@ -402,7 +466,7 @@ def state_snapshot(state: SessionState) -> dict:
         return d
 
     cur = state.current_question
-    return {
+    out = {
         "phase": phase_snapshot(state),
         "themes": [
             {"id": t.id, "title": t.title(lang), "coverage": state.coverage.get(t.id, 0.0)}
@@ -418,6 +482,13 @@ def state_snapshot(state: SessionState) -> dict:
                                   for e in ambassadors.candidates(state)],
         "plan_notes": {k: v for k, v in state.plan_notes.items() if v},
     }
+    if for_plan:
+        return out
+    return out | {"interviewee_read": state.interviewee_read or None,
+                  "ambassador_probes": [{"use_case": uc, "person": p.get("person", ""), "question": p.get("question", ""),
+                                         "timing": p.get("timing", ""), "asked": bool(p.get("asked"))}
+                                        for uc, p in state.ambassador_probes.items()],
+                  "people_questions_shown_for": sorted({p for p in state.ambassador_prompted.values() if p})}
 
 
 def build_sync_user(
@@ -716,7 +787,7 @@ def build_plan_user(state: SessionState, transcript: list[Segment], wispr_text: 
     evidence = {u.id: {k: v.evidence for k, v in u.slots.items() if v.evidence} for u in state.use_cases}
     map_evidence = {kind: {r.id: r.evidence for r in recs if r.evidence} for kind, recs in state.maps.items() if recs}
     parts = [
-        f"<state>\n{json.dumps(state_snapshot(state), ensure_ascii=False, indent=1)}\n</state>",
+        f"<state>\n{json.dumps(state_snapshot(state, for_plan=True), ensure_ascii=False, indent=1)}\n</state>",
         f"<map_evidence note=\"quotes captured live, per map and record\">\n"
         f"{json.dumps(map_evidence, ensure_ascii=False, indent=1)}\n</map_evidence>",
         f"<slot_evidence note=\"quotes captured live, per use case and slot\">\n"

@@ -49,7 +49,11 @@
     "whereLine": "{{answered}} répondues · {{open}} ouvertes · {{pct}} % couvert · {{left}} restant",
     "jump": "↓ Question en cours",
     "ambassadorLabel": "À demander aussi",
-    "ambassadorAsk": "Est-ce que {{person}} aurait envie d'essayer ce genre d'outil ?"
+    "probe": {
+      "explorer": "Quand Excel ou le logiciel coince, vers qui les gens se tournent : {{person}}, ou quelqu'un d'autre ?",
+      "pragmatic": "Quand l'équipe adopte une astuce Excel ou un nouvel outil, ça vient plutôt de {{person}}, ou de quelqu'un d'autre ?",
+      "urgent": "Si on essayait une façon plus rapide de faire ça, est-ce que ça tenterait {{person}} de l'essayer en premier ?"
+    }
   },
   "where": {
     "title": "Où on en est",
@@ -124,7 +128,16 @@
     },
     "recipeMissing": "manque",
     "ambassadors": "Ambassadeurs potentiels",
-    "ambassadorUseCase": "pour {{useCase}}"
+    "ambassadorUseCase": "pour {{useCase}}",
+    "probes": "Questions sur l'équipe",
+    "readLine": "Ton : {{tone}} · Comment demander : {{approach}}",
+    "probeWhy": "pourquoi",
+    "probeTemplateWhy": "savoir si {{person}} s'empare des nouveaux outils et si les autres suivent : un ambassadeur possible du pilote",
+    "probeState": {
+      "now": "à poser maintenant",
+      "later": "plus tard",
+      "asked": "posée"
+    }
   },
   "interview": {
     "bannerDone": "C'est parfait, j'ai ce qu'il me faut. Je m'occupe du plan.",

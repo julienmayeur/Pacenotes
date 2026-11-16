@@ -49,7 +49,11 @@
     "whereLine": "{{answered}} answered · {{open}} open · {{pct}} % covered · {{left}} left",
     "jump": "↓ Current question",
     "ambassadorLabel": "Also worth asking",
-    "ambassadorAsk": "Could {{person}} be keen to try this kind of tool?"
+    "probe": {
+      "explorer": "When Excel or the software gets in the way, who do people turn to: {{person}}, or someone else?",
+      "pragmatic": "When the team picks up a new Excel trick or a new tool, does it usually come from {{person}}, or from someone else?",
+      "urgent": "If we tried a quicker way of doing this, would it tempt {{person}} to be the first to give it a go?"
+    }
   },
   "where": {
     "title": "Where we are",
@@ -124,7 +128,16 @@
     },
     "recipeMissing": "missing",
     "ambassadors": "Potential ambassadors",
-    "ambassadorUseCase": "for {{useCase}}"
+    "ambassadorUseCase": "for {{useCase}}",
+    "probes": "People questions",
+    "readLine": "Tone: {{tone}} · How to ask: {{approach}}",
+    "probeWhy": "why",
+    "probeTemplateWhy": "whether {{person}} picks up new tools and the others follow: a possible pilot ambassador",
+    "probeState": {
+      "now": "to ask now",
+      "later": "later",
+      "asked": "asked"
+    }
   },
   "interview": {
     "bannerDone": "All good, I'm taking care of the plan.",

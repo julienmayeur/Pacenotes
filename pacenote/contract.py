@@ -246,6 +246,42 @@ class RecipeMatch(_Strict):
     missing: list[str]  # its preconditions and baseline numbers not heard yet, copied verbatim
 
 
+AiStance = Literal["unknown", "wary", "neutral", "curious", "keen"]
+Rapport = Literal["building", "established"]
+ProbeTiming = Literal["now", "later", "done"]
+
+
+class IntervieweeRead(_Strict):
+    """A light running read of the person interviewed (the CEO or CIO), only to phrase the people
+    questions well (ambassadors.py). Interviewer-side, kept in the session; never in the plan. Only
+    what the conversation shows, in plain words; "" (or unknown / building) when nothing shows yet."""
+
+    role: str  # their position and what they answer for, as heard (founder CEO, CIO who inherited the ERP)
+    ai_stance: AiStance  # how they talk about new tools and AI so far
+    worries: str  # what they fear or protect (jobs, quality, cost, control), as heard
+    pride: str  # what they are proud of in their team or company
+    politics: str  # sensitivities heard: who they protect, tensions, who really decides
+    tone: str  # how they talk: warm, guarded, numbers first, formal...
+    rapport: Rapport  # established = the CEO tells stories at ease
+    approach: str  # one line: how to ask this person about their people
+
+
+class AmbassadorProbe(_Strict):
+    """An indirect question that helps find out whether the staff behind a workflow could carry a
+    first pilot (be its ambassador), phrased for this interviewee. Never asked head-on."""
+
+    use_case: str  # the state use case (the workflow) it is tied to
+    person: str  # the person or role behind the workflow, as heard ("" = the team doing it)
+    question: str  # the indirect question, in the interview language, ready to say
+    reason: str  # interviewer-only, a few words: what the answer would tell (the ambassador angle)
+    timing: ProbeTiming  # now = rapport is there and the workflow was walked through; done = answered
+
+
+def empty_read() -> IntervieweeRead:
+    return IntervieweeRead(role="", ai_stance="unknown", worries="", pride="", politics="", tone="",
+                           rapport="building", approach="")
+
+
 class SyncResult(_Strict):
     question_updates: list[QuestionUpdate]
     slots: list[SlotFill]
@@ -258,6 +294,8 @@ class SyncResult(_Strict):
     clean_passages: list[Passage]
     enough_data: bool
     enough_data_reason: str
+    interviewee_read: IntervieweeRead  # the running read: the full current view (see IntervieweeRead)
+    ambassador_probes: list[AmbassadorProbe]  # new or changed probes only; empty list when nothing changed
 
 
 class FastResult(_Strict):
@@ -637,4 +675,6 @@ def empty_result() -> SyncResult:
         clean_passages=[],
         enough_data=False,
         enough_data_reason="",
+        interviewee_read=empty_read(),
+        ambassador_probes=[],
     )

@@ -146,29 +146,43 @@ const { chromium } = require('playwright');
     label: document.querySelector('#ambassador-ask .amb-label').textContent,
     text: document.querySelector('#ambassador-text').textContent,
     visible: document.querySelector('#ambassador-ask').getClientRects().length > 0,
+    card: document.querySelector('#ambassador-ask').textContent,
     afterAsk: document.querySelector('#ask-now').compareDocumentPosition(document.querySelector('#ambassador-ask')) === 4,
     askPx: parseFloat(getComputedStyle(document.querySelector('#ask-text')).fontSize),
     ambPx: parseFloat(getComputedStyle(document.querySelector('#ambassador-text')).fontSize),
-    console: [...document.querySelectorAll('#console-ambassador-list li')].map((li) => li.textContent) }));
+    probesVisible: document.querySelector('#console-probe-list').getClientRects().length > 0,
+    console: [...document.querySelectorAll('#console-ambassador-list li')].map((li) => li.textContent),
+    probes: [...document.querySelectorAll('#console-probe-list li')].map((li) => li.textContent),
+    read: document.querySelector('#console-read').textContent }));
   console.log(JSON.stringify({ ...r, errors }));
   await b.close();
 })().catch((e) => { console.error(e); process.exit(1); });
 """
 
 
-def test_interview_suggests_the_ambassador_question_in_a_browser(tmp_path):
+def test_interview_shows_the_indirect_people_question_and_keeps_its_reason_in_the_console(tmp_path):
     s = Session(client=load_client(CLIENTS, "brioche-four-slots"), session_dir=tmp_path / "s", engine=OfflineEngine(),
                 source_factory=lambda d: ReplaySource({}), settings=QUIET)
     st = s.state
-    st.apply_sync_result(result(maps=maps(org=[org(rid="claire", person="Claire", role="ADV",
-                                                   adoption_signal="she always tries new things first")]),
-                                slots=[fill("bakery-orders", "actors", "Claire", "Claire types every order")]))
+    st.apply_sync_result(result(
+        maps=maps(org=[org(rid="claire", person="Claire", role="ADV", adoption_signal="she always tries new things first")]),
+        slots=[fill("bakery-orders", "actors", "Claire", "Claire types every order")],
+        interviewee_read={"role": "founder", "ai_stance": "wary", "worries": "", "pride": "his order desk", "politics": "",
+                          "tone": "warm, careful", "rapport": "established", "approach": "through habits, never change"},
+        ambassador_probes=[{"use_case": "bakery-orders", "person": "Claire",
+                            "question": "When Sage gets in the way on the order desk, is Claire the one people turn to?",
+                            "reason": "whether Claire is the desk's go-to for tools: pilot for orders", "timing": "now"}]))
     st.mode, st.ui_language, st.focus_id = "interview", "en", "orders-walkthrough"
     with serve(create_app(s), APP_PORT) as url:
         r = run_node(tmp_path, INTERVIEW_SCRIPT, url)
     assert r["errors"] == []
-    assert r["label"] == "Also worth asking" and r["text"] == "Could Claire be keen to try this kind of tool?"
+    assert r["label"] == "Also worth asking · Bakery order entry"  # tied to the workflow, in the display language
+    assert r["text"] == "When Sage gets in the way on the order desk, is Claire the one people turn to?"
     assert r["visible"] and r["afterAsk"] and r["ambPx"] < r["askPx"]  # quiet, under the focal follow-up
+    assert "pilot" not in r["card"] and "tools:" not in r["card"]  # the reason never on the interview card
+    assert not r["probesVisible"]  # the console is closed: only the interviewer opens it
+    assert len(r["probes"]) == 1 and "whether Claire is the desk's go-to for tools" in r["probes"][0]
+    assert "to ask now" in r["probes"][0] and r["read"] == "Tone: warm, careful · How to ask: through habits, never change"
     assert len(r["console"]) == 1 and "Claire" in r["console"][0] and "she always tries new things first" in r["console"][0]
 
 

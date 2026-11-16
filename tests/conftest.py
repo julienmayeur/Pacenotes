@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from pacenote.contract import PLAN_SECTIONS, PlanDelta, SyncResult, empty_maps
+from pacenote.contract import PLAN_SECTIONS, PlanDelta, SyncResult, empty_maps, empty_read
 from pacenote.questionnaire import load_client
 from pacenote.state import SessionState
 
@@ -59,6 +59,8 @@ def result(**kw) -> SyncResult:
         clean_passages=[],
         enough_data=False,
         enough_data_reason="",
+        interviewee_read=empty_read(),
+        ambassador_probes=[],
     )
     base.update(kw)
     return SyncResult.model_validate(base)

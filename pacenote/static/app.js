@@ -329,12 +329,13 @@ function renderAsk(cur, changed) {
   lastAsk = text;
 }
 
-/** "Could Claire be keen to try this kind of tool?": shown once the current use case maps to a person,
- *  in the display language, quiet under the focal follow-up. */
+/** The indirect people question tied to the current workflow (ambassadors.prompt_for), quiet under the
+ *  focal follow-up: the question to say and the workflow's name only. Why it is asked stays in the console. */
 function renderAmbassadorAsk(cur) {
   const a = cur && S.mode === "interview" ? cur.ambassador : null;
   setClass($("ambassador-ask"), "hidden", !a);
-  setText($("ambassador-text"), a ? t("focus.ambassadorAsk", { person: a.person }) : "");
+  setText($("ambassador-uc"), a && a.use_case ? ` · ${a.use_case}` : "");
+  setText($("ambassador-text"), a ? a.question : "");
 }
 
 /** The live answer: grows as the fast pass appends pieces, tightens when a full sync rewrites it. */
@@ -643,6 +644,24 @@ function renderConsoleAmbassadors() {
     + (a.use_case ? ` <span class="fit">${esc(t("console.ambassadorUseCase", { useCase: a.use_case }))}</span>` : "")
     + (a.quote ? `<br><small>« ${esc(a.quote)} »</small>` : "") + `</li>`).join("");
   if ($("console-ambassador-list").innerHTML !== html) $("console-ambassador-list").innerHTML = html;
+  renderConsoleProbes();
+}
+
+// The people questions per workflow in the interviewer console: the question, why (the ambassador angle),
+// held for later or asked; above them, one line on how to ask this interviewee.
+function renderConsoleProbes() {
+  const list = S.probes || [];
+  const cur = S.current && S.current.ambassador;
+  const shown = cur && !list.some((p) => p.question === cur.question) ? [{ ...cur, timing: "now", asked: false }] : [];
+  const all = [...shown, ...list];
+  const read = S.read;
+  setClass($("console-probes"), "hidden", !all.length && !read);
+  setClass($("console-read"), "hidden", !read);
+  setText($("console-read"), read ? t("console.readLine", { tone: read.tone || "—", approach: read.approach || "—" }) : "");
+  const html = all.map((p) => `<li><b>${esc(p.use_case)}</b> <span class="fit">${esc(t(`console.probeState.${p.asked ? "asked" : p.timing === "now" ? "now" : "later"}`))}</span>`
+    + `<br>${esc(p.question)}`
+    + `<br><small>${esc(t("console.probeWhy"))} : ${esc(p.reason || t("console.probeTemplateWhy", { person: p.person || "—" }))}</small></li>`).join("");
+  if ($("console-probe-list").innerHTML !== html) $("console-probe-list").innerHTML = html;
 }
 
 // --- languages: the same <language-select> component on the consent screen, header and console.

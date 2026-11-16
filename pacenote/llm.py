@@ -43,6 +43,7 @@ from .contract import (
     Recipe,
     Score,
     SyncResult,
+    empty_read,
     Bottleneck,
     CurrentState,
     FirstWin,
@@ -637,6 +638,8 @@ class OfflineEngine:
                 clean_passages=[],
                 enough_data=False,
                 enough_data_reason="",
+                interviewee_read=empty_read(),
+                ambassador_probes=[],
             )
         )
         coverage = trial.computed_coverage()
@@ -657,6 +660,8 @@ class OfflineEngine:
             ],
             enough_data=enough,
             enough_data_reason="offline heuristic: all must-have questions answered" if enough else "",
+            interviewee_read=empty_read(),  # no model: no read, no probe (the screen falls back to a template)
+            ambassador_probes=[],
         )
 
     def fast(self, system: str, user: str, *, state: SessionState, lines: list[Segment]) -> FastResult:

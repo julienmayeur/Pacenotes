@@ -69,9 +69,10 @@
               <span id="ask-label" class="ask-label"></span>
               <p id="ask-text" class="ask-text"></p>
             </section>
-            <!-- the use case maps to a person: "Could Claire be keen to try this kind of tool?" (ambassadors.py) -->
+            <!-- an indirect people question tied to this workflow (ambassadors.py): the question only; why it
+                 is asked (the ambassador angle) stays in the interviewer console -->
             <p id="ambassador-ask" class="ambassador-ask hidden" aria-live="polite">
-              <span class="amb-label" data-i18n="focus.ambassadorLabel"></span>
+              <span class="amb-label"><span data-i18n="focus.ambassadorLabel"></span><span id="ambassador-uc" class="amb-uc"></span></span>
               <span id="ambassador-text" class="amb-text"></span>
             </p>
 
@@ -205,6 +206,12 @@
     <div class="console-row recipes hidden" id="console-ambassadors">
       <span class="ls-title" data-i18n="console.ambassadors"></span>
       <ul id="console-ambassador-list" class="recipe-list"></ul>
+    </div>
+    <!-- the people questions per workflow, with why they are asked, and how to ask this interviewee (interviewer only) -->
+    <div class="console-row recipes hidden" id="console-probes">
+      <span class="ls-title" data-i18n="console.probes"></span>
+      <p id="console-read" class="muted small hidden"></p>
+      <ul id="console-probe-list" class="recipe-list"></ul>
     </div>
     <div class="console-row links" id="console-links"></div>
     <div class="console-row paths" id="console-paths"></div>
