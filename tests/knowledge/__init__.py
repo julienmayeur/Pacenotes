@@ -1,0 +1,1 @@
+"""Tests: Knowledge (pacenote/knowledge/)."""
