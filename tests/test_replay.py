@@ -7,7 +7,7 @@ import json
 from pacenote.capture import ReplaySource
 from pacenote.contract import PLAN_SECTIONS
 from pacenote.llm import OfflineEngine
-from pacenote.prompts import PLAN_HEADINGS
+from pacenote.headings import plan_headings
 from pacenote.session import Session, Settings
 
 from .conftest import SAMPLES, edit, result, upd
@@ -50,7 +50,7 @@ class ScriptedEngine:
 
     def write_plan(self, system, user, *, state):
         self.plan_prompts.append((system, user))
-        h = PLAN_HEADINGS[state.language]
+        h = plan_headings(state.language)
         sections = ["context", "priorities", "workflows", "quick_wins", "plan_30_60_90", "risks", "budget"]
         body = "\n\n".join(f"## {h[k]}\n\n- contenu" for k in sections)
         # a model-written interview log must be replaced by ours
@@ -128,7 +128,7 @@ async def _run_session(tmp_path, client_cfg):
     assert "<raw_transcript>" in user
 
     plan_md = (tmp_path / "s1" / "plan.md").read_text(encoding="utf-8")
-    h = PLAN_HEADINGS["fr"]
+    h = plan_headings("fr")
     for key in ("context", "priorities", "workflows", "quick_wins", "plan_30_60_90", "risks", "budget", "log"):
         assert f"## {h[key]}" in plan_md
     assert plan_md.count(f"## {h['log']}") == 1 and "à supprimer" not in plan_md

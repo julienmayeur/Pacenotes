@@ -26,8 +26,8 @@ from pacenote.prompts import (
     build_plan_system,
     build_sync_system,
     describe_streams,
-    plan_headings,
 )
+from pacenote.headings import plan_headings
 from pacenote.questionnaire import load_questionnaire
 from pacenote.preparation import load_client
 from pacenote.server import create_app

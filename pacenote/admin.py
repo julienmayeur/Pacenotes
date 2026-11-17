@@ -101,21 +101,6 @@ class AmbassadorsEdit(BaseModel):
     removed: list[str] = []  # ids the interviewer removed (never brought back by the interview)
 
 
-def prestudy_view(preplan: dict, info: ClientInfo) -> dict | None:
-    """The pre-study as the admin shows it (operator-only): the facts, each competitor signal marked
-    counted or not (a URL and a date are required), the score and the posture in force."""
-    pre = preplan.get("prestudy")
-    posture, origin = horizons_lib.effective_posture(info.posture_override, preplan)
-    if not isinstance(pre, dict):
-        return {"prestudy": None, "score": None, "posture": posture, "origin": origin,
-                "override": info.posture_override} if posture else None
-    counted = {id(c) for c in horizons_lib.counted_signals(pre.get("competitors"))}
-    pre = {**pre, "competitors": [{**c, "counted": id(c) in counted} for c in pre.get("competitors") or []
-                                  if isinstance(c, dict)]}
-    return {"prestudy": pre, "score": horizons_lib.score_prestudy(preplan.get("prestudy")), "posture": posture,
-            "origin": origin, "override": info.posture_override}
-
-
 class ProfileEdit(BaseModel):
     facts: list[dict] = []  # the card as edited (each fact: id, category, value, source_url, confidence, by)
     removed: list[str] = []  # ids of facts the interviewer removed
@@ -201,7 +186,7 @@ def admin_router(clients_dir: Path, manager: ResearchManager, sessions_dir: Path
             "use_cases": preplan.get("use_cases", []),
             "seed_questions": preplan.get("seed_questions", []),
             "sources": preplan.get("sources", []),
-            "prestudy": prestudy_view(preplan, info),  # operator-only: never on a client-facing page
+            "prestudy": horizons_lib.prestudy_view(preplan, info.posture_override),  # operator-only: never on a client-facing page
             "ambassadors": ambassadors.load(d),
             # per contact, in the sheet's order: the persona in force, why, and the inferred one (personas.py)
             "personas": [personas.for_contact(c, info, preplan) for c in info.contacts],

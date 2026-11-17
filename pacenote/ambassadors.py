@@ -59,7 +59,7 @@ def _mentions(label: str, text: str) -> bool:
     return re.search(rf"(?<![a-z0-9]){re.escape(lab)}(?![a-z0-9])", txt) is not None
 
 
-def _clean(v) -> str:
+def clean(v) -> str:
     return re.sub(r"\s+", " ", str(v or "")).strip()[:MAX_LEN]
 
 
@@ -69,10 +69,10 @@ def _clean(v) -> str:
 def _people(state) -> list[dict]:
     out = []
     for r in state.maps.get("org", []):
-        person, role = _clean(r.fields.get("person")), _clean(r.fields.get("role"))
+        person, role = clean(r.fields.get("person")), clean(r.fields.get("role"))
         if person or role:
             out.append({"id": r.id, "person": person, "role": role, "label": person or role,
-                        "signal": _clean(r.fields.get("adoption_signal")), "evidence": _clean(r.evidence)})
+                        "signal": clean(r.fields.get("adoption_signal")), "evidence": clean(r.evidence)})
     return out
 
 
@@ -91,7 +91,7 @@ def links(state) -> list[dict]:
         for p in people:
             labels = [x for x in (p["person"], p["role"]) if x]
             if any(_mentions(x, actor_text) for x in labels):
-                quote = _clean(actors.evidence or actors.value)
+                quote = clean(actors.evidence or actors.value)
             elif any(_mentions(x, answers) for x in labels):
                 quote = p["evidence"]
             else:
@@ -100,10 +100,10 @@ def links(state) -> list[dict]:
             out.append({"person": p["label"], "role": p["role"] if p["person"] else "", "use_case": u.id,
                         "title": u.title(lang), "quote": quote})
         if not found and actors is not None and actors.value.strip():
-            value = _clean(actors.value)
+            value = clean(actors.value)
             if len(value.split()) <= _SHORT_ACTORS_WORDS and not re.search(r"[,;/+&]| et | and ", value):
                 out.append({"person": value, "role": "", "use_case": u.id, "title": u.title(lang),
-                            "quote": _clean(actors.evidence or actors.value)})
+                            "quote": clean(actors.evidence or actors.value)})
     return out
 
 
@@ -115,7 +115,7 @@ MAX_PROBES = 12
 
 # Never in a people question: AI vocabulary (the questions' wording rule) and anything that sounds like
 # an assessment of a person or names the hidden purpose.
-_PROBE_BANNED = [
+PROBE_BANNED = [
     re.compile(r"\b(IA|AI)\b"),  # case-sensitive: "j'ai", "mai" are fine
     *(re.compile(p, re.I) for p in (
         r"intelligence artificielle", r"artificial intelligence", r"\bagents?\b", r"automat", r"\bLLMs?\b",
@@ -127,7 +127,7 @@ _PROBE_BANNED = [
 
 def probe_problem(text: str) -> str:
     """The first word that makes `text` unfit as a people question ("" when it is fine)."""
-    for p in _PROBE_BANNED:
+    for p in PROBE_BANNED:
         if m := p.search(text or ""):
             return m.group(0)
     return ""
@@ -275,7 +275,7 @@ def apply_read(state, r, read: int, ok) -> None:
     old = dict(state.interviewee_read)
     merged = dict(old)
     for k, v in new.items():
-        v = _clean(v)
+        v = clean(v)
         if k == "rapport":
             merged[k] = "established" if "established" in (v, old.get(k)) else v or "building"
         elif k == "ai_stance":
@@ -293,7 +293,7 @@ def apply_probes(state, probes, read: int, ok, reject) -> None:
     read from an older slice than the stored one. A probe already asked is never reworded; "done"
     closes it (no template either)."""
     for p in probes or []:
-        uc = _clean(p.use_case)
+        uc = clean(p.use_case)
         if state.get_use_case(uc) is None:
             reject("probe", uc, f"unknown use case {uc!r}")
             continue
@@ -303,12 +303,12 @@ def apply_probes(state, probes, read: int, ok, reject) -> None:
             continue
         if p.timing == "done":
             if old is None or old.get("timing") != "done":
-                state.ambassador_probes[uc] = {**(old or {"person": _clean(p.person), "question": "", "reason": ""}),
+                state.ambassador_probes[uc] = {**(old or {"person": clean(p.person), "question": "", "reason": ""}),
                                                "timing": "done", "read": read, "at": time.time(),
                                                "asked": True if old is None else old.get("asked", False)}
                 ok("probe", uc, "done")
             continue
-        question = _clean(p.question)
+        question = clean(p.question)
         if not question:
             reject("probe", uc, "no question")
             continue
@@ -321,7 +321,7 @@ def apply_probes(state, probes, read: int, ok, reject) -> None:
         if old is None and len(state.ambassador_probes) >= MAX_PROBES:
             reject("probe", uc, f"more than {MAX_PROBES} people questions")
             continue
-        new = {"person": _clean(p.person), "question": question, "reason": _clean(p.reason), "timing": p.timing,
+        new = {"person": clean(p.person), "question": question, "reason": clean(p.reason), "timing": p.timing,
                "read": read, "at": time.time(), "asked": False}
         if old is not None and all(old.get(k) == new[k] for k in ("person", "question", "reason", "timing")):
             continue
@@ -347,7 +347,7 @@ def apply_sponsor(state, p, read: int, ok, reject) -> None:
             state.sponsor_probe = {**old, "timing": "done", "read": read, "at": time.time()}
             ok("sponsor", None, "done")
         return
-    question = _clean(p.question)
+    question = clean(p.question)
     if not question:
         reject("sponsor", None, "no question")
         return
@@ -357,7 +357,7 @@ def apply_sponsor(state, p, read: int, ok, reject) -> None:
     if old.get("asked"):
         reject("sponsor", None, "already asked")
         return
-    new = {"question": question, "reason": _clean(p.reason), "timing": p.timing}
+    new = {"question": question, "reason": clean(p.reason), "timing": p.timing}
     if all(old.get(k) == v for k, v in new.items()):
         return
     state.sponsor_probe = {**old, **new, "read": read, "at": time.time()}
@@ -498,8 +498,8 @@ def merge(old: dict, found: list[dict], session: str = "") -> dict:
         pid = person_id(f.get("id") or f.get("person") or "")
         if not pid or pid in removed:
             continue
-        entry = {"id": pid, "person": _clean(f.get("person")), "role": _clean(f.get("role")),
-                 "use_case": _clean(f.get("use_case")), "quote": _clean(f.get("quote")), "label": "potential",
+        entry = {"id": pid, "person": clean(f.get("person")), "role": clean(f.get("role")),
+                 "use_case": clean(f.get("use_case")), "quote": clean(f.get("quote")), "label": "potential",
                  "by": "agent", "session": session, "updated_at": stamp}
         if pid in index:
             if entries[index[pid]].get("by") == "manual":
@@ -532,13 +532,13 @@ def save_edit(client_path: Path, entries: list[dict], removed: list[str]) -> dic
         for e in entries:
             if not isinstance(e, dict):
                 raise ValueError("an entry must be an object")
-            person = _clean(e.get("person"))
+            person = clean(e.get("person"))
             eid = str(e.get("id") or "")
             if not person:
                 cleared.add(eid)
                 continue
-            fields = {"person": person, "role": _clean(e.get("role")), "use_case": _clean(e.get("use_case")),
-                      "quote": _clean(e.get("quote"))}
+            fields = {"person": person, "role": clean(e.get("role")), "use_case": clean(e.get("use_case")),
+                      "quote": clean(e.get("quote"))}
             prev = before.get(eid)
             if prev is not None and all(prev.get(k, "") == v for k, v in fields.items()):
                 out.append(prev)

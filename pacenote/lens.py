@@ -28,7 +28,7 @@ from __future__ import annotations
 import re
 import time
 
-from .ambassadors import _PROBE_BANNED, _clean, workflow_discussed
+from .ambassadors import PROBE_BANNED, clean, workflow_discussed
 
 KINDS = ("time", "volume", "errors", "delay")
 SIDES = ("baseline", "target")
@@ -37,7 +37,7 @@ MAX_FRAMINGS = 12
 # A talking point is said to the interviewee about their people's work: no AI vocabulary, and nothing that
 # belittles the person or sounds like a job cut (the task brings little, never the person).
 _FRAMING_BANNED = [
-    *_PROBE_BANNED,
+    *PROBE_BANNED,
     *(re.compile(p, re.I) for p in (
         r"remplac", r"\breplac", r"inutile", r"useless", r"pointless", r"worthless", r"sans valeur", r"\bbête",
         r"stupid", r"idiot", r"licenci", r"lay ?offs?", r"head ?count", r"effectifs?\b", r"supprim\w* (le |son |ce )?poste",
@@ -68,7 +68,7 @@ def apply_framings(state, framings, read: int, ok, reject) -> None:
     point, wording that belittles the person, sounds like a job cut or uses AI vocabulary, a point
     read from an older slice than the stored one, a change to one already said. "done" closes it."""
     for f in framings or []:
-        uc = _clean(f.use_case)
+        uc = clean(f.use_case)
         if state.get_use_case(uc) is None:
             reject("framing", uc, f"unknown use case {uc!r}")
             continue
@@ -76,14 +76,14 @@ def apply_framings(state, framings, read: int, ok, reject) -> None:
         if old is not None and old.get("read", 0) > read:
             reject("stale", uc, f"read at line {read}, kept the framing read at line {old['read']}")
             continue
-        fields = {"person": _clean(f.person), "task": _clean(f.task), "moves_up_to": _clean(f.moves_up_to)}
+        fields = {"person": clean(f.person), "task": clean(f.task), "moves_up_to": clean(f.moves_up_to)}
         if f.timing == "done":
             if old is None or old.get("timing") != "done":
                 base = old or {**fields, "point": "", "reason": "", "asked": True}
                 state.value_framings[uc] = {**base, "timing": "done", "read": read, "at": time.time()}
                 ok("framing", uc, "done")
             continue
-        point = _clean(f.point)
+        point = clean(f.point)
         if not point:
             reject("framing", uc, "no talking point")
             continue
@@ -96,7 +96,7 @@ def apply_framings(state, framings, read: int, ok, reject) -> None:
         if old is None and len(state.value_framings) >= MAX_FRAMINGS:
             reject("framing", uc, f"more than {MAX_FRAMINGS} talking points")
             continue
-        new = {**fields, "point": point, "reason": _clean(f.reason), "timing": f.timing, "read": read,
+        new = {**fields, "point": point, "reason": clean(f.reason), "timing": f.timing, "read": read,
                "at": time.time(), "asked": False}
         if old is not None and all(old.get(k) == new[k] for k in (*fields, "point", "reason", "timing")):
             continue
@@ -146,11 +146,11 @@ def apply_metric_questions(state, items, read: int, ok, reject) -> None:
     """Keep the model's question per (use case, side): the newest wins. Rejected: an unknown use
     case, an empty question or AI vocabulary."""
     for m in items or []:
-        uc = _clean(m.use_case)
+        uc = clean(m.use_case)
         if state.get_use_case(uc) is None:
             reject("metric", uc, f"unknown use case {uc!r}")
             continue
-        question = _clean(m.question)
+        question = clean(m.question)
         if not question:
             reject("metric", uc, "no question")
             continue

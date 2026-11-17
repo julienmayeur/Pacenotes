@@ -18,8 +18,8 @@ from . import pilots as pilots_lib
 from . import recipes as recipe_lib
 from . import viewpoints as viewpoints_lib
 from .contract import SLOT_KEYS, Fact, Measure, Pilot, PlanDoc, PlanUseCase, Recipe
+from .headings import state_headings
 from .horizons import HORIZONS, checked_horizon
-from .prompts import state_headings
 from .srt import load_srt, parse_srt
 from .state import SessionState
 

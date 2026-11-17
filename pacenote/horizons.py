@@ -216,3 +216,19 @@ def posture_theme(posture: str | None, path: Path = HORIZON_FILE):
     if not questions:
         return None
     return theme.model_copy(update={"questions": questions})
+
+
+def prestudy_view(preplan: dict, override: str = "") -> dict | None:
+    """The pre-study as the admin shows it (operator-only): the facts, each competitor signal marked
+    counted or not (a URL and a date are required), the score and the posture in force (`override`: the
+    interviewer's pace from the client sheet, "" for none)."""
+    pre = preplan.get("prestudy")
+    posture, origin = effective_posture(override, preplan)
+    if not isinstance(pre, dict):
+        return {"prestudy": None, "score": None, "posture": posture, "origin": origin,
+                "override": override} if posture else None
+    counted = {id(c) for c in counted_signals(pre.get("competitors"))}
+    pre = {**pre, "competitors": [{**c, "counted": id(c) in counted} for c in pre.get("competitors") or []
+                                  if isinstance(c, dict)]}
+    return {"prestudy": pre, "score": score_prestudy(preplan.get("prestudy")), "posture": posture,
+            "origin": origin, "override": override}

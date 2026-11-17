@@ -729,32 +729,6 @@ def build_sync_user(
 
 # --- final plan ----------------------------------------------------------------
 
-PLAN_HEADING_KEYS = ("context", "priorities", "workflows", "quick_wins", "plan_30_60_90", "risks", "budget", "log",
-                     "current_state", "bottlenecks", "metrics", "timeline",
-                     "use_cases", "details", "recipe_candidates", "open_items", "adoption", "to_check")
-
-
-def plan_headings(lang: str, overlay: Mapping[str, str] | None = None) -> dict[str, str]:
-    """Plan title + section headings in `lang` (locale file, else Claude's overlay, else English)."""
-    tr = i18n.Translator(lang, overlay)
-    return {"title": tr("plan.title"), **{k: tr(f"plan.headings.{k}") for k in PLAN_HEADING_KEYS}}
-
-
-class _Headings(dict):
-    """PLAN_HEADINGS['de'] works for any language (kept for backwards compatibility)."""
-
-    def __missing__(self, lang: str) -> dict[str, str]:
-        return plan_headings(lang)
-
-
-PLAN_HEADINGS: Mapping[str, dict[str, str]] = _Headings()
-
-
-def state_headings(state: SessionState) -> dict[str, str]:
-    return plan_headings(state.language, state.i18n_overlay.get(state.language))
-
-PLAN_SECTION_ORDER = ("context", "priorities", "workflows", "quick_wins", "plan_30_60_90", "risks", "budget")
-
 PLAN_SYSTEM = """\
 You are a senior consulting engineer turning a {target}-minute kickoff interview with \
 {who} at {client} into a FACTUAL INTEGRATION PROPOSAL: for each use case, how an agent would be \
