@@ -38,7 +38,7 @@ prepare (admin) ─► consent ─► interview: capture + follow-ups ─► sto
 - **Pace and horizons in the interview.** The pace sets the tone of the follow-ups and decides which
   closing questions are asked and how much they matter (what competitors changed, what the company
   could do in two years).
-- **Potential ambassadors, asked with tact.** Claude keeps a light read of the person you interview
+- **Potential pilots, asked with tact.** Claude keeps a light read of the person you interview
   (role, how they talk about new tools, what worries them, what they are proud of in their team,
   tone, rapport). For each workflow worth piloting, it writes an indirect question about the people
   behind it, phrased for that person ("When Sage gets in the way, is Claire the one people turn
@@ -46,9 +46,18 @@ prepare (admin) ─► consent ─► interview: capture + follow-ups ─► sto
   direct when competitors already have results. The question shows under the follow-up, tied to the
   workflow, once that workflow has been walked through (in a sector that is behind, only once rapport
   is there), once per person. Why it is asked and the read stay in your console (`c`). A core
-  question asks who tries new tools first and who the others listen to. Each potential ambassador is kept as a
-  light label with the interviewee's words, on your Mac only, and you can edit or remove it in the admin
-  (your edits are kept; a removed person never comes back).
+  question asks who tries new tools first (one person, several, or the interviewee themself) and who the
+  others listen to. Each potential pilot is kept as a light label with the interviewee's words, on your Mac
+  only, and you can edit or remove it in the admin (your edits are kept; a removed person never comes back).
+- **Several pilots, or the leader leading by example.** There can be several pilots: a dynamic or young
+  company often has a few, a large company that moves slowly may show almost none in a first interview.
+  From the headcount, the pace and, when public sources say so, the workforce's age profile (company-level
+  signals only), the admin shows how many pilots to expect (e.g. "0 to 2 for 800 people"), as a hint about
+  the company, never a label on anyone. The copilot keeps listening for pilots across every workflow. When
+  none has been named and the person you interview leads the company or a function, it can suggest an
+  indirect question to check whether they would try it first on their own work ("When something new came
+  in here, did it usually start with you?"); the plan then names them, by role, as the sponsor of the first
+  wave, leading by example.
 - **Who you interview.** In the admin, list the people you will meet (name, title, optional notes). Each
   gets a persona, with a short reason and how sure it is: **executive** (runs the company: outcomes,
   value, where time goes, who does what), **function leader** (owns a process and a team: who owns each
@@ -72,8 +81,8 @@ prepare (admin) ─► consent ─► interview: capture + follow-ups ─► sto
   (`plan.md` + `plan.json`): current state, bottlenecks, opportunities with one metric each and the
   time each gives back (the task that goes away and the decision the person moves up to), grouped
   under "This week", "This quarter" and "Within two years", an adoption plan in three waves (the
-  volunteers keen to go further prove the first use case; their measured results convince most of
-  the team; then everyone follows), open items and who to ask. Nothing
+  pilots, one or several, prove the first use case, or the leader opens the way on their own work when
+  nobody was named; their measured results convince most of the team; then everyone follows), open items and who to ask. Nothing
   that was not said is presented as a fact. Read it in the Plan view and export it to PDF. Metrics can then be tracked per client, and measured results feed a
   library of reusable recipes.
 
@@ -118,7 +127,7 @@ A client folder holds:
 | `questionnaire.yaml` | Seed questions, phases and languages |
 | `glossary.md` | Expected mishearings (people, products, jargon) → what was said |
 | `research.md`, `preplan.md`, `preplan.json` | Written by the research run: the brief, the pre-plan, the pre-study |
-| `ambassadors.json` | Potential ambassadors from the interviews, with the interviewee's words (edit them in the admin) |
+| `ambassadors.json` | Potential pilots from the interviews, with the interviewee's words (edit them in the admin) |
 
 Start a new one with `pacenote new-client <slug> --name "Company"`, or in the admin panel.
 
@@ -179,7 +188,7 @@ pacenote replay --client brioche-four --srt fr-FR=sessions/brioche-four/<id>/fr.
 | `a` | Mark the current question answered and move on |
 | `k` | Skip the current question |
 | `s` | Sync now |
-| `c` | Console (languages, transcript paste, possible recipes, potential ambassadors, Stop & generate plan) |
+| `c` | Console (languages, transcript paste, possible recipes, potential pilots, Stop & generate plan) |
 | `t` | Transcript tail |
 | `f` | Full screen |
 | `l` | Next screen language |
@@ -232,7 +241,7 @@ Chrome-family browser.
 - Only text (questions, transcript lines, client context) is sent to Claude. `sync_log.jsonl` in each
   session folder is the exact record of what was sent.
 - Profile cards keep professional, publicly self-published facts only.
-- Potential ambassadors are a name or role, the use case and the interviewee's own words, nothing more.
+- Potential pilots are a name or role, the use case and the interviewee's own words, nothing more.
   They stay in `clients/<slug>/ambassadors.json`, which git ignores wherever it is.
 - The read of the interviewee and the people questions stay in the session (`sessions/` is
   git-ignored) and in your console. They are never sent to the plan or shown in it.

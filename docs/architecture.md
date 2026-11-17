@@ -80,7 +80,8 @@ flowchart LR
 | `questionnaire.py`, `clients.py` | Questionnaire schema and loader; client sheet, scaffold, next client, pre-plan merged into questionnaire and context, core questions merged in |
 | `research.py`, `autofill.py`, `people.py` | Admin web agents: research + pre-plan + sector pre-study (Opus), client-sheet Auto-fill (Sonnet), interviewee profile cards (Sonnet) with a privacy filter |
 | `horizons.py` | Horizon tags (h1 execution now, h2 emerging, h3 foresight), the pre-study's 0–10 score and posture (explorer / pragmatic / urgent, operator-only), the posture's questions (`core/horizons.yaml`) |
-| `ambassadors.py` | Use case → person links; the interviewee read and the indirect people questions per workflow (merge, wording guard, timing, tone from the pace, template fallback); the local `ambassadors.json` (engine fills, hand edit wins) |
+| `ambassadors.py` | Potential pilots: use case → person links; the interviewee read and the indirect people questions per workflow (merge, wording guard, timing, tone from the pace, template fallback); the sponsor question when no pilot was named; the pilots the plan names; the local `ambassadors.json` (engine fills, hand edit wins) |
+| `pilots.py` | How many pilots to expect (headcount, pace, public workforce signals; a hint about the company, never a person) and the leader as sponsor of the first wave when nobody was named |
 | `personas.py` | Who is interviewed: the persona (executive, function leader, operator) inferred from title, headcount and notes, refined by the research, overridden by hand; questions re-worded and re-weighed per persona (`personas:` in the questions YAML); what the interviewee can't answer recorded as "to check with" (defers those details on the card, listed in the plan) |
 | `lens.py` | The executive lens: talking points on manual work and metric questions per workflow (merge, wording guard, timing, template fallback for metric questions); what the plan may use of them |
 | `recipes.py`, `metrics.py`, `briefs.py` | Recipe library schema and evidence; per-client metrics with locking; the dated knowledge briefs and their refresh |
@@ -98,7 +99,7 @@ clients/<slug>/                 one folder per client (git-ignored; clients.exam
   client.yaml                   client sheet (admin form): company fields with provenance, contacts (name, role, notes, persona), notes
   research.md, preplan.md, preplan.json, history/<ts>/   admin research and pre-plan, previous versions
   people/<contact>.json         interviewee profile cards
-  ambassadors.json              potential ambassadors (person or role, use case, the interviewee's quote); git-ignored everywhere
+  ambassadors.json              potential pilots (person or role, use case, the interviewee's quote); git-ignored everywhere
   metrics.yaml                  metric definitions from the plan + dated measurements
 
 sessions/<slug>/<YYYYMMDD-HHMMSS>/   one interview (git-ignored)
@@ -395,7 +396,8 @@ check, first verified win on N real cases, what is not claimed, kill criterion, 
 build, adoption measure, impact and feasibility scores, architecture in one sentence, steps, model
 provider and the nine slots; the recipe each reuses (`{id, fit, gaps}`) or a draft in
 `recipe_candidates`; an engagement timeline (week 1 thin slice, week 4 checkpoint, week 8 go/kill);
-an adoption plan in three waves (the volunteers prove the lighthouse use case; most of the team,
+an adoption plan in three waves (the pilots, 0..N, prove the lighthouse use case, or, when nobody was
+named and a leader was interviewed, that leader sponsors it on their own work, by role; most of the team,
 started by the lighthouse metric against its baseline; everyone, once most of the company works this
 way), with no label on any individual (a wave that labels people falls back to the default wording);
 open items to confirm with whom to ask; the interview log.
