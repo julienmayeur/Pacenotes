@@ -183,6 +183,25 @@ def test_a_new_use_case_found_live_gets_its_own_slot_set():
     assert "volume" not in q.missing_slots()
 
 
+def test_slots_of_a_use_case_added_in_the_same_sync_are_kept():
+    """The model adds the walkthrough of a workflow it just heard AND fills its slots in one sync (what the
+    prompt asks for). The fills used to be applied before the add created the use case: all rejected, the
+    facts lost (seen on a real run, 2026-11-17)."""
+    st = slots_state()
+    rep = st.apply_sync_result(result(
+        slots=[fill("shop-orders", "volume", "Quatre-vingts bons par semaine"), fill("shop-orders", "tool", "Divalto")],
+        queue_edits=[edit("add", "shop-orders-walk", "import", "Racontez-moi le dernier bon de boutique.",
+                          "Walk me through the last shop order.", use_case="shop-orders",
+                          use_case_title="Saisie des bons boutiques")]))
+    uc = st.get_use_case("shop-orders")
+    assert uc.slots["volume"].value == "Quatre-vingts bons par semaine" and uc.slots["tool"].value == "Divalto"
+    assert not any(r.kind == "slot" for r in rep.rejected)
+    assert {"volume", "tool"}.isdisjoint(st.get("shop-orders-walk").missing_slots())
+    # a fill on a use case nobody creates is still rejected
+    rep = st.apply_sync_result(result(slots=[fill("nope", "tool", "Excel")]))
+    assert any(r.kind == "slot" and r.target == "nope" for r in rep.rejected)
+
+
 def test_unknown_use_case_in_a_slot_fill_is_rejected():
     st = slots_state()
     rep = st.apply_sync_result(result(slots=[fill("nope", "tool", "Excel")]))

@@ -890,8 +890,11 @@ class SessionState(BaseModel):
         def reject(kind: str, target: str | None, detail: str) -> None:
             report.rejected.append(EditLogEntry(sync=sync_no, kind=kind, target=target, applied=False, detail=detail))
 
-        # 0. integration slots of the use cases (before statuses: they gate "answered"), and the maps
-        self.apply_slot_fills(result.slots, ok, reject, by="sync", read=read)
+        # 0. integration slots of the use cases (before statuses: they gate "answered"), and the maps.
+        # Fills on a use case this sync creates (a queue "add" with a new use_case) wait for 2a.
+        known = [f for f in result.slots if self.get_use_case(f.use_case) is not None]
+        later = [f for f in result.slots if self.get_use_case(f.use_case) is None]
+        self.apply_slot_fills(known, ok, reject, by="sync", read=read)
         self.apply_map_updates(result.maps, ok, reject, by="sync", read=read)
         phase = self.current_phase
 
@@ -1009,6 +1012,9 @@ class SessionState(BaseModel):
                 self._insert_after(q, e.after_id)
                 ok("reorder", q.id, e.reason)
 
+        # 2a. slots of the use cases created by this sync's adds (still unknown: rejected)
+        if later:
+            self.apply_slot_fills(later, ok, reject, by="sync", read=read)
         self.sync_slot_coverage()  # a question added on a known use case starts with its filled slots
 
         # 2b. recipe matches (after the adds: a use case created in this sync can hold one)
