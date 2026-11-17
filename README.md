@@ -165,6 +165,7 @@ Everything works with defaults. Optional environment variables (names only; see
 | `PACENOTE_RESEARCH_MODEL`, `PACENOTE_AUTOFILL_MODEL`, `PACENOTE_PEOPLE_MODEL` | Models for the admin agents |
 | `PACENOTE_LOCALES`, `PACENOTE_INTERVIEW_LANGUAGE`, `PACENOTE_UI_LANGUAGE` | Spoken languages, interview language, screen language |
 | `PACENOTE_CLIENTS_DIR`, `PACENOTE_SESSIONS_DIR` | Data folders (default `clients/`, `sessions/`) |
+| `PACENOTE_KNOWLEDGE_DIR` | Where refreshed briefs and recorded recipes go (default `~/.pacenote/knowledge`, outside the repo) |
 | `PACENOTE_HOST`, `PACENOTE_PORT`, `PACENOTE_ADMIN_PORT` | Bind address and ports (default `127.0.0.1`, 8765, 8766) |
 | `PACENOTE_ENGINEER_CONTEXT` | One line about your own company, used by profile cards |
 | `PACENOTE_CHROME` | Browser used for PDF export |
@@ -223,7 +224,7 @@ pacenote replay --client brioche-four --srt fr-FR=sessions/brioche-four/<id>/fr.
 | `pacenote new-client <slug> --name "…"` | Scaffold `clients/<slug>/` |
 | `pacenote next [<slug> \| --clear]` | Show or set the default client |
 | `pacenote admin` | Admin panel only |
-| `pacenote capabilities [refresh]` | Show or refresh the dated knowledge briefs the plan writer reads |
+| `pacenote capabilities [refresh]` | Show or refresh the dated knowledge briefs the plan writer reads (a refresh is saved locally) |
 | `pacenote metrics seed\|show\|add\|import <slug>` | Track a client's plan metrics over time |
 | `pacenote recipes list\|record` | The recipe library and its measured evidence |
 
@@ -243,6 +244,7 @@ pacenote replay --client brioche-four --srt fr-FR=sessions/brioche-four/<id>/fr.
 
 ```bash
 pytest
+ruff check pacenote tests
 ```
 
 The suite runs offline with stand-in `claude` and speech-helper scripts and synthetic transcripts;
@@ -265,16 +267,25 @@ Chrome-family browser.
 
 ## Layout
 
+One package per area of the product; each keeps its own rules and data files. The full module map is in
+[docs/architecture.md](docs/architecture.md#components).
+
 ```
-pacenote/          the app (server, session, state, prompts, engines, plan, admin agents, CLI)
-  static/          interview, admin and Plan view pages (HTML/CSS/JS, no framework)
-  listen/          the on-device speech helper (Swift)
-  core/            core questions merged into every questionnaire
-  knowledge/       dated briefs and the recipe library
-  locales/         UI strings (fr, en)
+pacenote/
+  cli.py           the command line
+  web/             interview and admin apps (FastAPI), same-origin guard, static/ pages (HTML/CSS/JS, no framework)
+  interview/       questionnaire, phases, the session state and its rules, the live session; core/ questions
+  copilot/         the JSON contract with Claude, the prompts, the engines, the web agent
+  people/          personas, who is in the meeting, potential pilots and the sponsor, views heard, profile cards
+  research/        desk research and pre-plan, client-sheet auto-fill, horizons and the pace
+  clients/         client folders and the client sheet
+  plan/            the integration plan, the Plan view and PDF export, metrics
+  knowledge/       dated briefs and the recipe library (shipped in data/; local changes in ~/.pacenote/knowledge)
+  transcription/   the on-device speech helper (listen/, Swift), speech backends, SRT, merged transcript
+  shared/          languages (locales/) and atomic file writes
 clients.example/   the fictional example client
 docs/              architecture.md
-tests/             pytest suite and frozen fixtures
+tests/             pytest suite, one folder per package, and frozen fixtures
 ```
 
 ## License

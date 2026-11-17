@@ -1,5 +1,7 @@
+"""`python -m pacenote`: the same command line as `pacenote`."""
+
 import sys
 
-from .cli import main
+from pacenote.cli import main
 
 sys.exit(main())

@@ -11,7 +11,7 @@ one Swift helper (`pacenote-listen`) that captures the microphone once and trans
 every spoken language. Transcript lines are merged into one rolling transcript. Two model lanes
 read it through the logged-in Claude Code CLI (`claude -p`): a **fast pass** (Haiku) a few seconds
 after each answer, and a **full sync** (Opus) every 30–45 s. Both answer in a strict JSON contract;
-`state.py` applies the results under locking and phase rules, and the browser page receives the
+`interview/state.py` applies the results under locking and phase rules, and the browser page receives the
 new view over Server-Sent Events. At the end, Opus writes a structured plan (`PlanDoc`), rendered
 to `plan.md` + `plan.json`. The plan's metrics are monitored per client and the results flow back
 into a tracked recipe library that the next interview starts from.
@@ -24,19 +24,19 @@ flowchart LR
     MIC(("Microphone"))
     LISTEN["pacenote-listen<br/>Swift helper<br/>one SpeechTranscriber per locale"]
     subgraph PY["pacenote run (Python, FastAPI, 127.0.0.1:8765)"]
-      CAP["capture.py / speech.py<br/>backend, watchdog, SRT mirror"]
-      TR["transcript.py<br/>merged transcript, versions"]
-      SES["session.py<br/>ingest, fast loop, sync loop, finalize"]
-      ST["state.py + phases.py<br/>questions, slots, maps, locking"]
-      LLM["llm.py<br/>cli / api / offline engines"]
-      FIN["finalize.py + planview.py<br/>plan.md, plan.json, PDF"]
-      SRV["server.py<br/>SSE + actions"]
-      ADM["admin.py<br/>/admin API"]
-      AG["research.py · autofill.py · people.py<br/>web agents"]
+      CAP["transcription/<br/>capture, speech: backend, watchdog, SRT mirror"]
+      TR["transcription/transcript<br/>merged transcript, versions"]
+      SES["interview/session<br/>ingest, fast loop, sync loop, finalize"]
+      ST["interview/state + phases<br/>questions, slots, maps, locking"]
+      LLM["copilot/engines<br/>cli / api / offline engines"]
+      FIN["plan/finalize + view<br/>plan.md, plan.json, PDF"]
+      SRV["web/server<br/>SSE + actions"]
+      ADM["web/admin<br/>/admin API"]
+      AG["research/desk · autofill · people/profiles<br/>web agents (copilot/web_agent)"]
     end
     CLI["pacenote CLI (cli.py)<br/>run, replay, finalize, check,<br/>metrics, recipes, capabilities…"]
-    UI["Browser: interview page,<br/>admin panel, Plan view<br/>(static/, no framework)"]
-    DISK[("clients/ · sessions/<br/>pacenote/knowledge/")]
+    UI["Browser: interview page,<br/>admin panel, Plan view<br/>(web/static/, no framework)"]
+    DISK[("clients/ · sessions/<br/>~/.pacenote/knowledge/")]
   end
   CLAUDE["Claude<br/>(subscription via claude -p)"]
 
@@ -60,37 +60,59 @@ flowchart LR
   FIN --> DISK
 ```
 
+The package has one sub-package per bounded context. Each context owns its rules and its data files;
+dependencies point from the interface (`cli.py`, `web/`) to the application services (`interview/session.py`, the
+research managers) to the domain modules, and the model calls stay behind `copilot/`.
+
+```
+pacenote/
+  cli.py          command line (interface)
+  web/            FastAPI apps, same-origin guard, static pages (interface)
+  interview/      the interview: questionnaire, phases, state and its rules, the session that runs them
+  copilot/        the model side: JSON contract, prompts, engines, the Claude web agent
+  people/         who is in the meeting: personas, attendees, potential pilots, sponsor, views heard, profile cards
+  research/       before the interview: desk research and pre-plan, auto-fill, horizons and the pace
+  clients/        client folders and the client sheet
+  plan/           after the interview: the plan, its headings, the Plan view and PDF, metrics
+  knowledge/      the dated briefs and the recipe library (shipped in data/, local overlay)
+  transcription/  speech helper, backends, SRT, merged transcript
+  shared/         atomic writes, languages
+```
+
 | Module | Role |
 |---|---|
 | `cli.py` | Entry point (`pacenote`, or `python -m pacenote`): `run`, `replay`, `finalize`, `purge`, `new-client`, `check`, `soak`, `next`, `admin`, `capabilities`, `metrics`, `recipes` |
-| `server.py` | FastAPI app for one interview: `/` page, `/api/state`, `/api/events` (SSE), actions (`/api/start`, `/api/next`, `/api/next-phase`, `/api/sync`, `/api/questions/{id}/answered|skip`, `/api/enough`, `/api/wispr`, `/api/finalize`, `/api/language`), Plan view (`/plan`, `/api/plan`, `/api/plan/pdf`); mounts the admin router |
-| `admin.py` | `/admin` page and `/admin/api/*`: clients, next client, research, pre-plan and history, Auto-fill, people cards, metrics, saved sessions and their plans |
-| `web_guard.py` | Host allow-list and same-origin guard on every server |
-| `listen/pacenote_listen.swift` | The speech helper: mic once, one `SpeechAnalyzer` + `SpeechTranscriber` per locale, JSON lines on stdout |
-| `capture.py`, `speech.py` | Builds and caches the helper, the `TranscriptionBackend` interface (Apple helper, optional whisper.cpp), automatic fallback, watchdog, `ReplaySource` for SRT replays |
-| `srt.py`, `transcript.py` | SRT parsing and tailing; the merged transcript of all streams, deltas, readable-stream selection |
-| `session.py` | One interview: ingest loop, fast-pass loop, full-sync loop, focus moves, finalize, persistence, resume |
-| `state.py` | `SessionState`: questions, thread, ladder, slots, maps, recipe matches, coverage, versions, every locking and phase rule |
-| `phases.py` | The seven phases, their goals, maps and time budgets; assigns a phase to old-format questionnaires |
-| `contract.py` | Pydantic models for the sync and fast-pass results, the maps and the `PlanDoc`; `SLOT_KEYS` |
-| `prompts.py` | System and user prompts for the fast pass, the full sync and the plan; `QUESTION_STYLE` |
-| `llm.py` | Engines: Claude Code CLI (default), Anthropic SDK, offline keyword heuristics; the persistent fast-pass process |
-| `finalize.py` | `PlanDoc` → `plan.md` (with the Mermaid communication map rendered to inline SVG), `plan.json`, interview log, recipe rules (`apply_recipes`), Wispr import |
-| `planview.py` | Plan view data, saved sessions list, PDF export through a headless Chrome-family browser |
-| `questionnaire.py`, `clients.py` | Questionnaire schema and loader; client sheet, scaffold, next client, pre-plan merged into questionnaire and context, core questions merged in |
-| `research.py`, `autofill.py`, `people.py` | Admin web agents: research + pre-plan + sector pre-study (Opus), client-sheet Auto-fill (Sonnet), interviewee profile cards (Sonnet) with a privacy filter |
-| `horizons.py` | Horizon tags (h1 execution now, h2 emerging, h3 foresight), the pre-study's 0–10 score and posture (explorer / pragmatic / urgent, operator-only), the posture's questions (`core/horizons.yaml`) |
-| `ambassadors.py` | Potential pilots: use case → person links; the interviewee read and the indirect people questions per workflow (merge, wording guard, timing, tone from the pace, template fallback); the sponsor question (what the leader in the meeting would do themself); the pilots the plan names, people or groups; the local `ambassadors.json` (engine fills, hand edit wins) |
-| `pilots.py` | The sponsor of the first wave: always the leader in the meeting (an executive, else a function leader), alongside any pilots; none with operators only (to confirm with the leadership). No expected count: pilots come only from the interview |
-| `attendees.py` | Who is in the meeting: every person on the client sheet with a persona, the lead (whose persona sets the questions), who to address a question to (the model's pick, else the rung); console view and prompt blocks |
-| `viewpoints.py` | The views heard on AI, grouped by statement, not by person (keen, open, cautious, opposed, practical; position, topic, verbatim quotes; a speaker only when the quote itself names them); console view, sync snapshot, the plan's points to address; after the meeting, quotes mapped to the voices of a final transcript with speaker labels (`refine`), else speakers unavailable |
-| `personas.py` | Who is interviewed: the persona (executive, function leader, operator) inferred from title, headcount and notes, refined by the research, overridden by hand; questions re-worded and re-weighed per persona (`personas:` in the questions YAML); what the interviewee can't answer recorded as "to check with" (defers those details on the card, listed in the plan) |
-| `lens.py` | The executive lens: talking points on manual work and metric questions per workflow (merge, wording guard, timing, template fallback for metric questions); what the plan may use of them |
-| `recipes.py`, `metrics.py`, `briefs.py` | Recipe library schema and evidence; per-client metrics with locking; the dated knowledge briefs and their refresh |
-| `i18n.py`, `translate.py`, `locales/` | Catalogs shared with the browser, language resolution, on-the-fly translation through Claude |
-| `static/` | Interview page (`index.html`, `app.js`), admin (`admin.*`), Plan view (`plan.*`), shared `i18n.js` |
-| `core/questions.yaml` | The core questions of phases 1–4, merged into every client questionnaire |
-| `knowledge/` | `capabilities.md`, `delivery-practice.md` (dated briefs) and `recipes/<id>.yaml` (the recipe library) |
+| `web/server.py` | FastAPI app for one interview: `/` page, `/api/state`, `/api/events` (SSE), actions (`/api/start`, `/api/next`, `/api/next-phase`, `/api/sync`, `/api/questions/{id}/answered|skip`, `/api/enough`, `/api/wispr`, `/api/finalize`, `/api/language`), Plan view (`/plan`, `/api/plan`, `/api/plan/pdf`); mounts the admin router |
+| `web/admin.py` | `/admin` page and `/admin/api/*`: clients, next client, research, pre-plan and history, Auto-fill, people cards, metrics, saved sessions and their plans |
+| `web/common.py` | What both apps share: `STATIC_DIR`, the i18n catalog routes, the Plan view responses |
+| `web/guard.py` | Host allow-list and same-origin guard on every server |
+| `web/static/` | Interview page (`index.html`, `app.js`), admin (`admin.*`), Plan view (`plan.*`), shared `i18n.js` |
+| `interview/session.py` | One interview: ingest loop, fast-pass loop, full-sync loop, focus moves, finalize, persistence, resume |
+| `interview/state.py` | `SessionState`: questions, thread, ladder, slots, maps, recipe matches, coverage, versions, every locking and phase rule |
+| `interview/phases.py` | The seven phases, their goals, maps and time budgets; assigns a phase to old-format questionnaires |
+| `interview/questionnaire.py`, `interview/preparation.py` | Questionnaire schema and loader; what an interview starts from for a client: core questions (`interview/core/questions.yaml`), the pre-plan's seed questions, the pace's questions, the model's background (`load_client`) |
+| `interview/lens.py` | The executive lens: talking points on manual work and metric questions per workflow (merge, wording guard, timing, template fallback for metric questions); what the plan may use of them |
+| `interview/translate.py` | On-the-fly translation of the questionnaire into the interview language through Claude, cached per client |
+| `copilot/contract.py` | Pydantic models for the sync and fast-pass results, the maps and the `PlanDoc`; `SLOT_KEYS` |
+| `copilot/prompts.py` | System and user prompts for the fast pass, the full sync and the plan; `QUESTION_STYLE` |
+| `copilot/engines.py` | Engines: Claude Code CLI (default), Anthropic SDK, offline keyword heuristics; the persistent fast-pass process |
+| `copilot/web_agent.py` | The Claude web agent shared by the admin agents and the brief refresh: one `claude -p` run with web search and fetch only, streamed as progress steps (`AgentJob`, `run_claude_stream`) |
+| `people/personas.py` | Who is interviewed: the persona (executive, function leader, operator) inferred from title, headcount and notes, refined by the research, overridden by hand; questions re-worded and re-weighed per persona (`personas:` in the questions YAML); what the interviewee can't answer recorded as "to check with" (defers those details on the card, listed in the plan) |
+| `people/attendees.py` | Who is in the meeting: every person on the client sheet with a persona, the lead (whose persona sets the questions), who to address a question to (the model's pick, else the rung); console view and prompt blocks |
+| `people/pilots.py` | Potential pilots: use case → person links; the interviewee read and the indirect people questions per workflow (merge, wording guard, timing, tone from the pace, template fallback); the sponsor question (what the leader in the meeting would do themself); the pilots the plan names, people or groups; the local `ambassadors.json` (engine fills, hand edit wins) |
+| `people/sponsor.py` | The sponsor of the first wave: always the leader in the meeting (an executive, else a function leader), alongside any pilots; none with operators only (to confirm with the leadership). No expected count: pilots come only from the interview |
+| `people/viewpoints.py` | The views heard on AI, grouped by statement, not by person (keen, open, cautious, opposed, practical; position, topic, verbatim quotes; a speaker only when the quote itself names them); console view, sync snapshot, the plan's points to address; after the meeting, quotes mapped to the voices of a final transcript with speaker labels (`refine`), else speakers unavailable |
+| `research/desk.py`, `research/autofill.py`, `people/profiles.py` | Admin web agents: research + pre-plan + sector pre-study (Opus), client-sheet Auto-fill (Sonnet), interviewee profile cards (Sonnet) with a privacy filter |
+| `research/horizons.py` | Horizon tags (h1 execution now, h2 emerging, h3 foresight), the pre-study's 0–10 score and posture (explorer / pragmatic / urgent, operator-only), the posture's questions (`core/horizons.yaml`) (`research/horizons.yaml`); the pre-study view the admin shows |
+| `clients/sheet.py` | Client folders: the client sheet, scaffold, next client, the pre-plan on disk |
+| `plan/finalize.py`, `plan/headings.py` | `PlanDoc` → `plan.md` (with the Mermaid communication map rendered to inline SVG), `plan.json`, interview log, recipe rules (`apply_recipes`), Wispr import; the plan's headings in the interview language |
+| `plan/view.py` | Plan view data, saved sessions list, PDF export through a headless Chrome-family browser |
+| `plan/metrics.py` | Per-client metrics (`metrics.yaml`) with locking, seeded from the plan |
+| `knowledge/briefs.py`, `knowledge/refresh.py`, `knowledge/recipes.py` | The dated knowledge briefs, their refresh, the recipe library and its evidence. Shipped in `knowledge/data/`; what a machine writes goes to the local knowledge folder, which wins over the shipped file |
+| `transcription/listen/pacenote_listen.swift` | The speech helper: mic once, one `SpeechAnalyzer` + `SpeechTranscriber` per locale, JSON lines on stdout |
+| `transcription/capture.py`, `transcription/speech.py` | Builds and caches the helper, the `TranscriptionBackend` interface (Apple helper, optional whisper.cpp), automatic fallback, watchdog, `ReplaySource` for SRT replays |
+| `transcription/srt.py`, `transcription/transcript.py` | SRT parsing and formatting; the merged transcript of all streams, deltas, readable-stream selection |
+| `shared/i18n.py`, `shared/locales/`, `shared/fsutil.py` | Catalogs shared with the browser, language resolution; atomic file writes |
 
 ## Data on disk
 
@@ -114,7 +136,8 @@ sessions/<slug>/<YYYYMMDD-HHMMSS>/   one interview (git-ignored)
   plan.md, plan.json, plan.pdf  the integration proposal (PDF on demand)
 sessions/<slug>/.translations/cache.json   translations reused by the next session in that language
 
-pacenote/knowledge/          tracked: capabilities.md, delivery-practice.md, recipes/<id>.yaml
+pacenote/knowledge/data/     tracked: capabilities.md, delivery-practice.md, recipes/<id>.yaml (shipped)
+~/.pacenote/knowledge/       refreshed briefs and recipes with recorded evidence (PACENOTE_KNOWLEDGE_DIR); wins over data/
 ~/.pacenote/config.json      the "next client" (PACENOTE_CONFIG)
 ~/Library/Caches/pacenote/   the compiled pacenote-listen, one file per source hash (PACENOTE_LISTEN_CACHE)
 ```
@@ -129,13 +152,13 @@ each) and `themes` of questions. Each question has `fr`/`en` (or any language ke
 (1 must-have, 2 important, 3 if time allows), optional `use_case`, `slots`, an `expect` ladder
 (1–3 concrete details per rung: business, workflow, implementation), `keywords` (offline engine
 only) and a `phase`. The header of `clients.example/brioche-four/questionnaire.yaml` holds the
-wording rules; `tests/test_questions.py` enforces the testable ones (no AI vocabulary, capacity
+wording rules; `tests/interview/test_questions.py` enforces the testable ones (no AI vocabulary, capacity
 first, every question mapped to slots).
 
-Loading a client (`clients.py`, `questionnaire.py`):
+Loading a client (`interview/preparation.py`):
 
 1. the client's `questionnaire.yaml` and `glossary.md`;
-2. the core questions of phases 1–4 (`core/questions.yaml`), unless `core_questions: false`; a core
+2. the core questions of phases 1–4 (`interview/core/questions.yaml`), unless `core_questions: false`; a core
    question listing a client question in `replaces:` is dropped in favour of the client's wording;
 3. with `use_preplan: true`, a theme « Pistes IA identifiées » of up to 4 pre-plan seed questions
    right after the first theme, and the pre-plan summary in the context as hypotheses to confirm;
@@ -212,7 +235,7 @@ sequenceDiagram
   and the interview continues in the others; only "no locale ready" refuses Start.
 - The watchdog restarts a dead helper up to 5 times per outage (2, 4, 6, 6 s), shifting its
   segments to the session clock; a microphone-permission error is never restarted.
-- `speech.py` selects the backend: `apple` (default on macOS 26+), optional `whisper`
+- `transcription/speech.py` selects the backend: `apple` (default on macOS 26+), optional `whisper`
   (whisper.cpp's `whisper-stream`, user-installed, never downloaded by the app), `auto` = Apple
   with whisper as a one-way fallback when the helper fails its health check (no language ready,
   watchdog gave up, or no audio heartbeat for `PACENOTE_HEARTBEAT_STALE` s).
@@ -310,7 +333,7 @@ its output is kept short because its latency grows with what it writes.
 
 ### Engines and `claude` processes
 
-`llm.py` has three engines (`--engine`, `PACENOTE_ENGINE`):
+`copilot/engines.py` has three engines (`--engine`, `PACENOTE_ENGINE`):
 
 - `cli` (default): the Claude Code CLI logged in with the Claude subscription. Each call runs in an
   empty temporary directory (no project `CLAUDE.md`), with `--tools ""`, `--strict-mcp-config`,
@@ -333,7 +356,7 @@ opens the microphone itself. `--offline` makes no network call.
 
 ### The interview screen
 
-`static/index.html` + `app.js` render the view pushed over SSE with keyed in-place DOM updates, so
+`web/static/index.html` + `app.js` render the view pushed over SSE with keyed in-place DOM updates, so
 nothing jumps. One scrolling panel holds the thread: questions already asked (compact, with a
 summary), then the current card, then the next questions. The current card reads in three levels:
 the theme question as a calm header with its ladder (`Business 1/3 › Workflow 0/2 › Implémentation
@@ -347,7 +370,7 @@ Wispr paste box, possible recipes, call durations and errors, and Stop & generat
 
 ### Web safety
 
-`web_guard.py` (on `run`, `replay` and `admin`) accepts only loopback names, the `--host` given and
+`web/guard.py` (on `run`, `replay` and `admin`) accepts only loopback names, the `--host` given and
 `PACENOTE_ALLOWED_HOSTS`, which stops DNS rebinding; any state-changing request whose `Origin` or
 `Sec-Fetch-Site` says cross-origin gets a 403. Research, pre-plan and plan Markdown render raw
 HTML as text and neutralise `javascript:`/`data:` links (`finalize.md_to_html`); admin links are
@@ -410,8 +433,8 @@ question and the person to ask. A number nobody said is never estimated. Ranking
 (strong fit on a proven recipe > strong on a seed > partial > new candidate), then back-office,
 measurable, high-volume, then impact × feasibility.
 
-The plan writer receives two dated briefs, `knowledge/capabilities.md` (what agents can do today;
-the plan may not claim anything absent from it) and `knowledge/delivery-practice.md` (how value is
+The plan writer receives two dated briefs, `knowledge/data/capabilities.md` (what agents can do today;
+the plan may not claim anything absent from it) and `knowledge/data/delivery-practice.md` (how value is
 proven). The plan footer states the brief's date; `pacenote check` and the Plan view warn past 30 days;
 `pacenote capabilities refresh` rewrites them with a web-research run.
 
@@ -421,7 +444,7 @@ chrome; **Export PDF** prints it with a headless Chrome-family browser already i
 
 ### Recipes
 
-A recipe (`knowledge/recipes/<id>.yaml`, strict schema in `recipes.py`, id = file name) holds:
+A recipe (`knowledge/data/recipes/<id>.yaml`, strict schema in `knowledge/recipes.py`, id = file name) holds:
 `title`, `type` (same enum as opportunities), `status` (`seed` or `proven`), `flow` (trigger →
 agent_does → writes_to / notifies → human_decision), `signals`, `preconditions`, `integrations`,
 `probes` (story-form follow-ups, fr/en), `metrics` (with `typical_baseline` / `typical_target`,
@@ -453,9 +476,9 @@ stream-json progress shown live, stoppable, no API key in the child environment.
 
 | Agent | Model | Writes | Notes |
 |---|---|---|---|
-| Research + pre-plan (`research.py`) | Opus, effort high, 30 min timeout | `research.md`, `preplan.md`, `preplan.json`; previous run in `history/` | use cases scored on value × feasibility, seed questions with ladders; a failed or stopped run changes nothing |
+| Research + pre-plan (`research/desk.py`) | Opus, effort high, 30 min timeout | `research.md`, `preplan.md`, `preplan.json`; previous run in `history/` | use cases scored on value × feasibility, seed questions with ladders; a failed or stopped run changes nothing |
 | Auto-fill (`autofill.py`) | Sonnet, effort medium | `client.yaml` fields with per-field provenance | registered company first, distributed brands as linked entities; unsourced or < 0.3 confidence dropped; source pages checked (private addresses never opened); manual values never overwritten; candidates listed when the name is ambiguous; same request reused for 30 min |
-| People (`people.py`) | Sonnet | `people/<contact>.json` | professional, publicly self-published facts only; `privacy_filter` drops family, health, religion, politics, orientation, origin, finances, legal, birth dates, addresses, contact details; homonyms listed for a pick |
+| People (`people/profiles.py`) | Sonnet | `people/<contact>.json` | professional, publicly self-published facts only; `privacy_filter` drops family, health, religion, politics, orientation, origin, finances, legal, birth dates, addresses, contact details; homonyms listed for a pick |
 
 ### Interviewee personas
 
@@ -503,7 +526,7 @@ Three independent languages per session:
 | Interview | what Claude generates: follow-ups, summaries, plan | the questionnaire's `language` |
 | Spoken | the speech locales listening | questionnaire `speech_locales`, else `fr-FR` + `en-US` |
 
-`locales/<lang>.json` (i18next format) is read by Python (`i18n.py`) and the browser (`i18n.js`);
+`shared/locales/<lang>.json` (i18next format) is read by Python (`i18n.py`) and the browser (`i18n.js`);
 adding a language is adding a file. Questionnaire texts missing in the interview language are
 translated by Claude (`translate.py`, fast model, parallel calls, cached per client). Display
 switching is instant and stored in the session state, so a reload or a second screen gets the
@@ -529,6 +552,7 @@ same view.
 | `PACENOTE_INTERVIEW_LANGUAGE` / `PACENOTE_UI_LANGUAGE` | questionnaire / client language | interview / display language |
 | `PACENOTE_CLIENTS_DIR` / `PACENOTE_SESSIONS_DIR` | `clients` / `sessions` | data roots |
 | `PACENOTE_CONFIG` | `~/.pacenote/config.json` | where the next client is stored |
+| `PACENOTE_KNOWLEDGE_DIR` / `PACENOTE_RECIPES_DIR` | `~/.pacenote/knowledge` / its `recipes/` | where refreshed briefs and recorded recipes are written (they win over the shipped ones) |
 | `PACENOTE_RESEARCH_MODEL` / `PACENOTE_AUTOFILL_MODEL` / `PACENOTE_PEOPLE_MODEL` | Opus / Sonnet / Sonnet | admin agents |
 | `PACENOTE_ENGINEER_CONTEXT` | unset | the engineer's own company, one line (e.g. "Acme Labs, a software consultancy"); profile cards then look for what a person has in common with it; unset, they skip that category |
 | `PACENOTE_HOST` / `PACENOTE_PORT` / `PACENOTE_ADMIN_PORT` | `127.0.0.1` / `8765` / `8766` | bind address and ports |
@@ -546,7 +570,7 @@ is platform-aware but the rest of the app (process groups, PDF export) assumes m
 ## Tests
 
 `pytest` runs the suite (unit and integration, no network). Replays use synthetic SRTs written at
-test time from `tests/srt_samples.py`; questionnaires come from frozen fixtures
+test time from `tests/srt_samples.py`; the test folders mirror the package (`tests/interview/`, `tests/people/`…); questionnaires come from frozen fixtures
 (`tests/fixtures/clients/brioche-four` for engine mechanics, `brioche-four-slots` for use cases and
 slots) so the example client can evolve. Stand-in `claude` and `pacenote-listen` scripts speak the real
 protocols. Real-browser tests need Node and the `playwright` package (`NODE_PATH=…`) and are
