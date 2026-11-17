@@ -216,8 +216,9 @@ consent:
   en: >-
     With your consent, this conversation is transcribed live on this computer to build an
     action plan. Audio is never recorded or sent anywhere; only the text is analysed.
-context: >-
-  One paragraph of background for the model (business, size, why we are here).
+# context: one paragraph of background for the model (business, size, why we are here); the client
+# sheet (admin) and the pre-plan are added to it.
+context: ''
 themes:
   - id: capacity
     phase: wealth
@@ -454,10 +455,15 @@ def tailor_questionnaire(q: Questionnaire, info: ClientInfo | None, preplan: dic
                                 "context": client_context(q.context, info, preplan if use else None, profiles)})
 
 
+# what create_client wrote as `context:` before 2026-11-17: a placeholder, never background
+TEMPLATE_CONTEXT = "One paragraph of background for the model (business, size, why we are here)."
+
+
 def client_context(base: str, info: ClientInfo | None, preplan: dict | None,
                    profiles: dict[str, dict] | None = None) -> str:
     """profiles: the interviewee profile cards by contact name (people.load_profiles), given to
     the model in a compact form."""
+    base = "" if base.strip() == TEMPLATE_CONTEXT else base  # an untouched scaffold: no background
     parts = [base.strip()] if base.strip() else []
     if info is not None:
         sheet = [f"{label}: {value}" for label, value in (

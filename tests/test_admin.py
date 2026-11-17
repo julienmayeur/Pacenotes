@@ -16,6 +16,8 @@ from pacenote.cli import main
 from pacenote.clients import (
     load_core_themes,
     PREPLAN_THEME,
+    TEMPLATE_CONTEXT,
+    client_context,
     ClientError,
     get_next_client,
     resolve_client,
@@ -93,6 +95,9 @@ def test_admin_create_and_edit_a_client(clients):
     cfg = load_client(clients, slug)  # the scaffold is a valid, ladder-style questionnaire
     assert cfg.questionnaire.client == "Société Atlantique Bois"
     assert all(q.all_expect() for q in SessionState.from_questionnaire(cfg.questionnaire).questions)
+    # no placeholder sent to the model as client background (it used to be, on every call)
+    assert "One paragraph of background" not in cfg.questionnaire.context
+    assert client_context(TEMPLATE_CONTEXT, None, None) == ""
     assert http.post("/admin/api/clients", json={"name": "Société Atlantique Bois"}).status_code == 400  # exists
     assert http.post("/admin/api/clients", json={"name": "x", "slug": "Bad Slug"}).status_code == 400
 
