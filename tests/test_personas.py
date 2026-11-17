@@ -43,6 +43,8 @@ QUIET = Settings(sync_interval=3600, first_sync_delay=3600, poll_interval=3600, 
     ("DSI", "", "", "function_leader"),
     ("Head of Operations", "40", "", "function_leader"),
     ("Responsable ADV", "8", "", "operator"),  # a department head in a company under 10 people
+    ("Responsable ADV", "60", "", "function_leader"),  # heads the sales-admin desk (ADV alone is operator work)
+    ("Superviseur service client", "60", "", "function_leader"),
     ("Assistante ADV", "45", "", "operator"),
     ("Comptable", "", "", "operator"),
     ("Order desk clerk", "1 200", "", "operator"),

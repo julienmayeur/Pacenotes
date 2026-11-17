@@ -90,7 +90,9 @@ def title_kind(role: str) -> str | None:
         return None
     if _EXECUTIVE.search(f) and not _NOT_EXECUTIVE.search(f):
         return "executive"
-    if _OPERATOR.search(f) and not re.search(r"\b(head|chief|directeur|directrice|director)\b", f):
+    if _OPERATOR.search(f) and not re.search(
+            r"\b(head|chief|directeur|directrice|director|responsable|chef de service|chef d equipe|team lead|"
+            r"superviseur|supervisor|leiter(in)?)\b", f):
         return "operator"
     if _LEADER.search(f):
         return "function_leader"
