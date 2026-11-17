@@ -49,26 +49,36 @@ prepare (admin) ─► consent ─► interview: capture + follow-ups ─► sto
   question asks who tries new tools first (one person, several, or the interviewee themself) and who the
   others listen to. Each potential pilot is kept as a light label with the interviewee's words, on your Mac
   only, and you can edit or remove it in the admin (your edits are kept; a removed person never comes back).
-- **Several pilots, or the leader leading by example.** There can be several pilots: a dynamic or young
-  company often has a few, a large company that moves slowly may show almost none in a first interview.
-  From the headcount, the pace and, when public sources say so, the workforce's age profile (company-level
-  signals only), the admin shows how many pilots to expect (e.g. "0 to 2 for 800 people"), as a hint about
-  the company, never a label on anyone. The copilot keeps listening for pilots across every workflow. When
-  none has been named and the person you interview leads the company or a function, it can suggest an
-  indirect question to check whether they would try it first on their own work ("When something new came
-  in here, did it usually start with you?"); the plan then names them, by role, as the sponsor of the first
-  wave, leading by example.
-- **Who you interview.** In the admin, list the people you will meet (name, title, optional notes). Each
-  gets a persona, with a short reason and how sure it is: **executive** (runs the company: outcomes,
-  value, where time goes, who does what), **function leader** (owns a process and a team: who owns each
-  step, tools, figures) or **hands-on operator** (does the work: step by step, volumes, exceptions). It
-  comes from the title, the company's size and your notes (the CEO of a 6-person company is close to
-  the work; the CEO of 20+ is not), and the research refines it; a small menu changes it. On the consent
-  screen you pick who is in front of you. The persona shapes the whole interview: the wording and
-  priority of the questions (an operator is never asked about strategy), how deep the follow-ups go, the
-  talking points (never for an operator) and the metric questions. When the person can't answer
-  something, the copilot doesn't push: it shows "To check with" and who would know, and the plan lists
-  those points per person.
+- **Pilots come from the answers.** Nobody can say in advance how many people will want to carry it: none,
+  a few, or a whole team. The copilot infers it only from what is said, across every workflow: named
+  people, or a group described as keen ("the whole sales team is up for it"), kept as a group without
+  inventing names. While the picture is unclear, it suggests an indirect side question.
+- **The boss is always involved.** When the leader of the company or of a function is in the meeting, the
+  plan names them, by role, as the sponsor of the first wave, leading by example, alongside any pilots.
+  The copilot finds out during the interview what they would do themself, with an indirect question about
+  their own work ("In your own work, which report or decision do you prepare every week?"); that goes into
+  the first wave. An operator alone in the meeting is never made the sponsor: the plan says it is to be
+  confirmed with the leadership.
+- **Who is in the meeting.** In the admin, list who will be in the meeting: the CEO alone, a head of
+  department, a head and an operator, or three or four people (name, title, optional notes). Each gets a
+  persona, with a short reason and how sure it is: **executive** (runs the company: outcomes, value, where
+  time goes, who does what), **function leader** (owns a process and a team: who owns each step, tools,
+  figures) or **hands-on operator** (does the work: step by step, volumes, exceptions). It comes from the
+  title, the company's size and your notes (the CEO of a 6-person company is close to the work; the CEO of
+  20+ is not), and the research refines it; a small menu changes it. Each person also gets a short prep
+  note. The most senior leader present sets the questions' persona (an operator is never asked about
+  strategy). During the interview the copilot knows everyone in the room: it words each question for the
+  person it's addressed to and can suggest asking someone in particular ("→ Ask Léa (order desk)": the
+  per-item detail to the one who does it, the workflow to the one who owns it). When someone can't answer,
+  it doesn't push: it shows "To check with" and who would know, and the plan lists those points per person.
+- **Each attendee's stance on AI.** Some people in the room may drive it, others may be against it. The
+  copilot reads each attendee's stance (driver, open, hesitant, opposed, or unknown) from what they say,
+  with their words as evidence and how sure it is, and updates it live. The transcript doesn't separate
+  voices, so a line only counts when it's clear who said it (they introduce themself, someone names them,
+  or it answers a question addressed to them). Follow-ups adapt: with someone opposed, they stay concrete
+  on the time given back and never push; with a driver, they explore what that person already does. The
+  stances show in your console (`c`) only and stay in the session data on your Mac; the plan and the PDF
+  never mention them.
 - **Guiding the executive on value.** Fifteen minutes with an executive is not weeks with the staff, so
   the copilot helps you steer toward value, workflow by workflow. When the interviewee describes manual work
   (someone opens emails by hand and re-keys them into Excel), a short, tactful talking point shows
@@ -81,8 +91,8 @@ prepare (admin) ─► consent ─► interview: capture + follow-ups ─► sto
   (`plan.md` + `plan.json`): current state, bottlenecks, opportunities with one metric each and the
   time each gives back (the task that goes away and the decision the person moves up to), grouped
   under "This week", "This quarter" and "Within two years", an adoption plan in three waves (the
-  pilots, one or several, prove the first use case, or the leader opens the way on their own work when
-  nobody was named; their measured results convince most of the team; then everyone follows), open items and who to ask. Nothing
+  leader sponsors it and uses it first on their own work, the pilots prove the first use case; their
+  measured results convince most of the team; then everyone follows), open items and who to ask. Nothing
   that was not said is presented as a fact. Read it in the Plan view and export it to PDF. Metrics can then be tracked per client, and measured results feed a
   library of reusable recipes.
 
@@ -123,7 +133,7 @@ A client folder holds:
 
 | File | Purpose |
 |---|---|
-| `client.yaml` | The client sheet (company, the people you will interview and their persona, your notes) |
+| `client.yaml` | The client sheet (company, who will be in the meeting and their persona, your notes) |
 | `questionnaire.yaml` | Seed questions, phases and languages |
 | `glossary.md` | Expected mishearings (people, products, jargon) → what was said |
 | `research.md`, `preplan.md`, `preplan.json` | Written by the research run: the brief, the pre-plan, the pre-study |
@@ -188,7 +198,7 @@ pacenote replay --client brioche-four --srt fr-FR=sessions/brioche-four/<id>/fr.
 | `a` | Mark the current question answered and move on |
 | `k` | Skip the current question |
 | `s` | Sync now |
-| `c` | Console (languages, transcript paste, possible recipes, potential pilots, Stop & generate plan) |
+| `c` | Console (who is in the meeting and their stance, languages, transcript paste, possible recipes, potential pilots, Stop & generate plan) |
 | `t` | Transcript tail |
 | `f` | Full screen |
 | `l` | Next screen language |

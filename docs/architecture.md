@@ -63,7 +63,7 @@ flowchart LR
 | Module | Role |
 |---|---|
 | `cli.py` | Entry point (`pacenote`, or `python -m pacenote`): `run`, `replay`, `finalize`, `purge`, `new-client`, `check`, `soak`, `next`, `admin`, `capabilities`, `metrics`, `recipes` |
-| `server.py` | FastAPI app for one interview: `/` page, `/api/state`, `/api/events` (SSE), actions (`/api/start`, `/api/next`, `/api/next-phase`, `/api/sync`, `/api/questions/{id}/answered|skip`, `/api/enough`, `/api/wispr`, `/api/finalize`, `/api/language`, `/api/interviewee`), Plan view (`/plan`, `/api/plan`, `/api/plan/pdf`); mounts the admin router |
+| `server.py` | FastAPI app for one interview: `/` page, `/api/state`, `/api/events` (SSE), actions (`/api/start`, `/api/next`, `/api/next-phase`, `/api/sync`, `/api/questions/{id}/answered|skip`, `/api/enough`, `/api/wispr`, `/api/finalize`, `/api/language`), Plan view (`/plan`, `/api/plan`, `/api/plan/pdf`); mounts the admin router |
 | `admin.py` | `/admin` page and `/admin/api/*`: clients, next client, research, pre-plan and history, Auto-fill, people cards, metrics, saved sessions and their plans |
 | `web_guard.py` | Host allow-list and same-origin guard on every server |
 | `listen/pacenote_listen.swift` | The speech helper: mic once, one `SpeechAnalyzer` + `SpeechTranscriber` per locale, JSON lines on stdout |
@@ -80,8 +80,9 @@ flowchart LR
 | `questionnaire.py`, `clients.py` | Questionnaire schema and loader; client sheet, scaffold, next client, pre-plan merged into questionnaire and context, core questions merged in |
 | `research.py`, `autofill.py`, `people.py` | Admin web agents: research + pre-plan + sector pre-study (Opus), client-sheet Auto-fill (Sonnet), interviewee profile cards (Sonnet) with a privacy filter |
 | `horizons.py` | Horizon tags (h1 execution now, h2 emerging, h3 foresight), the pre-study's 0–10 score and posture (explorer / pragmatic / urgent, operator-only), the posture's questions (`core/horizons.yaml`) |
-| `ambassadors.py` | Potential pilots: use case → person links; the interviewee read and the indirect people questions per workflow (merge, wording guard, timing, tone from the pace, template fallback); the sponsor question when no pilot was named; the pilots the plan names; the local `ambassadors.json` (engine fills, hand edit wins) |
-| `pilots.py` | How many pilots to expect (headcount, pace, public workforce signals; a hint about the company, never a person) and the leader as sponsor of the first wave when nobody was named |
+| `ambassadors.py` | Potential pilots: use case → person links; the interviewee read and the indirect people questions per workflow (merge, wording guard, timing, tone from the pace, template fallback); the sponsor question (what the leader in the meeting would do themself); the pilots the plan names, people or groups; the local `ambassadors.json` (engine fills, hand edit wins) |
+| `pilots.py` | The sponsor of the first wave: always the leader in the meeting (an executive, else a function leader), alongside any pilots; none with operators only (to confirm with the leadership). No expected count: pilots come only from the interview |
+| `attendees.py` | Who is in the meeting: every person on the client sheet with a persona, the lead (whose persona sets the questions), each attendee's live stance toward AI (driver, open, hesitant, opposed, unknown; evidence, confidence, how it was attributed), who to address a question to (the model's pick, else the rung); console view and prompt blocks |
 | `personas.py` | Who is interviewed: the persona (executive, function leader, operator) inferred from title, headcount and notes, refined by the research, overridden by hand; questions re-worded and re-weighed per persona (`personas:` in the questions YAML); what the interviewee can't answer recorded as "to check with" (defers those details on the card, listed in the plan) |
 | `lens.py` | The executive lens: talking points on manual work and metric questions per workflow (merge, wording guard, timing, template fallback for metric questions); what the plan may use of them |
 | `recipes.py`, `metrics.py`, `briefs.py` | Recipe library schema and evidence; per-client metrics with locking; the dated knowledge briefs and their refresh |
@@ -396,8 +397,9 @@ check, first verified win on N real cases, what is not claimed, kill criterion, 
 build, adoption measure, impact and feasibility scores, architecture in one sentence, steps, model
 provider and the nine slots; the recipe each reuses (`{id, fit, gaps}`) or a draft in
 `recipe_candidates`; an engagement timeline (week 1 thin slice, week 4 checkpoint, week 8 go/kill);
-an adoption plan in three waves (the pilots, 0..N, prove the lighthouse use case, or, when nobody was
-named and a leader was interviewed, that leader sponsors it on their own work, by role; most of the team,
+an adoption plan in three waves (the leader in the meeting sponsors it, by role, and uses it first on
+their own work, alongside the pilots, 0..N people or groups as heard, who prove the lighthouse use case;
+with operators only, the sponsor is to be confirmed with the leadership; most of the team,
 started by the lighthouse metric against its baseline; everyone, once most of the company works this
 way), with no label on any individual (a wave that labels people falls back to the default wording);
 open items to confirm with whom to ask; the interview log.
@@ -465,14 +467,20 @@ CEO is asked like a function leader and a department head like an operator; from
 the execution details) and the notes (a hands-on note moves one step towards the work). The admin shows
 the persona, why and how sure, next to a small override menu.
 
-On the consent screen (`/api/interviewee`, before Start only) the interviewer picks who is in front of
-them and may change the persona for that session. `state.set_interviewee` applies the questions'
-`personas:` variants (wording and priority; priority 0 = not asked, its theme drops out of the coverage),
-and the prompts get a "Who you interview" block: how deep to go, what not to ask, and what to do when the
-person can't answer. The full sync then returns `to_check` items (question, who would know, the slots it
+Everyone on the client sheet is in the meeting (`state.set_attendees`, at session start; the consent
+screen lists them). The lead (the most senior leader present, else the first attendee) sets the questions'
+persona: `state.set_interviewee` applies the `personas:` variants (wording and priority; priority 0 = not
+asked, its theme drops out of the coverage). The prompts get a "Who is in the meeting" block: each attendee
+with id, persona and stance so far, how deep to go, what not to ask, what to do when the person can't
+answer, and, with several attendees, to word each question for the person it is addressed to and never to
+invent who said what (the transcript has no diarization). The full sync returns `attendee_stances` (only
+from lines attributed by self-introduction, a name, or a question addressed to that person) and `ask_to`
+(question → attendee); without a model pick, the card suggests the attendee from the question's rung. The
+stances live in the session state (`sessions/`, git-ignored), show in the console, and never reach the
+plan writer or the plan (it gets attendees by role and persona only). The full sync then returns `to_check` items (question, who would know, the slots it
 leaves open, the quote): those expect items stop counting as missing (`QuestionState.deferred`), the card
 shows "To check with", and the plan gets a "To check with other people" section grouped by person plus
-the interviewee's role and persona under the context (never the name). The talking points (`lens.py`)
+each attendee's role and persona under the context (never the name, never a stance). The talking points (`lens.py`)
 are off for an operator.
 
 The « next client » (`~/.pacenote/config.json`, `pacenote next`) is the default for `run`, `replay`,
