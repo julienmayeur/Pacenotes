@@ -59,6 +59,7 @@ from .contract import (
     empty_adoption,
     empty_maps,
     ThemeCoverage,
+    loads_lenient,
     parse_fast_result,
     parse_plan_doc,
     parse_sync_result,
@@ -371,7 +372,7 @@ class ClaudeStreamSession:
             proc.stdin.close()  # type: ignore[union-attr]
         except Exception:
             pass
-        _kill_group(proc)
+        kill_group(proc)
         try:
             proc.wait(timeout=2)
         except subprocess.TimeoutExpired:
@@ -407,7 +408,7 @@ class ClaudeCliEngine:
     def cancel(self) -> None:
         """Kill any running `claude -p` (server shutdown)."""
         for proc in list(self._active):
-            _kill_group(proc)
+            kill_group(proc)
         self.close()
         shutil.rmtree(self._workdir, ignore_errors=True)  # a later call makes it again (_cwd)
 
@@ -466,7 +467,7 @@ class ClaudeCliEngine:
         try:
             out, err = proc.communicate(prompt, timeout=timeout)
         except subprocess.TimeoutExpired as exc:
-            _kill_group(proc)
+            kill_group(proc)
             proc.communicate()  # reap
             raise SyncFailed(f"Claude CLI timed out after {timeout:.0f}s") from exc
         finally:
@@ -553,15 +554,13 @@ class ClaudeCliEngine:
 
 
 def _loads_json(text: str) -> dict:
-    from .contract import _loads_lenient
-
-    data = _loads_lenient(text)
+    data = loads_lenient(text)
     if not isinstance(data, dict):
         raise ValueError("expected a JSON object")
     return data
 
 
-def _kill_group(proc: subprocess.Popen) -> None:
+def kill_group(proc: subprocess.Popen) -> None:
     try:
         os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
     except (ProcessLookupError, PermissionError):

@@ -757,7 +757,7 @@ def parse_sync_result(raw: str | dict | SyncResult) -> SyncResult:
         return raw
     try:
         if isinstance(raw, str):
-            raw = _loads_lenient(raw)
+            raw = loads_lenient(raw)
         if isinstance(raw, dict) and "attendee_stances" in raw:  # recorded before viewpoints
             raw = {k: v for k, v in raw.items() if k != "attendee_stances"} | {"viewpoints": raw.get("viewpoints", [])}
         return SyncResult.model_validate(raw)
@@ -770,13 +770,13 @@ def parse_fast_result(raw: str | dict | FastResult) -> FastResult:
         return raw
     try:
         if isinstance(raw, str):
-            raw = _loads_lenient(raw)
+            raw = loads_lenient(raw)
         return FastResult.model_validate(raw)
     except (json.JSONDecodeError, ValueError) as exc:
         raise ContractError(f"fast response violates the contract: {exc}") from exc
 
 
-def _loads_lenient(text: str):
+def loads_lenient(text: str):
     """Repair path for text replies: strip a ```json fence, or take the outermost {...}
     when the model wrapped the object in a sentence."""
     m = _FENCE.match(text)
@@ -813,7 +813,7 @@ def parse_plan_doc(raw: str | dict | PlanDoc) -> PlanDoc:
         return raw
     try:
         if isinstance(raw, str):
-            raw = _loads_lenient(raw)
+            raw = loads_lenient(raw)
         return PlanDoc.model_validate(_legacy_adoption(raw))
     except (json.JSONDecodeError, ValueError) as exc:
         raise ContractError(f"plan response violates the contract: {exc}") from exc

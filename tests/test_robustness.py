@@ -286,7 +286,7 @@ def test_claude_engine_removes_its_empty_workdir_on_close():
 
 
 def test_claude_stream_drains_stderr_while_reading_stdout(tmp_path):
-    from pacenote.research import ResearchJob, run_claude_stream
+    from pacenote.web_agent import AgentJob, run_claude_stream
 
     script = tmp_path / "chatty-claude"
     script.write_text(f"""#!{sys.executable}
@@ -298,7 +298,7 @@ print(json.dumps({{"type": "result", "subtype": "success", "structured_output": 
 """)
     script.chmod(0o755)
     started = time.monotonic()
-    data = run_claude_stream(ResearchJob(slug="x"), [str(script)], "prompt", 5, "pacenote-test-")
+    data = run_claude_stream(AgentJob(slug="x"), [str(script)], "prompt", 5, "pacenote-test-")
     assert data == {"ok": True} and time.monotonic() - started < 4  # not killed by the timeout
 
 

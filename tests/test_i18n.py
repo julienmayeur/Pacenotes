@@ -636,11 +636,11 @@ def test_pages_have_no_hard_coded_strings_and_use_the_shared_helper(page):
 
 
 def test_admin_research_steps_carry_catalog_keys(tmp_path):
-    from pacenote.research import ResearchJob, _progress
+    from pacenote.web_agent import AgentJob, progress
 
-    job = ResearchJob(slug="acme", started_at=time.time())
+    job = AgentJob(slug="acme", started_at=time.time())
     job.lang = "en"
-    _progress(job, {"type": "assistant", "message": {"content": [
+    progress(job, {"type": "assistant", "message": {"content": [
         {"type": "tool_use", "name": "WebSearch", "input": {"query": "ACME GmbH"}}]}})
     step = job.steps[-1]
     assert step["key"] == "admin.step.search" and step["params"] == {"query": "ACME GmbH"}

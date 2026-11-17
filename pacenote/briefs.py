@@ -8,7 +8,7 @@ pacenote/knowledge/
 
 Each file starts with YAML front matter (`as_of:`, `sources:`). Both are tracked. A brief older
 than STALE_DAYS is flagged by `pacenote check` and in the Plan view. `pacenote capabilities refresh` rewrites
-them with one web-research `claude -p` run each (research.run_claude_stream: web search and fetch
+them with one web-research `claude -p` run each (web_agent.run_claude_stream: web search and fetch
 only, JSON schema, timeout), keeping the same format.
 """
 
@@ -147,7 +147,7 @@ def refresh_brief(name: str, *, claude_bin: str | None = None, model: str | None
     """Rewrite knowledge/<brief> from one web-research `claude -p` run. The previous file stays
     untouched if the run fails. `runner(job, cmd, prompt, timeout, prefix)`: tests inject a fake."""
     from .llm import DEFAULT_MODEL, find_claude
-    from .research import ResearchJob, run_claude_stream
+    from .web_agent import AgentJob, run_claude_stream
 
     current = load_brief(name)
     stamp = (today or date.today()).isoformat()
@@ -161,7 +161,7 @@ def refresh_brief(name: str, *, claude_bin: str | None = None, model: str | None
               f"{current.body if current else '(none)'}\n\nSources it cited:\n"
               + "\n".join(f"- {s.get('title')}: {s.get('url')}" for s in (current.sources if current else []))
               + "\n\nCheck it on the web and return the updated brief with every source you relied on.")
-    job = ResearchJob(slug=f"brief-{name}", lang="en")
+    job = AgentJob(slug=f"brief-{name}", lang="en")
     if on_step is not None:  # mirror progress steps (searches, pages read) as they come
         steps = job.steps
 

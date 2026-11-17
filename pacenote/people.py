@@ -41,8 +41,8 @@ from typing import Callable, Literal
 from pydantic import BaseModel, ConfigDict
 
 from . import fsutil, i18n
-from .llm import _kill_group, find_claude
-from .research import ResearchJob, run_claude_stream
+from .llm import find_claude, kill_group
+from .web_agent import AgentJob, run_claude_stream
 
 log = logging.getLogger(__name__)
 
@@ -464,7 +464,7 @@ def compact_profile(card: dict) -> str:
 
 
 @dataclass
-class PersonJob(ResearchJob):
+class PersonJob(AgentJob):
     client: str = ""
     name: str = ""
     role: str = ""
@@ -544,7 +544,7 @@ class PeopleManager:
     def _stop(job: PersonJob) -> None:
         job._stop.set()
         if job._proc is not None:
-            _kill_group(job._proc)
+            kill_group(job._proc)
 
     def wait(self, job_id: str, timeout: float = 60.0) -> PersonJob | None:
         deadline = time.time() + timeout

@@ -380,12 +380,12 @@ def test_candidates_then_the_chosen_one_fills_the_sheet(tmp_path):
 
 def test_a_schema_retry_is_not_shown_as_an_unreachable_source():
     from pacenote.autofill import AutofillJob
-    from pacenote.research import _progress
+    from pacenote.web_agent import progress
 
     job = AutofillJob(slug="x")
-    _progress(job, {"type": "user", "message": {"content": [{"type": "tool_result", "is_error": True,
+    progress(job, {"type": "user", "message": {"content": [{"type": "tool_result", "is_error": True,
                "content": "Output does not match required schema: /fields/website"}]}}, "autofillWriting")
-    _progress(job, {"type": "user", "message": {"content": [{"type": "tool_result", "is_error": True,
+    progress(job, {"type": "user", "message": {"content": [{"type": "tool_result", "is_error": True,
                "content": "403 Forbidden"}]}}, "autofillWriting")
     assert [s["key"] for s in job.steps] == ["admin.step.reformat", "admin.step.unreachable"]
 

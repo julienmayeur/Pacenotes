@@ -44,8 +44,8 @@ from typing import Callable, Literal
 from pydantic import BaseModel, ConfigDict
 
 from . import i18n
-from .llm import _kill_group, find_claude
-from .research import ResearchJob, run_claude_stream
+from .llm import find_claude, kill_group
+from .web_agent import AgentJob, run_claude_stream
 
 log = logging.getLogger(__name__)
 
@@ -527,7 +527,7 @@ def fold(name: str) -> str:
 
 
 @dataclass
-class AutofillJob(ResearchJob):
+class AutofillJob(AgentJob):
     name: str = ""
     key: str = ""
     hints: dict = field(default_factory=dict)
@@ -598,7 +598,7 @@ class AutofillManager:
     def _stop(job: AutofillJob) -> None:
         job._stop.set()
         if job._proc is not None:
-            _kill_group(job._proc)
+            kill_group(job._proc)
 
     def wait(self, job_id: str, timeout: float = 60.0) -> AutofillJob | None:
         deadline = time.time() + timeout

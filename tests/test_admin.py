@@ -26,7 +26,8 @@ from pacenote.clients import (
 from pacenote.llm import OfflineEngine
 from pacenote.prompts import build_fast_system, build_sync_system
 from pacenote.questionnaire import load_client
-from pacenote.research import ResearchJob, ResearchManager, _progress
+from pacenote.research import ResearchManager
+from pacenote.web_agent import AgentJob, progress
 from pacenote.server import create_app
 from pacenote.session import Session, Settings
 from pacenote.state import SessionState
@@ -317,16 +318,16 @@ def test_preplan_can_be_kept_out_of_the_interview(clients):
 
 
 def test_research_progress_shows_writing_as_soon_as_it_starts():
-    job = ResearchJob(slug="x")
-    _progress(job, {"type": "assistant", "message": {"content": [
+    job = AgentJob(slug="x")
+    progress(job, {"type": "assistant", "message": {"content": [
         {"type": "tool_use", "name": "WebSearch", "input": {"query": "Brioche & Four Fornaxa"}}]}})
-    _progress(job, {"type": "user", "message": {"content": [
+    progress(job, {"type": "user", "message": {"content": [
         {"type": "tool_result", "is_error": True, "content": "proxy refused"}]}})
-    _progress(job, {"type": "stream_event", "event": {"type": "content_block_delta", "delta": {"text": "…"}}})
-    _progress(job, {"type": "stream_event", "event": {
+    progress(job, {"type": "stream_event", "event": {"type": "content_block_delta", "delta": {"text": "…"}}})
+    progress(job, {"type": "stream_event", "event": {
         "type": "content_block_start", "content_block": {"type": "tool_use", "name": "StructuredOutput"}}})
     # the complete block arrives later: not repeated
-    _progress(job, {"type": "assistant", "message": {"content": [
+    progress(job, {"type": "assistant", "message": {"content": [
         {"type": "tool_use", "name": "StructuredOutput", "input": {}}]}})
     assert [s["kind"] for s in job.steps] == ["search", "warn", "write"]
     assert job.steps[0]["text"] == "Recherche : Brioche & Four Fornaxa"
