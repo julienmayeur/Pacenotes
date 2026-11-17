@@ -1,7 +1,8 @@
-"""Real-browser checks (Node + Playwright, skipped without them) of the pilots, with fake data and no model
-call: the Plan view with several pilots, the Plan view with the leader as sponsor (no pilot named in a
-large company that moves slowly), and the admin's hint of how many pilots to expect. Fixed spare ports
-8796 (admin) and 8797 (Plan view). Fictional people and companies only."""
+"""Real-browser checks (Node + Playwright, skipped without them) of the pilots and the sponsor, with fake data
+and no model call: the Plan view with the boss as sponsor alongside several pilots, the Plan view with no
+pilot (the boss leads by example), an operator alone (the sponsor is to be confirmed), and the admin's
+pre-study without any expected count of pilots. Fixed spare ports 8796 (admin) and 8797 (Plan view).
+Fictional people and companies only."""
 
 from __future__ import annotations
 
@@ -12,7 +13,6 @@ import shutil
 import pytest
 import yaml
 
-from pacenote import pilots
 from pacenote.admin import create_admin_app
 from pacenote.capture import ReplaySource
 from pacenote.contract import parse_plan_doc
@@ -29,6 +29,9 @@ from .test_phases import maps, org
 
 QUIET = Settings(sync_interval=3600, first_sync_delay=3600, poll_interval=3600, fast_enabled=False)
 pytestmark = pytest.mark.skipif(not _node_playwright(), reason="needs node + playwright")
+
+BOSS = {"name": "Hélène Varenne", "role": "PDG", "persona": "executive", "origin": "rule"}
+CLERK = {"name": "Léa Morin", "role": "assistante ADV", "persona": "operator", "origin": "rule"}
 
 # argv: url, optional screenshot path (the adoption plan, for a human to look at)
 PLAN_SCRIPT = r"""
@@ -66,7 +69,7 @@ const { chromium } = require('playwright');
 
 
 class _BarePlanEngine(OfflineEngine):
-    """A written plan that names nobody: the pilots, or the sponsor, come from the interview (finalize)."""
+    """A written plan that names nobody: the pilots and the sponsor come from the interview (finalize)."""
 
     def write_plan_doc(self, system, user, state=None):
         return parse_plan_doc(plan_doc(
@@ -75,28 +78,30 @@ class _BarePlanEngine(OfflineEngine):
             adoption={"lighthouse": "bakery-orders"}))
 
 
-def several_pilots_session(tmp_path) -> Session:
-    s = Session(client=load_client(CLIENTS, "brioche-four-slots"), session_dir=tmp_path / "s" / "20261116-100000",
+def _session(tmp_path, stamp: str, people) -> Session:
+    s = Session(client=load_client(CLIENTS, "brioche-four-slots"), session_dir=tmp_path / "s" / stamp,
                 engine=_BarePlanEngine(), source_factory=lambda d: ReplaySource({}), settings=QUIET)
-    s.state.set_interviewee({"index": 0, "name": "Hélène Varenne", "role": "PDG", "persona": "executive"})
-    s.state.pilots_hint = pilots.expected("120", "urgent", "young")
+    s.state.set_attendees([dict(p) for p in people])
+    return s
+
+
+def several_pilots_session(tmp_path) -> Session:
+    """The boss and three people the interview described as keen, one of them a whole team."""
+    s = _session(tmp_path, "20261117-100000", [BOSS, CLERK])
     s.state.apply_sync_result(result(
         maps=maps(org=[org(rid="claire", person="Claire", role="assistante ADV",
                            adoption_signal="elle essaie toujours les nouveautés en premier", evidence="Claire à l'ADV"),
                        org(rid="marc", person="Marc", role="magasinier",
                            adoption_signal="c'est lui qui a montré le scanner aux autres", evidence="Marc au dépôt"),
-                       org(rid="ines", person="Inès", role="comptable",
-                           adoption_signal="elle a monté seule les tableaux de relance", evidence="Inès en compta")]),
+                       org(rid="ventes", person="toute l'équipe ventes", role="",
+                           adoption_signal="ils sont tous partants pour essayer", evidence="l'équipe ventes")]),
         slots=[fill("bakery-orders", "actors", "Claire", "c'est Claire qui saisit")]))
     return s
 
 
-def sponsor_session(tmp_path) -> Session:
-    s = Session(client=load_client(CLIENTS, "brioche-four-slots"), session_dir=tmp_path / "s" / "20261116-110000",
-                engine=_BarePlanEngine(), source_factory=lambda d: ReplaySource({}), settings=QUIET)
-    s.state.set_interviewee({"index": 0, "name": "Hélène Varenne", "role": "PDG", "persona": "executive"})
+def no_pilot_session(tmp_path) -> Session:
+    s = _session(tmp_path, "20261117-110000", [BOSS])
     s.state.posture = "explorer"
-    s.state.pilots_hint = pilots.expected("800", "explorer", "mature")
     return s
 
 
@@ -106,29 +111,35 @@ def plan_in_browser(tmp_path, s: Session, shot: str = "") -> dict:
         return run_node(tmp_path, PLAN_SCRIPT, url, *([shot] if shot else []))
 
 
-def test_plan_view_names_several_pilots(tmp_path):
+def test_plan_view_names_the_boss_as_sponsor_alongside_several_pilots(tmp_path):
     r = plan_in_browser(tmp_path, several_pilots_session(tmp_path))
     assert r["errors"] == []
-    assert [x.split(" — ")[0] for x in r["pilots"]] == ["Claire", "Marc", "Inès"]  # the lighthouse's person first
+    assert [x.split(" — ")[0] for x in r["pilots"]] == ["Claire", "Marc", "toute l'équipe ventes (en groupe)"]
     assert "« c'est lui qui a montré le scanner aux autres »" in r["pilots"][1]
     a = r["adoption"]
-    assert "Pilotes :" in a and "l'entretien en a cité 3" in a and "Sponsor" not in a
-    for leak in ("Varenne", "Hélène", "urgent", "Urgent"):
-        assert leak not in r["text"], leak
-    for leak in ("jeune", "secteur", "réticen"):
+    assert "Sponsor : PDG, qui montre l'exemple" in a and a.index("Sponsor") < a.index("Pilotes")
+    assert "Le sponsor (PDG) l'utilise d'abord sur son propre travail, avec les pilotes" in a
+    for leak in ("Varenne", "Hélène", "Morin", "en général", "Opérationnel"):
         assert leak not in a, leak
+    assert "Dans la réunion : PDG — Dirigeant; assistante ADV — Opérationnel" in r["text"]
 
 
-def test_plan_view_names_the_boss_as_sponsor_when_no_pilot_emerged(tmp_path):
-    r = plan_in_browser(tmp_path, sponsor_session(tmp_path))
+def test_plan_view_with_no_pilot_the_boss_leads_by_example(tmp_path):
+    r = plan_in_browser(tmp_path, no_pilot_session(tmp_path))
     assert r["errors"] == [] and r["pilots"] == []
     a = r["adoption"]
     assert "Sponsor : PDG, qui montre l'exemple : l'utilise d'abord sur son propre travail" in a
-    assert "Le sponsor (PDG) ouvre la voie sur son propre travail" in a and "en premier ? (PDG)" in a and "le dirigeant ouvre la voie" in a
+    assert "Le sponsor (PDG) ouvre la voie sur son propre travail" in a and "en premier ? (PDG)" in a
     for leak in ("Varenne", "Hélène", "explorer", "Explorateur"):
         assert leak not in r["text"], leak
-    for leak in ("en retard", "âgé", "lent", "secteur", "réticen"):  # the pace and the workforce stay operator-only
+    for leak in ("en général", "en retard", "âgé", "réticen"):  # no count, no pace, no label on anyone
         assert leak not in a, leak
+
+
+def test_plan_view_with_an_operator_alone_asks_the_leadership_for_a_sponsor(tmp_path):
+    r = plan_in_browser(tmp_path, _session(tmp_path, "20261117-120000", [CLERK]))
+    assert r["errors"] == []
+    assert "Sponsor : à confirmer avec la direction." in r["adoption"] and "assistante ADV, qui" not in r["adoption"]
 
 
 ADMIN_SCRIPT = r"""
@@ -138,44 +149,30 @@ const { chromium } = require('playwright');
   const p = await b.newPage({ viewport: { width: 1280, height: 1000 } });
   const errors = [];
   p.on('pageerror', (e) => errors.push(String(e)));
-  await p.addInitScript((lang) => localStorage.setItem('pacenote.ui-language', lang), process.argv[3] || 'en');
+  await p.addInitScript(() => localStorage.setItem('pacenote.ui-language', 'en'));
   await p.goto(process.argv[2] + '/admin?client=brioche-four');
   await p.waitForSelector('#client:not(.hidden)');
   await p.click('#tabs button[data-tab="prestudy"]');
-  await p.waitForSelector('#prestudy .pilots-hint');
-  const r = await p.evaluate(() => ({
-    hint: document.querySelector('#prestudy .pilots-hint').textContent,
-    factors: [...document.querySelectorAll('#prestudy .pilots-hint li')].map((x) => x.textContent),
-    workforce: document.querySelector('#prestudy').textContent.includes('Workforce:'),
-    tab: document.querySelector('#tabs button[data-tab="ambassadors"]').textContent }));
-  if (process.argv[4]) {
-    const el = await p.$('#prestudy');
-    await el.screenshot({ path: process.argv[4] });
-  }
+  await p.waitForFunction(() => document.querySelector('#prestudy').textContent.length > 20);
+  const r = await p.evaluate(() => ({ text: document.querySelector('#prestudy').textContent,
+    hint: !!document.querySelector('#prestudy .pilots-hint') }));
   console.log(JSON.stringify({ ...r, errors }));
   await b.close();
 })().catch((e) => { console.error(e); process.exit(1); });
 """
 
 
-def admin_client(tmp_path):
+def test_admin_prestudy_shows_no_expected_count_even_from_an_old_preplan(tmp_path):
     shutil.copytree(REAL_CLIENTS / "brioche-four", tmp_path / "clients" / "brioche-four")
     d = tmp_path / "clients" / "brioche-four"
     meta = {k: RESULT[k] for k in ("summary", "use_cases", "seed_questions", "sources", "prestudy")}
-    meta["prestudy"] = {**meta["prestudy"], "workforce": "mature",
-                        "workforce_note": "Pyramide des âges publiée dans le rapport annuel 2025 (fictif)."}
+    meta["prestudy"] = {**meta["prestudy"], "workforce": "mature", "workforce_note": "rapport annuel (fictif)"}
     (d / "preplan.json").write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
     (d / "preplan.md").write_text("# Pré-plan\n", encoding="utf-8")
     info = yaml.safe_load((d / "client.yaml").read_text(encoding="utf-8")) or {}
-    (d / "client.yaml").write_text(yaml.safe_dump({**info, "headcount": "800", "posture_override": "explorer"},
-                                                  allow_unicode=True), encoding="utf-8")
-    return tmp_path / "clients"
-
-
-def test_admin_shows_how_many_pilots_to_expect(tmp_path):
-    with serve(create_admin_app(admin_client(tmp_path)), ADMIN_PORT) as url:
-        r = run_node(tmp_path, ADMIN_SCRIPT, url, "en")
-    assert r["errors"] == [] and r["tab"] == "Pilots" and r["workforce"]
-    assert "0 to 2 for 800 people" in r["hint"] and "The leader will likely open the way" in r["hint"]
-    assert r["factors"][0].startswith("large company that moves slowly") and len(r["factors"]) == 3
-    assert "never about a person" in r["hint"]
+    (d / "client.yaml").write_text(yaml.safe_dump({**info, "headcount": "800"}, allow_unicode=True), encoding="utf-8")
+    with serve(create_admin_app(tmp_path / "clients"), ADMIN_PORT) as url:
+        r = run_node(tmp_path, ADMIN_SCRIPT, url)
+    assert r["errors"] == [] and not r["hint"]
+    for leak in ("Workforce", "Pilots to expect", "for 800 people", "rapport annuel"):
+        assert leak not in r["text"], leak

@@ -13,6 +13,7 @@ from markdown.extensions import Extension
 from markdown.treeprocessors import Treeprocessor
 
 from . import ambassadors, briefs, fsutil, personas
+from . import attendees as attendees_lib
 from . import pilots as pilots_lib
 from . import recipes as recipe_lib
 from .contract import SLOT_KEYS, Fact, Measure, Pilot, PlanDoc, PlanUseCase, Recipe
@@ -241,11 +242,14 @@ def apply_horizons(doc: PlanDoc, state: SessionState | None = None, library: dic
 
 
 def adoption_people(a, state: SessionState | None, lighthouse: str) -> dict:
-    """Who carries the first wave (pilots.py): the pilots the model named (never one described with a
-    label), else the ones the interview surfaced (ambassadors.pilots_for_plan); several are fine. With
-    pilots, no sponsor. With none, the leader interviewed (an executive or a function leader) sponsors
-    the first wave, leading by example, named by role; an operator interviewed sponsors nothing."""
-    pilots = [p.model_copy(update={"person": _one_line(p.person), "evidence": _one_line(p.evidence)})
+    """Who carries the first wave (pilots.py): the pilots the model named, people or groups (never one
+    described with a label), else the ones the interview surfaced (ambassadors.pilots_for_plan); none,
+    one or many. The sponsor is always the leader in the meeting (an executive, else a function leader),
+    named by role, alongside the pilots, with what they do themself (sponsor_plan, from the interview).
+    With no leader in the meeting (operators only), no sponsor: the plan says to confirm it with the
+    leadership."""
+    pilots = [p.model_copy(update={"person": _one_line(p.person), "evidence": _one_line(p.evidence),
+                                   "group": bool(p.group) or ambassadors.is_group(p.person)})
               for p in a.pilots if p.person.strip() and not _PEOPLE_LABELS.search(f"{p.person} {p.evidence}")]
     if not pilots and state is not None:
         pilots = [Pilot(**p) for p in ambassadors.pilots_for_plan(state, lighthouse)
@@ -255,15 +259,16 @@ def adoption_people(a, state: SessionState | None, lighthouse: str) -> dict:
         if (k := ambassadors.person_id(p.person)) and k not in seen:
             seen.add(k)
             unique.append(p)
+    out: dict = {"pilots": unique}
     if unique:
-        return {"pilots": unique, "sponsor": "", "sponsor_plan": "", "question": "", "ask": ""}
+        out |= {"question": "", "ask": ""}
     if state is None:
-        return {"pilots": []}
-    if not pilots_lib.can_sponsor(state):
-        return {"pilots": [], "sponsor": "", "sponsor_plan": ""}
+        return out
     sponsor = pilots_lib.sponsor_label(state, state.tr())
-    return {"pilots": [], "sponsor": sponsor, "sponsor_plan": wave_text(a.sponsor_plan),
-            "ask": a.ask.strip() or sponsor}  # who to ask who else would go first: the sponsor, by default
+    out |= {"sponsor": sponsor, "sponsor_plan": wave_text(a.sponsor_plan) if sponsor else ""}
+    if not unique and sponsor:
+        out["ask"] = a.ask.strip() or sponsor  # who to ask who else would go first: the sponsor, by default
+    return out
 
 
 def _one_line(text: str) -> str:
@@ -678,8 +683,13 @@ def render_plan_md(doc: PlanDoc, state: SessionState) -> str:
             field("lighthouse", light.title.strip() if light is not None else tr("plan.toConfirm")), ""]
     def pilot(p) -> str:
         quote = p.evidence.strip()
-        return p.person.strip() + (f" — « {quote} »" if quote else f" _({tr('plan.toConfirm')})_")
+        who = tr("plan.adoption.group", group=p.person.strip()) if p.group else p.person.strip()
+        return who + (f" — « {quote} »" if quote else f" _({tr('plan.toConfirm')})_")
 
+    # the leader in the meeting sponsors the first wave, always, alongside the pilots (pilots.py)
+    sponsor = a.sponsor.strip()
+    out += [field("sponsor", tr("plan.adoption.sponsorLine", sponsor=sponsor, plan=wave_text(
+        a.sponsor_plan) or tr("plan.adoption.default.sponsorPlan")) if sponsor else tr("plan.adoption.sponsorTbc")), ""]
     pilots = [p for p in a.pilots if p.person.strip()]
     if len(pilots) > 1:
         out += [field("pilots", "").rstrip(), ""] + [f"- {pilot(p)}" for p in pilots]
@@ -687,12 +697,6 @@ def render_plan_md(doc: PlanDoc, state: SessionState) -> str:
         out.append(field("pilots", pilot(pilots[0]) if pilots else tr(
             "plan.confirmLine", question=a.question.strip() or tr("plan.adoption.findQuestion"),
             ask=a.ask.strip() or unknown)))
-    sponsor = a.sponsor.strip() if not pilots else ""
-    if hint := pilots_lib.hint_line(state.pilots_hint, len(pilots), tr):
-        out += ["", f"_{hint}_"]
-    if sponsor:
-        out += ["", field("sponsor", tr("plan.adoption.sponsorLine", sponsor=sponsor,
-                                         plan=wave_text(a.sponsor_plan) or tr("plan.adoption.default.sponsorPlan")))]
     out.append("")
     lm = metric_by_case.get(light.id) if light is not None else None
     proof = (tr("plan.metricLine", name=lm.name, baseline=measure(lm.baseline), target=measure(lm.target))
@@ -700,8 +704,8 @@ def render_plan_md(doc: PlanDoc, state: SessionState) -> str:
     for n, k in enumerate(("volunteers", "majority", "everyone"), 1):
         w = getattr(a, k)
         trigger = wave_text(w.trigger) or tr(f"plan.adoption.default.{k}Trigger")
-        default = tr("plan.adoption.default.volunteersSponsor", sponsor=sponsor) if k == "volunteers" and sponsor \
-            else tr(f"plan.adoption.default.{k}")
+        default = tr(f"plan.adoption.default.volunteers{'Sponsor' if pilots else 'SponsorAlone'}", sponsor=sponsor) \
+            if k == "volunteers" and sponsor else tr(f"plan.adoption.default.{k}")
         out += [f"{n}. **{tr(f'plan.adoption.{k}')}** — {wave_text(w.plan) or default}",
                 f"    - {tr('plan.adoption.startsWhen', trigger=trigger)}"]
         if k == "majority":
@@ -722,14 +726,17 @@ def render_plan_md(doc: PlanDoc, state: SessionState) -> str:
 
 
 def interviewed_line(state: SessionState, tr) -> str:
-    """"**Interviewed**: Finance director — function leader": the role and the persona, never the name
-    (the plan is shared). "" when nobody was picked (an older session, or no contact on the sheet)."""
-    iv = state.interviewee or {}
-    if not iv or iv.get("origin") == "default" and not iv.get("role"):
+    """"**In the meeting**: CEO — executive; Order desk — hands-on operator": each attendee's role and
+    persona, never the name and never their stance (the plan is shared). "" when nobody was listed."""
+    people = attendees_lib.of(state)
+    if not people:
         return ""
-    persona = tr(f"persona.{state.persona}")
-    role = (iv.get("role") or "").strip()
-    return tr("plan.fieldLine", label=tr("plan.interviewed"), value=f"{role} — {persona}" if role else persona)
+    def one(a: dict) -> str:
+        persona, role = tr(f"persona.{a['persona']}"), (a.get("role") or "").strip()
+        return f"{role} — {persona}" if role else persona
+
+    value = "; ".join(one(a) for a in people)
+    return tr("plan.fieldLine", label=tr("plan.interviewed"), value=value)
 
 
 def to_check_md(state: SessionState, tr, h: dict) -> list[str]:

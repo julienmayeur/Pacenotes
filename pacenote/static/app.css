@@ -431,14 +431,21 @@ language-select .ls-seg button:focus-visible { outline: 2px solid var(--accent);
 .admin-link a, a.admin-link { color: var(--muted); text-decoration: none; }
 .admin-link a:hover, a.admin-link:hover { color: var(--accent); }
 
-/* --- who we interview (personas.py): a small picker on the consent screen, a quiet chip afterwards --- */
+/* --- who is in the meeting (attendees.py): a short list on the consent screen, a quiet chip afterwards --- */
 .consent-who { display: grid; gap: 6px; margin: 18px 0 0; padding: 12px 14px; border: 1px solid var(--rule);
   border-radius: 10px; text-align: left; }
-.consent-who .who-row { display: flex; gap: 8px; flex-wrap: wrap; }
-.consent-who select { font: inherit; font-size: 14px; padding: 4px 8px; border: 1px solid var(--rule); border-radius: 6px;
-  background: var(--surface, var(--bg)); color: var(--ink); }
-.consent-who select.hidden { display: none; }
+.consent-who .who-list { list-style: none; margin: 0; padding: 0; font-size: 14px; display: grid; gap: 2px; }
+.consent-who .who-list.hidden { display: none; }
 .consent-who p { margin: 0; line-height: 1.4; }
+.consent-who p:empty { display: none; }
+/* with several attendees: who to address the question to */
+.ask-to { margin: var(--sp-1) 0 0; font-size: var(--fs-sm, 14px); color: var(--accent); font-weight: 600; }
+.ask-to.hidden { display: none; }
+/* the console's stance view: one line per attendee, the stance as a quiet tag */
+.attendee-list .stance { margin-left: 4px; }
+.attendee-list .nowrap { white-space: nowrap; }
+.attendee-list .stance-driver .stance { color: var(--ok); }
+.attendee-list .stance-opposed .stance, .attendee-list .stance-hesitant .stance { color: var(--warn, #b26a00); }
 .who-chip { font-size: 12px; font-weight: 500; letter-spacing: 0; color: var(--muted); padding: 2px 10px;
   border: 1px solid var(--rule); border-radius: 999px; white-space: nowrap; }
 .who-chip.hidden { display: none; }

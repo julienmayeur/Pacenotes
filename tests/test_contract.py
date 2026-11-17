@@ -35,6 +35,8 @@ VALID = {
     "value_framings": [],
     "metric_questions": [],
     "to_check": [],
+    "attendee_stances": [],
+    "ask_to": [],
 }
 
 

@@ -5,7 +5,6 @@ prompts, the lens and the plan follow. Fictional company and people only; no mod
 
 from __future__ import annotations
 
-import asyncio
 import json
 import shutil
 
@@ -22,7 +21,6 @@ from pacenote.llm import OfflineEngine, offline_plan_doc
 from pacenote.prompts import build_fast_system, build_plan_system, build_sync_system, lens_guide, state_snapshot
 from pacenote.questionnaire import load_client
 from pacenote.research import RESEARCH_SYSTEM, ResearchOutput, build_research_prompt, write_outputs
-from pacenote.server import create_app
 from pacenote.session import Session, Settings
 from pacenote.state import SessionState
 
@@ -113,13 +111,13 @@ def _session(tmp_path, cfg):
 TEAM = [{"name": "Paul", "role": "PDG"}, {"name": "Claire", "role": "Assistante ADV", "notes": "saisit les commandes"}]
 
 
-def test_the_session_starts_with_the_first_person_and_their_persona(tmp_path):
+def test_the_session_starts_with_everyone_in_the_meeting_and_the_lead_persona(tmp_path):
     cfg = _client(tmp_path, TEAM)
     assert [(i["role"], i["persona"]) for i in cfg.interviewees] == [("PDG", "executive"), ("Assistante ADV", "operator")]
     s = _session(tmp_path, cfg)
     assert s.state.persona == "executive" and s.state.interviewee["role"] == "PDG"
     view = s.view()
-    assert view["interviewee"]["persona"] == "executive" and len(view["interviewees"]) == 2
+    assert view["persona"] == "executive" and [a["persona"] for a in view["attendees"]] == ["executive", "operator"]
 
 
 def test_no_contact_means_the_default_executive(tmp_path):
@@ -133,12 +131,12 @@ def test_the_operator_gets_their_own_wording_and_no_strategy_questions(tmp_path)
     st = s.state
     exec_text = st.get("core-waited-on-you").text("en")
     assert exec_text.startswith("Last week, what sat waiting on your desk")
-    asyncio.run(s.set_interviewee(index=1))
+    st.set_attendees([cfg.interviewees[1]])  # the operator alone in the meeting
     assert st.persona == "operator"
     assert st.get("core-waited-on-you").text("en").startswith("Last week, what did you have to wait for")
     assert st.get("core-waited-on-you").text("fr").startswith("La semaine dernière, qu'avez-vous dû attendre")
     assert st.get("core-expert-time").priority == 1
-    asyncio.run(s.set_interviewee(index=0))  # back to the executive: the base wording returns
+    st.set_attendees(cfg.interviewees)  # the executive attends too: the base wording returns
     assert st.get("core-waited-on-you").text("en") == exec_text and st.get("core-expert-time").priority == 2
     assert st.get("core-last-search").priority == 3  # an executive rarely knows where the old quote was
 
@@ -174,28 +172,10 @@ def test_a_skipped_by_persona_question_never_shows_in_the_plan_log(tmp_path):
     assert "competitors" not in text and "concurrents" not in text
 
 
-def test_the_interviewee_api_picks_overrides_and_locks_at_start(tmp_path):
-    s = _session(tmp_path, _client(tmp_path, TEAM))
-    http = TestClient(create_app(s))
-    v = http.post("/api/interviewee", json={"index": 1}).json()
-    assert v["interviewee"]["role"] == "Assistante ADV" and v["interviewee"]["persona"] == "operator"
-    v = http.post("/api/interviewee", json={"persona": "function_leader"}).json()
-    assert v["interviewee"]["persona"] == "function_leader" and v["interviewee"]["origin"] == "manual"
-    v = http.post("/api/interviewee", json={"persona": ""}).json()  # back to the inferred one
-    assert v["interviewee"]["persona"] == "operator" and v["interviewee"]["origin"] == "rule"
-    assert http.post("/api/interviewee", json={"index": 7}).status_code == 400
-    assert http.post("/api/interviewee", json={"persona": "boss"}).status_code == 400
-    s.state.mode = "interview"
-    assert http.post("/api/interviewee", json={"index": 0}).status_code == 409
-
-
-# --- what the interviewee cannot answer: to check with someone else ------------------------------------------
-
-
-def _slots_state(persona="executive"):
+def _slots_state(persona="executive", role="PDG"):
     cfg = load_client(CLIENTS, "brioche-four-slots")
     st = SessionState.from_questionnaire(cfg.questionnaire)
-    st.set_interviewee({"role": "PDG", "persona": persona, "origin": "rule"})
+    st.set_attendees([{"role": role, "persona": persona, "origin": "rule"}])
     st.mode, st.focus_id = "interview", "orders-walkthrough"
     return st
 
@@ -258,9 +238,9 @@ def test_the_prompts_say_who_is_interviewed_and_how_deep_to_go(persona, phrase):
     st = _slots_state(persona)
     sync, fast, plan = build_sync_system(st, "", ""), build_fast_system(st, "", ""), build_plan_system(st, "")
     assert phrase in sync and phrase in fast
-    assert "# Who you interview" in sync and "record it in to_check" in sync and "- to_check:" in sync
+    assert "# Who is in the meeting" in sync and "record it in to_check" in sync and "- to_check:" in sync
     assert "the full analysis records who would know" in fast and "to_check (" not in fast
-    assert "# Who was interviewed" in plan and "state.to_check" in plan
+    assert "# Who was in the meeting" in plan and "state.to_check" in plan
     article = "an" if persona == "executive" else "a"
     assert f"interviewing the PDG ({article} " in sync
     for text in (sync, fast, plan):
@@ -285,12 +265,12 @@ def test_the_prompts_carry_the_reason_but_never_need_the_name():
 
 def test_the_plan_says_who_was_interviewed_by_role_and_what_to_check_with_whom():
     st = _slots_state("executive")
-    st.interviewee |= {"name": "Paul", "role": "PDG"}
+    st.attendees[0] |= {"name": "Paul", "role": "PDG"}
     st.apply_sync_result(result(slots=[fill("bakery-orders", "actors", "Claire", "Claire tape les commandes")], to_check=[
         DEFER, {**DEFER, "slots": [], "question": "How many orders come in by phone?"},
         {**DEFER, "use_case": None, "slots": [], "question": "Who grants access to Sage?", "ask": "IT provider"}]))
     md = render_plan_md(offline_plan_doc(st), st)
-    assert "**Personne interrogée** : PDG — Dirigeant" in md
+    assert "**Dans la réunion** : PDG — Dirigeant" in md
     assert "Paul" not in md  # the plan is shared: role and persona, never the name
     section = md[md.index("## À vérifier avec d'autres personnes"):md.index("## Points à confirmer")]
     assert section.index("Avec Claire (order desk)") < section.index("Avec IT provider")
@@ -309,13 +289,12 @@ def test_no_to_check_section_when_everything_was_answered():
 def test_the_english_plan_and_the_speaker_labels():
     from pacenote.finalize import interview_log_md
 
-    st = _slots_state("operator")
+    st = _slots_state("operator", role="Order desk assistant")
     st.language = "en"
-    st.interviewee |= {"role": "Order desk assistant"}
     st.apply_sync_result(result(clean_passages=[{"start": "00:10", "speaker": "client", "lang": "en", "text": "Hello."}],
                                 to_check=[DEFER]))
     md = render_plan_md(offline_plan_doc(st), st)
-    assert "**Interviewed**: Order desk assistant — Hands-on operator" in md
+    assert "**In the meeting**: Order desk assistant — Hands-on operator" in md
     assert "## To check with other people" in md and "With Claire (order desk)" in md
     assert "**Interviewee**" in interview_log_md(st) and "CEO" not in interview_log_md(st)
 

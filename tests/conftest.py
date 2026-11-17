@@ -14,8 +14,23 @@ from pacenote.state import SessionState
 from .srt_samples import write_samples
 
 ROOT = Path(__file__).resolve().parent.parent
-CLIENTS = ROOT / "tests" / "fixtures" / "clients"  # frozen questionnaire with stable ids
-REAL_CLIENTS = ROOT / "clients.example"  # the committed, fictional example client (clients/ is git-ignored)
+# What a finished session writes next to its client (finalize: the potential pilots, the metrics; research
+# runs: the pre-plan, history, profiles). Never part of the committed fixtures.
+_GENERATED = ("ambassadors.json", "metrics.yaml", "research.md", "preplan.md", "preplan.json", "history", "people",
+              ".*.lock", "__pycache__")
+
+
+def _run_copy(src: Path) -> Path:
+    """A per-run copy of a committed client folder, so a test that finalizes a session never leaves files in the
+    working tree for later tests or runs to read (an ambassadors.json left in the fixtures once did)."""
+    dst = Path(tempfile.mkdtemp(prefix="pacenote-test-clients-")) / src.name
+    shutil.copytree(src, dst, ignore=shutil.ignore_patterns(*_GENERATED))
+    atexit.register(shutil.rmtree, dst.parent, True)
+    return dst
+
+
+CLIENTS = _run_copy(ROOT / "tests" / "fixtures" / "clients")  # frozen questionnaire with stable ids
+REAL_CLIENTS = _run_copy(ROOT / "clients.example")  # the committed, fictional example client (clients/ is git-ignored)
 # Synthetic replay transcripts (tests/srt_samples.py), written once per test run: no recording is committed.
 SRT_DIR = write_samples(Path(tempfile.mkdtemp(prefix="pacenote-test-srt-")))
 atexit.register(shutil.rmtree, SRT_DIR, True)
@@ -27,6 +42,17 @@ NOISY = SRT_DIR / "noisy"
 def _isolated_config(tmp_path, monkeypatch):
     """Never read or write the real ~/.pacenote/config.json (the "prochain client")."""
     monkeypatch.setenv("PACENOTE_CONFIG", str(tmp_path / "pacenote-config.json"))
+
+
+@pytest.fixture(autouse=True)
+def _fresh_clients():
+    """What one test's session wrote next to a client never reaches the next test."""
+    yield
+    for base in (CLIENTS, REAL_CLIENTS):
+        for client in base.iterdir():
+            for pattern in _GENERATED[:-1]:
+                for f in client.glob(pattern):
+                    shutil.rmtree(f, ignore_errors=True) if f.is_dir() else f.unlink(missing_ok=True)
 
 
 def real_client(slug: str = "brioche-four"):
@@ -65,6 +91,8 @@ def result(**kw) -> SyncResult:
         value_framings=[],
         metric_questions=[],
         to_check=[],
+        attendee_stances=[],
+        ask_to=[],
     )
     base.update(kw)
     return SyncResult.model_validate(base)

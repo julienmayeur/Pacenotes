@@ -1,6 +1,6 @@
 """Real-browser checks (Node + Playwright, skipped without them) of the interviewee personas, with fake
 data and no model call: the admin's "Who we meet" rows (notes, the inferred persona and why, the small
-override), the consent screen's person and persona pick, the interview card for an executive and for an
+override), the consent screen's list of who is in the meeting, the interview card for an executive and for an
 operator on the same workflow ("To check with" instead of pushing), and the Plan view's "To check with
 other people" section. Fixed spare ports 8796 (admin) and 8797 (interview and Plan view)."""
 
@@ -74,34 +74,26 @@ const { chromium } = require('playwright');
   const errors = [];
   p.on('pageerror', (e) => errors.push(String(e)));
   await p.goto(process.argv[2] + '/');
-  await p.waitForFunction(() => document.querySelectorAll('#who-person option').length === 2);
-  const read = () => p.evaluate(() => ({
-    people: [...document.querySelectorAll('#who-person option')].map((o) => o.textContent),
-    person: document.querySelector('#who-person').value, persona: document.querySelector('#who-persona').value,
-    auto: document.querySelector('#who-persona option[value=""]').textContent,
+  await p.waitForFunction(() => document.querySelectorAll('#who-list li').length === 2);
+  const r = await p.evaluate(() => ({
+    people: [...document.querySelectorAll('#who-list li')].map((li) => li.textContent),
+    pickers: document.querySelectorAll('#consent select.who-person, #consent select.who-persona').length,
     why: document.querySelector('#who-why').textContent }));
-  const first = await read();
-  await p.selectOption('#who-person', '1');
-  await p.waitForFunction(() => document.querySelector('#who-persona option[value=""]').textContent.includes('operator'));
-  const second = await read();
-  console.log(JSON.stringify({ first, second, errors }));
+  console.log(JSON.stringify({ ...r, errors }));
   await b.close();
 })().catch((e) => { console.error(e); process.exit(1); });
 """
 
 
-def test_consent_screen_picks_the_person_and_shows_their_persona(tmp_path):
+def test_consent_screen_lists_everyone_in_the_meeting_with_their_persona(tmp_path):
     s = Session(client=_client(tmp_path, TEAM), session_dir=tmp_path / "s", engine=OfflineEngine(),
                 source_factory=lambda d: ReplaySource({}), settings=QUIET)
     s.state.ui_language = "en"
     with serve(create_app(s), APP_PORT) as url:
         r = run_node(tmp_path, CONSENT_SCRIPT, url)
-    assert r["errors"] == []
-    assert r["first"]["people"] == ["PDG · Paul", "Assistante ADV · Claire"]
-    assert r["first"]["person"] == "0" and r["first"]["persona"] == "" and r["first"]["auto"] == "Auto · Executive"
-    assert r["second"]["auto"] == "Auto · Hands-on operator" and "step by step" in r["second"]["why"]
-    assert s.state.persona == "operator"
-    assert s.state.get("core-waited-on-you").text("en").startswith("Last week, what did you have to wait for")
+    assert r["errors"] == [] and r["pickers"] == 0  # no single "who's in front of you" pick any more
+    assert r["people"] == ["PDG · Paul · Executive", "Assistante ADV · Claire · Hands-on operator"]
+    assert s.state.persona == "executive"  # the lead's persona sets the questions
 
 
 CARD_SCRIPT = r"""
@@ -137,8 +129,7 @@ def card_session(tmp_path, persona: str) -> Session:
     st = s.state
     st.language = st.ui_language = "en"
     role = "CEO" if persona == "executive" else "Order desk assistant"
-    asyncio.run(s.set_interviewee(persona=persona))
-    st.interviewee |= {"role": role}
+    st.set_attendees([{"role": role, "persona": persona, "origin": "rule"}])
     st.mode, st.focus_id = "interview", "orders-walkthrough"
     common = [fill("bakery-orders", "actors", "Claire", "Claire types every order"),
               fill("bakery-orders", "trigger", "the orders mailbox", "they come in by email")]
@@ -169,13 +160,13 @@ def test_the_card_for_an_executive_and_an_operator_on_the_same_workflow(tmp_path
         r = run_node(tmp_path, CARD_SCRIPT, url)
     assert r["errors"] == []
     if persona == "executive":
-        assert r["chip"] == "Interviewing: CEO · Executive" and r["ask"] == EXEC_FOLLOW
+        assert r["chip"] == "In the meeting: CEO · Executive" and r["ask"] == EXEC_FOLLOW
         assert r["toCheckLabel"] == "To check with"
         assert r["toCheck"] == "Claire (order desk): Which software are the orders keyed into, and how many a day?"
         assert r["say"] == POINT
         assert not any("software" in m.lower() or "how many" in m.lower() for m in r["missing"])  # not pushed
     else:
-        assert r["chip"] == "Interviewing: Order desk assistant · Hands-on operator" and r["ask"] == OPER_FOLLOW
+        assert r["chip"] == "In the meeting: Order desk assistant · Hands-on operator" and r["ask"] == OPER_FOLLOW
         assert r["toCheck"] == "the CEO: Which figure would show the order desk is doing better, and by when?"
         assert r["say"] == ""  # no talking point about their own work
     assert len(r["console"]) == 1
@@ -191,6 +182,6 @@ def test_plan_view_lists_what_to_check_with_whom(tmp_path):
         r = run_node(tmp_path, PLAN_SCRIPT, url)
     assert r["errors"] == []
     text = r["text"]
-    assert "Personne interrogée : CEO — Dirigeant" in text
+    assert "Dans la réunion : CEO — Dirigeant" in text
     assert "À vérifier avec d'autres personnes" in text and "Avec Claire (order desk)" in text
     assert "Which software are the orders keyed into, and how many a day?" in text

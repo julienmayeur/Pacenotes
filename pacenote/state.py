@@ -63,6 +63,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 from . import ambassadors, fsutil, i18n, lens, personas
+from . import attendees as attendees_lib
 from . import phases as P
 from . import recipes as recipe_lib
 from .contract import (CATALOG_CATEGORIES, MAP_KINDS, PLAN_SECTIONS, RUNGS, SLOT_KEYS, SLOT_RUNG, FastResult,
@@ -375,9 +376,14 @@ class SessionState(BaseModel):
     # the interview's pace from the pre-study (horizons.py), operator-only: explorer, pragmatic, urgent
     posture: str | None = None
     posture_rationale: str = ""
-    # who we interview (personas.py): {index, name, role, notes, persona, reason, confidence, origin},
-    # picked on the consent screen; {} = not set (the default persona). Interviewer-side.
+    # who is in the meeting (attendees.py): one or several people from the client sheet, each with a persona
+    # and a live stance toward AI (interviewer-side only, never in the plan)
+    attendees: list[dict] = Field(default_factory=list)
+    # the attendee whose persona the seed questions take (attendees.primary: the lead, else the first):
+    # {index, name, role, notes, persona, reason, confidence, origin}; {} = nobody listed (the default persona)
     interviewee: dict = Field(default_factory=dict)
+    # question id -> the attendee the model says to address it to (attendees.apply_ask_to)
+    ask_to: dict[str, dict] = Field(default_factory=dict)
     # what the interviewee could not answer, with who would know (personas.apply_to_check)
     to_check: list[dict] = Field(default_factory=list)
     # ambassadors.py: question id -> the person the screen suggested an indirect people question about,
@@ -388,10 +394,8 @@ class SessionState(BaseModel):
     interviewee_read: dict[str, str] = Field(default_factory=dict)
     interviewee_read_at: int = 0  # the transcript line the read was written from
     ambassador_probes: dict[str, dict] = Field(default_factory=dict)
-    # pilots.py: how many pilots to expect for this company ({} = unknown), and the indirect question that
-    # checks whether the leader interviewed would open the way when no pilot was named
+    # pilots.py: the indirect question that finds out what the leader in the meeting would do themself
     # (contract.SponsorProbe + read, asked, shown_on); interviewer-side only
-    pilots_hint: dict = Field(default_factory=dict)
     sponsor_probe: dict = Field(default_factory=dict)
     # the executive lens (lens.py): talking points per use case (contract.ValueFraming + read, asked), the
     # metric questions per "use_case:side", what showed under each question, and the metric sides asked
@@ -466,7 +470,6 @@ class SessionState(BaseModel):
             phase_budgets=P.budgets(q.target_minutes, q.phase_minutes),
             posture=q.posture,
             posture_rationale=q.posture_rationale,
-            pilots_hint=dict(q.pilots_hint or {}),
         )
         st.coverage = st.computed_coverage()
         st._refill_next()
@@ -807,9 +810,16 @@ class SessionState(BaseModel):
         p = (self.interviewee or {}).get("persona")
         return p if p in personas.PERSONAS else personas.DEFAULT
 
+    def set_attendees(self, people: list[dict]) -> list[str]:
+        """Who is in the meeting (before it starts): every attendee with their persona and an unknown
+        stance; the lead's persona (else the first attendee's) re-words the seed questions."""
+        self.attendees = attendees_lib.build(people)
+        main = attendees_lib.primary(self.attendees)
+        return self.set_interviewee(main if main is not None else personas.default_interviewee())
+
     def set_interviewee(self, interviewee: dict) -> list[str]:
-        """Who we interview (before the interview starts): their persona re-words and re-weighs the
-        seed questions (questions.yaml `personas:`). Returns the question ids that changed."""
+        """Whose persona the seed questions take (before the interview starts): it re-words and re-weighs
+        them (questions.yaml `personas:`). Returns the question ids that changed."""
         keep = ("index", "name", "role", "notes", "persona", "reason", "confidence", "origin")
         self.interviewee = {k: interviewee.get(k) for k in keep if k in interviewee}
         changed = personas.apply_to_questions(self, self.persona)
@@ -1053,6 +1063,9 @@ class SessionState(BaseModel):
         lens.apply_metric_questions(self, result.metric_questions, read, ok, reject)
         # 6d. what the interviewee could not answer, and who would know (personas.py)
         personas.apply_to_check(self, result.to_check, read, ok, reject)
+        # 6e. who is in the meeting: each attendee's stance, and who to address a question to (attendees.py)
+        attendees_lib.apply_stances(self, result.attendee_stances, read, ok, reject)
+        attendees_lib.apply_ask_to(self, result.ask_to, read, ok, reject)
 
         # 7. enough_data is sticky
         if result.enough_data and not self.enough_data:

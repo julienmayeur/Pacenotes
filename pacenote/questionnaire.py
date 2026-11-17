@@ -250,8 +250,6 @@ class Questionnaire(BaseModel):
     # pre-study's score or the interviewer's override (client.yaml); may also be written here by hand.
     posture: Literal["explorer", "pragmatic", "urgent"] | None = None
     posture_rationale: str = ""  # operator-only: why this pace (never shown to the client)
-    # how many pilots to expect (pilots.expected): set when tailoring from the client sheet and the pre-study
-    pilots_hint: dict | None = None
     themes: list[ThemeDef]
 
     @field_validator("phase_minutes")
@@ -297,7 +295,7 @@ class ClientConfig(BaseModel):
     questionnaire: Questionnaire  # tailored: seed questionnaire + pre-plan questions + client context
     glossary: str
     base_questionnaire: Questionnaire | None = None  # questionnaire.yaml as written
-    # the people we will interview, each with their persona (personas.interviewees); the first is the default
+    # the people who will be in the meeting, each with their persona (personas.interviewees, attendees.py)
     interviewees: list[dict] = Field(default_factory=list)
 
 

@@ -1,7 +1,8 @@
 """Potential pilots (internally "ambassadors"): people inside the client company who could carry the
-first use case. There can be several, or none (pilots.py says how many to expect for this company):
-when none emerges and the person interviewed leads the company or a function, an indirect sponsor
-question checks whether they would open the way themself, by trying it first on their own work.
+first use case. Nobody knows in advance how many: none, a few, or a whole team keen to try. They come
+only from what the interviewees say, as named people or as a group ("the whole sales team is up for it"),
+never with invented names. The leader in the meeting always sponsors the first wave (pilots.py): an
+indirect sponsor question finds out what they would do themself, by trying it first on their own work.
 
 A pilot spreads through a respected colleague, not through the consultant or the management. During the
 interview the engine notices when a use case maps to a named person or role (the interviewee puts them on
@@ -161,27 +162,29 @@ def keen(state) -> list[dict]:
 
 
 def sponsor_needed(state) -> bool:
-    """No pilot was named so far, and the person interviewed leads the company or a function: they may
-    have to open the way themself."""
-    return pilots_lib.can_sponsor(state) and not keen(state)
+    """A leader is in the meeting (pilots.can_sponsor): they sponsor the first wave whatever the pilots,
+    and what they would do themself is still to find out (the sponsor question is not closed)."""
+    return pilots_lib.can_sponsor(state) and state.sponsor_probe.get("timing") != "done"
 
 
 FIRST_TO_TRY = "core-first-to-try"  # the core question: who tried the last new software first
 
 
 def _sponsor_template_ready(state, q) -> bool:
-    """The template sponsor question waits for the deep dives (the workflows were told) and for a reason
-    to think nobody else will carry it: the hint says the leader will likely open the way, or the
-    interviewee was asked who tried the last new software first and named nobody keen."""
-    if P.PHASE_INDEX.get(q.phase, 0) < P.PHASE_INDEX[P.DEEP_DIVES]:
-        return False
-    first = state.get(FIRST_TO_TRY)
-    return bool(state.pilots_hint.get("leader_likely")) or (first is not None and bool(first.answer))
+    """The template sponsor question waits for the deep dives: the workflows were told, so the leader's own
+    work can be asked about in context."""
+    return P.PHASE_INDEX.get(q.phase, 0) >= P.PHASE_INDEX[P.DEEP_DIVES]
+
+
+def _sponsor_person(state) -> str:
+    lead = pilots_lib.sponsor(state)
+    return ((lead or {}).get("role") or (lead or {}).get("name") or "").strip()
 
 
 def _sponsor_for(state, q) -> dict | None:
     """The sponsor question under question `q`, or None: once (back on the same question, it shows
-    again), only while no pilot was named, and in a laggard sector only once rapport is established."""
+    again), while a leader attends and their own part is not known, and in a laggard sector only once
+    rapport is established."""
     if not sponsor_needed(state) or not _rapport_ok(state):
         return None
     sp = state.sponsor_probe
@@ -190,7 +193,7 @@ def _sponsor_for(state, q) -> dict | None:
         return None
     if shown_on is None and state.ambassador_prompted.get(q.id) is not None:
         return None  # another people question already showed under this one
-    person = ((state.interviewee or {}).get("role") or "").strip()
+    person = _sponsor_person(state)
     if sp.get("question"):
         if shown_on is None and sp.get("timing") != "now":
             return None
@@ -222,7 +225,7 @@ def prompt_for(state, qid: str | None = None, lang: str | None = None) -> dict |
     tone of the sector. Once per person: a person already suggested under another question is not
     suggested again; back on the same question, the same suggestion shows. `lang`: the language of
     the use case title (default: the interview language). When no workflow question applies, the
-    sponsor question (_sponsor_for, kind "sponsor"), while no pilot was named."""
+    sponsor question (_sponsor_for, kind "sponsor"), while a leader attends and their part is unknown."""
     q = state.get(qid or state.focus_id)
     if q is None or q.status == "removed":
         return None
@@ -327,7 +330,7 @@ def apply_probes(state, probes, read: int, ok, reject) -> None:
 
 
 def apply_sponsor(state, p, read: int, ok, reject) -> None:
-    """Merge the model's sponsor question. Rejected: the interviewee does not lead a team (an operator),
+    """Merge the model's sponsor question. Rejected: no leader in the meeting (operators only),
     an empty question, wording that sounds like an assessment or uses AI vocabulary, a question read
     from an older slice, a question already asked (never reworded). "done" closes it."""
     if p is None:
@@ -337,7 +340,7 @@ def apply_sponsor(state, p, read: int, ok, reject) -> None:
         reject("stale", "sponsor", f"read at line {read}, kept the sponsor question read at line {old['read']}")
         return
     if not pilots_lib.can_sponsor(state):
-        reject("sponsor", None, "the interviewee does the work: no sponsor question")
+        reject("sponsor", None, "no leader in the meeting: no sponsor question")
         return
     if p.timing == "done":
         if old.get("timing") != "done":
@@ -374,7 +377,7 @@ def probes_view(state, lang: str | None = None) -> list[dict]:
                     "asked": bool(p.get("asked"))})
     sp = state.sponsor_probe
     if sp.get("question") and sp.get("timing") != "done" and sponsor_needed(state):
-        out.append({"use_case": "", "kind": "sponsor", "person": ((state.interviewee or {}).get("role") or "").strip(),
+        out.append({"use_case": "", "kind": "sponsor", "person": _sponsor_person(state),
                     "question": sp["question"], "reason": sp.get("reason", ""), "timing": sp.get("timing", ""),
                     "asked": bool(sp.get("asked"))})
     return out
@@ -404,17 +407,32 @@ def for_use_case(state, use_case: str) -> dict | None:
 
 MAX_PILOTS = 6
 
+# a label that names a group of people, not one person ("toute l'équipe ventes", "the sales team"); a
+# title that leads a team ("chef d'équipe", "team lead") is one person
+_ALL = re.compile(r"\b(tous|toutes|tout le monde|everyone|everybody|the whole|the entire|all the|l ensemble)\b")
+_TEAM = re.compile(r"\b(equipe|equipes|team|teams|staff|personnel|collaborateurs|salaries|"
+                   r"les (commerciaux|vendeurs|comptables|techniciens|assistantes|assistants|jeunes|nouveaux))\b")
+_ONE = re.compile(r"\b(chef|cheffe|responsable|head|lead|leader|manager|directeur|directrice|director)\b")
+
+
+def is_group(label: str) -> bool:
+    """`label` names a group ("toute l'équipe ventes", "the sales team"), not one person ("chef d'équipe")."""
+    f = re.sub(r"[^a-z0-9]+", " ", _fold(label))
+    return bool(_ALL.search(f)) or (bool(_TEAM.search(f)) and not _ONE.search(f))
+
 
 def pilots_for_plan(state, lighthouse: str) -> list[dict]:
     """The pilots the interview named, for the plan's first wave: everyone the interviewee described as
-    keen (adoption_signal, quoted), those on the lighthouse's work first; when nobody was described as
-    keen, the person the interview put on the lighthouse's work, quoted. [{person, evidence}]."""
+    keen (adoption_signal, quoted), people or groups, those on the lighthouse's work first; when nobody was
+    described as keen, the person the interview put on the lighthouse's work, quoted.
+    [{person, evidence, group}]."""
     on_light = {person_id(x["person"]) for x in links(state) if x["use_case"] == lighthouse}
     found = sorted(keen(state), key=lambda p: person_id(p["label"]) not in on_light)
     if found:
-        return [{"person": p["label"], "evidence": p["signal"]} for p in found][:MAX_PILOTS]
+        return [{"person": p["label"], "evidence": p["signal"], "group": is_group(p["label"])}
+                for p in found][:MAX_PILOTS]
     one = for_use_case(state, lighthouse) if lighthouse else None
-    return [{"person": one["person"], "evidence": one["quote"]}] if one else []
+    return [{"person": one["person"], "evidence": one["quote"], "group": is_group(one["person"])}] if one else []
 
 
 def candidates(state) -> list[dict]:

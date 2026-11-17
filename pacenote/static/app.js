@@ -320,6 +320,10 @@ function renderAsk(cur, changed) {
   setText($("ask-label"), fallback ? t("focus.askTheme") : t("focus.ask"));
   const text = follow || (cur ? cur.text : "");
   setText($("ask-text"), text);
+  // with several attendees: who to address it to (the model's pick, else the rung's rule)
+  const to = cur && S.mode === "interview" && cur.status !== "answered" ? cur.ask_to : null;
+  setClass($("ask-to"), "hidden", !to);
+  setText($("ask-to"), to ? `→ ${t("focus.askTo", { who: to.reason ? t("focus.askToWhy", { who: to.who, why: to.reason }) : to.who })}` : "");
   const sameLang = lastAskLang === S.ui_language;  // a language switch is not a new follow-up
   lastAskLang = S.ui_language;
   if (text !== lastAsk && !changed && text && sameLang) {  // a new follow-up arrived: a short highlight
@@ -341,7 +345,9 @@ function renderAmbassadorAsk(cur) {
   setText($("framing-uc"), f && f.use_case ? ` · ${f.use_case}` : "");
   setText($("framing-text"), f ? f.point : "");
   const m = live ? cur.metric_ask : null, a = live ? cur.ambassador : null;
-  const uc = (m && m.use_case) || (a && a.use_case);
+  // the sponsor question (no workflow) is for the leader: say so when several people attend
+  const forLead = a && a.kind === "sponsor" && (S.attendees || []).length > 1 ? a.person : "";
+  const uc = (m && m.use_case) || (a && a.use_case) || forLead;
   setClass($("ambassador-ask"), "hidden", !m && !a);
   setText($("ambassador-uc"), uc ? ` · ${uc}` : "");
   setText($("metric-text"), m ? m.question : "");
@@ -703,46 +709,38 @@ function renderConsoleToCheck() {
   if ($("console-to-check-list").innerHTML !== html) $("console-to-check-list").innerHTML = html;
 }
 
-// --- who we interview: the person (client sheet) and their persona, on the consent screen; a quiet chip in the
-// header afterwards. The persona shapes the questions and the copilot (personas.py). ---
-const PERSONAS = ["executive", "function_leader", "operator"];
+// --- who is in the meeting: the client sheet's people with their personas (attendees.py), listed on the
+// consent screen; a quiet chip in the header afterwards; each one's stance on AI in the console only. ---
 function personLabel(p) {
   return [p.role, p.name].filter(Boolean).join(" · ") || t(`persona.${p.persona}`);
 }
 function renderWho() {
-  const iv = S.interviewee || {};
-  const people = S.interviewees || [];
-  const persona = iv.persona || "executive";
+  const people = S.attendees || [];
+  const main = people.find((p) => p.lead) || people[0];
   const chip = $("who-chip");
   setClass(chip, "hidden", S.mode === "consent");
-  setText(chip, t("console.interviewee", { who: [iv.role, t(`persona.${persona}`)].filter(Boolean).join(" · ") }));
+  const who = main ? [main.role, t(`persona.${main.persona}`)].filter(Boolean).join(" · ") : t(`persona.${S.persona || "executive"}`);
+  setText(chip, t("console.interviewee", { who }) + (people.length > 1 ? ` ${t("console.others", { n: people.length - 1 })}` : ""));
+  renderConsoleAttendees();
   if (S.mode !== "consent") return;
-  const sel = $("who-person");
-  const opts = people.map((p) => `<option value="${p.index}">${esc(personLabel(p))}</option>`).join("");
-  if (sel._opts !== opts) { sel.innerHTML = opts; sel._opts = opts; }
-  setClass(sel, "hidden", people.length < 2);
-  if (people.length) sel.value = String(iv.index != null && iv.index >= 0 ? iv.index : 0);
-  const inferred = people.find((p) => p.index === iv.index);
-  const auto = inferred ? inferred.persona : "executive";
-  const psel = $("who-persona");
-  const popts = [["", t("persona.auto", { persona: t(`persona.${auto}`) })], ...PERSONAS.map((k) => [k, t(`persona.${k}`)])]
-    .map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join("");
-  if (psel._opts !== popts) { psel.innerHTML = popts; psel._opts = popts; }
-  psel.value = iv.origin === "manual" ? persona : "";
-  const why = people.length
-    ? [people.length === 1 ? personLabel(people[0]) : "", t(`persona.hint.${persona}`), iv.origin !== "manual" ? iv.reason : ""]
-      .filter(Boolean).join(" — ")
-    : t("consent.noContact");
-  setText($("who-why"), why);
+  const html = people.map((p) => `<li><b>${esc(personLabel(p))}</b> <span class="muted">· ${esc(t(`persona.${p.persona}`))}</span></li>`).join("");
+  if ($("who-list").innerHTML !== html) $("who-list").innerHTML = html;
+  setClass($("who-list"), "hidden", !people.length);
+  setText($("who-why"), people.length ? "" : t("consent.noContact"));
 }
-$("who-person").addEventListener("change", async (e) => {
-  try { render(await post("/api/interviewee", { index: Number(e.target.value) })); }
-  catch (err) { setText($("consent-error"), err.message); }
-});
-$("who-persona").addEventListener("change", async (e) => {
-  try { render(await post("/api/interviewee", { persona: e.target.value })); }
-  catch (err) { setText($("consent-error"), err.message); }
-});
+
+// Each attendee's stance on AI, its evidence and confidence, and the prep note (interviewer console only).
+function renderConsoleAttendees() {
+  const people = S.attendees || [];
+  setClass($("console-attendees"), "hidden", !people.length);
+  const html = people.map((p) => `<li class="stance-${esc(p.stance)}"><b>${esc(personLabel(p))}</b>`
+    + ` <span class="muted">· ${esc(t(`persona.${p.persona}`))}${p.lead ? ` · ${esc(t("console.lead"))}` : ""}</span>`
+    + ` <span class="fit stance">${esc(t(`attendees.stance.${p.stance}`))}</span>`
+    + (p.stance !== "unknown" && p.confidence ? ` <span class="muted small nowrap">${esc(t("console.stanceSure", { pct: Math.round(p.confidence * 100) }))}</span>` : "")
+    + (p.evidence || []).map((q) => `<br><small>« ${esc(q)} »</small>`).join("")
+    + (p.stance === "unknown" && p.prep ? `<br><small class="muted">${esc(p.prep)}</small>` : "") + `</li>`).join("");
+  if ($("console-attendee-list").innerHTML !== html) $("console-attendee-list").innerHTML = html;
+}
 
 // --- languages: the same <language-select> component on the consent screen, header and console.
 // Display language: the header toggle (and the consent screen's, before the interview). Interview

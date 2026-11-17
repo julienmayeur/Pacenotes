@@ -278,13 +278,39 @@ class AmbassadorProbe(_Strict):
 
 
 class SponsorProbe(_Strict):
-    """When no pilot emerges (typical of a large company that moves slowly), the leader interviewed may
-    open the way themself. An indirect question checks whether they would be willing to try it first on
-    their own work, phrased for this interviewee; never "would you be the ambassador" (pilots.py)."""
+    """The leader in the meeting sponsors the first wave and leads by example (pilots.py). An indirect
+    question finds out what they would do themself (try it first on a report or a decision of their own and
+    show the team), phrased for them; never "would you be the ambassador" or the sponsor."""
 
     question: str  # the indirect question, in the interview language, ready to say
     reason: str  # interviewer-only, a few words: what the answer would tell
-    timing: ProbeTiming  # now = rapport is there and no pilot was named so far; done = they already said
+    timing: ProbeTiming  # now = rapport is there and the workflows were told; done = they already said
+
+
+Stance = Literal["driver", "open", "hesitant", "opposed", "unknown"]
+Attribution = Literal["self", "named", "addressed"]
+
+
+class AttendeeStance(_Strict):
+    """An attendee's stance toward AI, as the conversation shows it (attendees.py). Interviewer-side only,
+    never in the plan. The transcript has no speakers: a statement counts for an attendee only when it is
+    clear who said it; otherwise leave it out."""
+
+    attendee: str  # the attendee's id (a1, a2...) from the state's attendees
+    stance: Stance  # driver = pushes for it or already does things; open; hesitant; opposed; unknown
+    evidence: str  # their words, a short quote ("" only for unknown)
+    confidence: float  # 0 to 1: how sure, given how clear the attribution is
+    attributed: Attribution  # self = they introduced themself; named = someone named them; addressed = it
+    # answered a question the interviewer addressed to them
+
+
+class AskTo(_Strict):
+    """Address a question to a specific attendee: the per-item detail to the one who does the work, the
+    workflow to the one who owns it, the outcome to the lead (attendees.py)."""
+
+    question_id: str  # the question (usually the one in focus)
+    attendee: str  # the attendee's id (a1, a2...)
+    reason: str  # a few words, interviewer-side: why them ("does the orders every day")
 
 
 MetricKind = Literal["time", "volume", "errors", "delay"]
@@ -350,8 +376,10 @@ class SyncResult(_Strict):
     value_framings: list[ValueFraming]  # new or changed talking points only; empty list when nothing changed
     metric_questions: list[MetricQuestion]  # for workflows still missing a baseline or a target; new ones only
     to_check: list[ToCheck]  # new items the interviewee could not answer, with who would know; [] when none
-    # no pilot named so far: may the leader interviewed open the way themself? null when not needed or unchanged
+    # what would the leader in the meeting do themself? null when no leader attends, or nothing changed
     sponsor_probe: SponsorProbe | None
+    attendee_stances: list[AttendeeStance]  # new or changed stances only; [] when nothing new
+    ask_to: list[AskTo]  # who to address a question to, when two attendees or more; [] when nothing new
 
 
 class FastResult(_Strict):
@@ -637,23 +665,26 @@ class AdoptionWave(_Strict):
 
 
 class Pilot(_Strict):
-    """One pilot of the first wave: a person keen to go first, as heard in the interview (pilots.py)."""
+    """A pilot of the first wave, as heard in the interview (pilots.py): a person keen to go first, or a
+    group the interviewee described as keen ("the whole sales team"), recorded as a group, never with
+    invented names."""
 
-    person: str  # name or role, as heard
-    evidence: str  # the interviewee's quote that makes them a pilot ("" when none)
+    person: str  # name or role as heard; for a group, the group ("the sales team")
+    evidence: str  # the interviewee's quote that makes them pilots ("" when none)
+    group: bool  # true when it is a group of people, not one person
 
 
 class AdoptionPlan(_Strict):
     """How the first use case spreads, in three waves: the pilots (the volunteers keen to go further)
     prove it on the lighthouse use case; their measured results convince most of the team; once most
     of the company works this way, everyone follows. Nothing is designed around converting the
-    reluctant. There can be several pilots, or none: then the leader interviewed sponsors the first
-    wave, leading by example (pilots.py)."""
+    reluctant. Pilots come only from the interview (none, a few, or a whole team); the leader in the meeting
+    always sponsors the first wave, leading by example (pilots.py)."""
 
     lighthouse: str  # id of the opportunity to start with (an h1 one)
-    pilots: list[Pilot]  # 0..N, as heard in the interview; [] when nobody was named
-    sponsor: str  # only when no pilot was named: the interviewed leader (role), who opens the way; "" otherwise
-    sponsor_plan: str  # how the sponsor leads by example (uses it first on their own work...); "" when no sponsor
+    pilots: list[Pilot]  # 0..N people or groups, as heard in the interview; [] when nobody was named
+    sponsor: str  # the leader in the meeting (role, never the name); the app sets it
+    sponsor_plan: str  # what the sponsor does themself, as found out in the interview; "" when unknown
     question: str  # when no pilot was named: the question to ask to find some ("" otherwise)
     ask: str  # who to ask it (a name or role heard; "" when unknown)
     volunteers: AdoptionWave  # wave 1, weeks 1-4: the colleagues keen to go first run it on real cases
@@ -676,7 +707,7 @@ class PlanDoc(_Strict):
     metrics: list[Metric]
     use_cases: list[PlanUseCase]
     timeline: list[TimelineStep]  # week 1 thin slice, week 4 checkpoint, week 8 go / kill
-    adoption: AdoptionPlan  # the lighthouse, its pilots (or the leader as sponsor), demo -> proven value -> spread
+    adoption: AdoptionPlan  # the lighthouse, the leader as sponsor, the pilots, demo -> proven value -> spread
     open_items: list[OpenItem]  # open items not tied to one slot (budget, sponsor, security rules...)
     recipe_candidates: list[RecipeCandidate]  # drafts for the opportunities no library recipe fits
 
@@ -746,15 +777,19 @@ def _loads_lenient(text: str):
 
 
 def _legacy_adoption(raw: dict) -> dict:
-    """A plan.json written before pilots (one `ambassador` with its `evidence`) still loads."""
+    """A plan.json written before pilots (one `ambassador` with its `evidence`), or before pilot groups,
+    still loads."""
     a = raw.get("adoption") if isinstance(raw, dict) else None
-    if not isinstance(a, dict) or "pilots" in a or "ambassador" not in a:
+    if not isinstance(a, dict):
         return raw
     a = dict(a)
-    person, evidence = str(a.pop("ambassador") or "").strip(), str(a.pop("evidence", "") or "")
-    a["pilots"] = [{"person": person, "evidence": evidence}] if person else []
-    a.setdefault("sponsor", "")
-    a.setdefault("sponsor_plan", "")
+    if "pilots" not in a and "ambassador" in a:
+        person, evidence = str(a.pop("ambassador") or "").strip(), str(a.pop("evidence", "") or "")
+        a["pilots"] = [{"person": person, "evidence": evidence}] if person else []
+        a.setdefault("sponsor", "")
+        a.setdefault("sponsor_plan", "")
+    if isinstance(a.get("pilots"), list):
+        a["pilots"] = [{**p, "group": bool(p.get("group", False))} if isinstance(p, dict) else p for p in a["pilots"]]
     return {**raw, "adoption": a}
 
 
@@ -788,4 +823,6 @@ def empty_result() -> SyncResult:
         value_framings=[],
         metric_questions=[],
         to_check=[],
+        attendee_stances=[],
+        ask_to=[],
     )

@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Callable
 
 from . import ambassadors, fsutil, i18n, lens, personas, translate
+from . import attendees as attendees_lib
 from . import phases as P
 from . import recipes as recipe_lib
 from .capture import ReplaySource, Source
@@ -85,9 +86,8 @@ class Session:
         self.session_dir.mkdir(parents=True, exist_ok=True)
         if self.state is None:
             self.state = SessionState.from_questionnaire(self.client.questionnaire)
-            # who we interview: the first person on the client sheet (picked again on the consent screen)
-            self.state.set_interviewee(self.client.interviewees[0] if self.client.interviewees
-                                       else personas.default_interviewee())
+            # who is in the meeting: everyone on the client sheet, each with their persona (attendees.py)
+            self.state.set_attendees(self.client.interviewees)
         self.source: Source | None = None
         self._version = 0
         self._cond: asyncio.Condition | None = None
@@ -214,36 +214,6 @@ class Session:
                 warm = getattr(self.engine, "warm_fast", None)
                 if warm is not None:  # the same system prompt as the calls: the warm process is reused
                     self._tasks.append(asyncio.create_task(asyncio.to_thread(_safe_call, warm, self._fast_system())))
-        self.persist()
-        await self.notify()
-
-    async def set_interviewee(self, index: int | None = None, persona: str | None = None) -> None:
-        """Before the interview starts: who we interview (an index in client.interviewees) and, when
-        given, their persona picked by hand (overrides the inferred one for this session). Their persona
-        re-words and re-weighs the questions. Raises ValueError."""
-        if self.state.mode != "consent":
-            raise ValueError("the interviewee can only change before the interview starts")
-        options = self.client.interviewees
-        current = self.state.interviewee or {}
-        if index is not None and index >= 0:
-            if index >= len(options):
-                raise ValueError(f"no interviewee #{index}")
-            iv = dict(options[index])
-        else:
-            iv = dict(current) if current else personas.default_interviewee()
-        if persona:
-            if persona not in personas.PERSONAS:
-                raise ValueError(f"unknown persona {persona!r}")
-            if persona != iv.get("persona"):
-                iv |= {"persona": persona, "reason": "", "confidence": 1.0, "origin": "manual"}
-        elif persona == "" and 0 <= int(iv.get("index", -1)) < len(options):  # back to the inferred one
-            iv = dict(options[int(iv["index"])])
-        changed = self.state.set_interviewee(iv)
-        self._log_sync({"kind": "interviewee", "index": iv.get("index"), "persona": self.state.persona,
-                        "origin": iv.get("origin"), "questions": changed})
-        if changed:
-            self._ensure_translation()
-            self._ensure_display_translation()
         self.persist()
         await self.notify()
 
@@ -954,6 +924,8 @@ class Session:
                        "metric_ask": lens.metric_ask_for(st, lang=shown),
                        # what the interviewee could not answer on this workflow, and who would know
                        "to_check": personas.for_question(st),
+                       # who in the meeting to address it to (attendees.py), with two attendees or more
+                       "ask_to": attendees_lib.ask_to_for(st),
                        "deferred": {cur.expect_text(e, shown): who for e, who in cur.deferred.items()},
                        "since": st.focus_since}
         upcoming = [qv(q) for q in (st.get(i) for i in self._upcoming_ids()) if q is not None]
@@ -999,12 +971,10 @@ class Session:
             "read": ambassadors.read_view(st),  # console only: the interviewee's tone and how to ask
             "framings": lens.framings_view(st, shown),  # console only: the talking points and why now
             "to_check": personas.view(st, shown),  # console: what to check with whom
-            # who we interview (consent screen: pick and persona; header chip): role and persona
-            "interviewee": {**{k: st.interviewee.get(k) for k in ("index", "name", "role", "reason", "origin")},
-                            "persona": st.persona, "confidence": st.interviewee.get("confidence")},
-            "interviewees": [{k: iv.get(k) for k in ("index", "name", "role", "persona", "reason", "origin")}
-                             for iv in self.client.interviewees],
-            "personas": list(personas.PERSONAS),
+            # who is in the meeting (consent screen, header chip, console): role, persona and, in the
+            # console only, each attendee's stance toward AI with its evidence (attendees.py)
+            "attendees": attendees_lib.view(st, st.tr(shown)),
+            "persona": st.persona,
             # the interview thread above the current question: what was asked or answered, in order
             "history": [{**qv(q), **summary(q), "thread": thread(q, 20), "thread_at": q.thread_at,
                          "skipped": q.status == "removed"} for q in st.history()],

@@ -39,7 +39,6 @@ Posture = Literal["explorer", "pragmatic", "urgent"]
 Pressure = Literal["none", "moderate", "strong"]
 Exposure = Literal["low", "medium", "high"]
 YesNoUnknown = Literal["yes", "no", "unknown"]
-Workforce = Literal["young", "mixed", "mature", "unknown"]
 
 HORIZON_GUIDE = (
     "h1 = execution now: today's core work, a measured pilot that can start this week (re-keying, "
@@ -81,11 +80,6 @@ class PreStudy(_Strict):
     regulated: bool  # strong regulation (health, finance...): slower pace, same urgency
     ceo_uses_ai: YesNoUnknown  # the CEO publicly uses AI tools himself (talks, posts)
     rationale: str  # 2 or 3 plain sentences: why this pace for this company
-    # the workforce's age profile from public, company-level signals (published average age, graduate or
-    # apprenticeship hiring, a recent hiring wave, a wave of retirements): sets how many pilots to expect
-    # (pilots.py); never about an individual; unknown when nothing was found
-    workforce: Workforce
-    workforce_note: str
 
 
 # --- scoring -----------------------------------------------------------------------------------

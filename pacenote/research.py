@@ -75,7 +75,7 @@ class SeedQuestion(_Strict):
 
 class PersonaGuess(_Strict):
     """Who each person we will meet is, for the interview (personas.py): their persona, why, how sure."""
-    name: str  # as given in "People we will meet"
+    name: str  # as given in "People in the meeting"
     persona: Literal["executive", "function_leader", "operator"]
     reason: str  # one short sentence: title, company size, what was found about their scope
     confidence: float  # 0 to 1
@@ -116,11 +116,7 @@ AI" without a result is a signal, not a result;
 - whether the sector's own software vendors (ERP, trade software) already ship AI features;
 - market and customer pressure: do customers already compare on speed, price or self-service?
 - task exposure: how much of the company's work is text, documents, re-keying and back-office;
-- whether the sector is strongly regulated, and whether the CEO publicly uses AI tools himself;
-- the workforce's age profile, only from public, company-level signals (a published average age, \
-graduate or apprenticeship hiring, a recent hiring wave, retirements announced, the company's own \
-pages): it hints at how many colleagues may be keen to try new tools first. Never about an individual, \
-never inferred from photos or names.
+- whether the sector is strongly regulated, and whether the CEO publicly uses AI tools himself.
 Never invent a statistic, a competitor or a result: when not found, say so.
 
 Write in {lang_name}.
@@ -138,8 +134,8 @@ Ranked by value x feasibility. Concrete, specific to this company, no generic AI
 - use_cases: the same use cases, structured (value and feasibility from 1 to 5), each with its \
 horizon: {horizons}.
 - seed_questions: 2 to 4 interview questions about the work behind the most promising use \
-cases, worded for the first person in "People we will meet" (the live copilot rewords them for \
-whoever is actually interviewed). The interviewee meets us for the first time and does not know \
+cases, worded for the most senior person in "People in the meeting" (the live copilot rewords them for \
+whoever each question is addressed to). The people we meet us for the first time and does not know \
 how AI could help, so ask about their work, never about technology: start from what limits capacity (taking more \
 customers, orders or volume, or a new market) or eats the team's time, and ask for a real case \
 from last week told as a story ("Prenez la dernière commande de la semaine dernière : qui l'a \
@@ -158,10 +154,9 @@ sentence: figure, year, scope), competitors (each: competitor, signal, result = 
 outcome with its number or "" when none, url, date), market_pressure (none, moderate, strong) \
 with pressure_note, task_exposure (low, medium, high) with exposure_note, regulated, ceo_uses_ai \
 (yes, no, unknown), rationale (2 or 3 plain sentences: how fast this company should move and why, \
-from these facts), workforce (young, mixed, mature, unknown: unknown unless a public company-level \
-signal says so) with workforce_note (the signal and its source, "" when unknown). It is for the interviewer only: it sets the interview's pace and is never shown \
+from these facts). It is for the interviewer only: it sets the interview's pace and is never shown \
 to the client.
-- personas: one per person listed in "People we will meet" (same name as given; [] when nobody is \
+- personas: one per person listed in "People in the meeting" (same name as given; [] when nobody is \
 listed): who they are for the interview. executive = runs the company and knows the outcomes, not \
 the execution details (a CEO or managing director of 20 people or more); function_leader = owns a \
 process and a team (CIO, CFO, COO, head of a department), or runs a small company (under about 10 \
@@ -188,7 +183,7 @@ def build_research_prompt(info: ClientInfo, questionnaire_context: str, themes: 
             ("Head office", info.hq_city), ("Headcount", info.headcount), ("About", info.description),
             ("Products and brands", info.products), ("Leadership", info.leadership),
             ("LinkedIn", info.linkedin_url), ("Working languages", info.working_languages)) if value)
-        + f"People we will meet: {people}\n\n"
+        + f"People in the meeting: {people}\n\n"
         f"Notes from the interviewer (what we want to talk about: context, goals, topics, constraints):\n"
         f"{info.notes.strip() or '(none)'}\n\n"
         f"Background already in the interview questionnaire:\n{questionnaire_context.strip() or '(none)'}\n\n"

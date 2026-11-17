@@ -152,7 +152,7 @@ RESULT = {
                  "task_exposure": "high", "exposure_note": "Commandes par mail ressaisies.",
                  "regulated": False, "ceo_uses_ai": "unknown",
                  "rationale": "Secteur en retard mais un concurrent a déjà un résultat publié.",
-                 "workforce": "unknown", "workforce_note": ""},
+                 },
     "personas": [],
     "sources": [{"title": "Fornaxa", "url": "https://www.fornaxa.example"}],
 }

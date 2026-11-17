@@ -157,6 +157,8 @@ button.icon:hover { color: var(--accent); }
 .contacts li { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr) auto auto auto; }
 .contacts .c-persona { font-size: 13px; padding: 4px 6px; max-width: 190px; }
 .contacts .c-why { grid-column: 1 / -1; margin: -2px 2px 4px; line-height: 1.4; }
+.contacts .c-prep { grid-column: 1 / -1; margin: -4px 2px 6px; line-height: 1.4; }
+.contacts .c-prep:empty { display: none; }
 .contacts .c-why.unsure::before { content: "? "; color: var(--accent); font-weight: 600; }
 .profiles { display: grid; gap: 10px; margin-top: 10px; }
 .pcard { border: 1px solid var(--rule); border-radius: 12px; padding: 10px 14px; background: var(--bg); display: grid; gap: 6px; }

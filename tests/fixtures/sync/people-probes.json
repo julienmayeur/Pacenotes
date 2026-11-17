@@ -59,7 +59,9 @@
   "sponsor_probe": null,
   "value_framings": [],
   "metric_questions": [],
-  "to_check": []
+  "to_check": [],
+  "attendee_stances": [],
+  "ask_to": []
  },
  {
   "question_updates": [],
@@ -129,7 +131,9 @@
   "sponsor_probe": null,
   "value_framings": [],
   "metric_questions": [],
-  "to_check": []
+  "to_check": [],
+  "attendee_stances": [],
+  "ask_to": []
  },
  {
   "question_updates": [],
@@ -191,6 +195,8 @@
   "sponsor_probe": null,
   "value_framings": [],
   "metric_questions": [],
-  "to_check": []
+  "to_check": [],
+  "attendee_stances": [],
+  "ask_to": []
  }
 ]

@@ -303,7 +303,8 @@ def test_a_named_pilot_is_quoted_in_the_adoption_plan():
         "majority": {"plan": "Claire shows it on Monday", "trigger": ""}}))
     md = render_plan_md(apply_horizons(doc, st), st)
     assert "**Pilots**: Claire — « she always tries new things first »" in md
-    assert "**Sponsor**" not in md  # a pilot was named: no sponsor
+    # nobody listed in the meeting: no leader to name; the sponsor is to be confirmed, even with a pilot
+    assert "**Sponsor**: to be confirmed with the leadership." in md
     assert "**Start with**: Orders" in md and "**When**: This week" in md
     assert "1. **The volunteers (weeks 1 to 4)** — Yesterday's 10 orders" in md
     assert "2. **Most of the team** — Claire shows it on Monday" in md

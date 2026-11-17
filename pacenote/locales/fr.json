@@ -73,10 +73,12 @@
     "toCheck": "{{who}} : {{question}}",
     "deferred": "→ {{who}}",
     "sponsorProbe": {
-      "explorer": "Quand quelque chose de nouveau est arrivé ici, est-ce que c'est souvent parti de vous ?",
-      "pragmatic": "Quand vous avez changé la façon de travailler de l'équipe, l'aviez-vous d'abord essayé sur votre propre travail ?",
+      "explorer": "Et dans votre propre semaine, qu'est-ce qui vous prend du temps et que vous aimeriez voir se faire autrement ?",
+      "pragmatic": "Dans votre propre travail, quel point ou quelle décision préparez-vous chaque semaine ? Comment ça se passe aujourd'hui ?",
       "urgent": "Seriez-vous partant pour essayer la façon plus rapide d'abord sur votre propre travail, pour que l'équipe le voie ?"
-    }
+    },
+    "askTo": "Demander à {{who}}",
+    "askToWhy": "{{who}} · {{why}}"
   },
   "where": {
     "title": "Où on en est",
@@ -102,8 +104,7 @@
     "speechHint": "Les modèles de reconnaissance manquants sont téléchargés et vérifiés au démarrage.",
     "ui": "Langue de l'écran",
     "admin": "⚙ Administration — clients, recherche, pré-plan",
-    "interviewee": "Qui on interroge",
-    "persona": "Persona",
+    "interviewee": "Dans la réunion",
     "noContact": "Personne sur la fiche client : posé comme à un dirigeant."
   },
   "end": {
@@ -172,9 +173,14 @@
       "asked": "dit"
     },
     "toCheck": "À vérifier avec d'autres",
-    "interviewee": "Entretien avec : {{who}}",
+    "interviewee": "Dans la réunion : {{who}}",
     "sponsorProbe": "Montrer l'exemple",
-    "sponsorTemplateWhy": "aucun pilote cité pour l'instant : savoir si {{person}} ouvrirait la voie sur son propre travail"
+    "sponsorTemplateWhy": "ce que {{person}} ferait lui-même, pour montrer l'exemple",
+    "attendees": "Dans la réunion · position sur l'IA",
+    "attendeesNote": "Pour l'intervieweur seulement, jamais dans le plan. Lu dans ce que dit chacun ; la transcription ne sépare pas les voix, donc une phrase ne compte que s'il est clair qui l'a dite.",
+    "lead": "responsable · sponsor",
+    "stanceSure": "sûr à {{pct}} %",
+    "others": "+{{n}}"
   },
   "interview": {
     "bannerDone": "C'est parfait, j'ai ce qu'il me faut. Je m'occupe du plan.",
@@ -445,22 +451,17 @@
         "everyone": "Ça devient la façon de travailler habituelle ; les autres suivent, sans campagne à leur intention.",
         "everyoneTrigger": "quand la plupart de l'entreprise travaille ainsi.",
         "sponsorPlan": "l'utilise d'abord sur son propre travail (un point ou une décision préparés chaque semaine), puis montre ses propres chiffres à l'équipe.",
-        "volunteersSponsor": "Le sponsor ({{sponsor}}) ouvre la voie sur son propre travail, rejoint par les collègues qui ont envie d'essayer : une démonstration sur un cas de la veille, puis la mesure face au chiffre d'aujourd'hui."
+        "volunteersSponsor": "Le sponsor ({{sponsor}}) l'utilise d'abord sur son propre travail, avec les pilotes et les collègues partants : une démonstration sur un cas de la veille, puis la mesure face au chiffre d'aujourd'hui.",
+        "volunteersSponsorAlone": "Le sponsor ({{sponsor}}) ouvre la voie sur son propre travail, rejoint par les collègues qui ont envie d'essayer : une démonstration sur un cas de la veille, puis la mesure face au chiffre d'aujourd'hui."
       },
       "leaderDefault": "Le dirigeant",
       "sponsorLine": "{{sponsor}}, qui montre l'exemple : {{plan}}",
-      "hint": {
-        "range": "{{low}} à {{high}}",
-        "line": "Une entreprise de cette taille compte en général {{usual}} pilotes ; l'entretien en a cité {{named}}.",
-        "one": "Une entreprise de cette taille compte en général {{usual}} pilotes ; l'entretien en a cité un.",
-        "none": "Une entreprise de cette taille compte en général {{usual}} pilotes ; aucun n'a encore été cité.",
-        "leader": "Dans une entreprise comme celle-ci, les volontaires se déclarent rarement dès un premier entretien : le dirigeant ouvre la voie, et des pilotes le rejoignent dès les premiers résultats.",
-        "small": "Dans une équipe de cette taille, le dirigeant est souvent le premier à l'utiliser, et le montre aux autres."
-      }
+      "group": "{{group}} (en groupe)",
+      "sponsorTbc": "à confirmer avec la direction."
     },
     "freedLine": "{{task}} — {{who}} · temps libéré : {{time}} · pour se consacrer à : {{moves}}",
     "freedTeam": "l'équipe",
-    "interviewed": "Personne interrogée",
+    "interviewed": "Dans la réunion",
     "toCheck": {
       "intro": "Ce que la personne interrogée ne pouvait pas dire, et qui le saurait. Rien ici n'est encore un fait.",
       "with": "Avec {{who}}"
@@ -503,7 +504,7 @@
     "country": "Pays",
     "countryPh": "ex. France",
     "language": "Langue de l'entretien",
-    "who": "Qui on rencontre",
+    "who": "Qui sera dans la réunion",
     "addContact": "+ Ajouter une personne",
     "notes": "Ce dont on va parler — contexte, objectifs, sujets, contraintes",
     "notesPh": "Pourquoi ce rendez-vous, ce que le client attend, les sujets à aborder, ce qu'il faut éviter…",
@@ -752,27 +753,7 @@
       "rationale": "Pourquoi",
       "override": "Rythme de l'entretien",
       "overrideAuto": "D'après la pré-étude",
-      "overrideSaved": "Rythme enregistré.",
-      "pilots": "Pilotes à attendre",
-      "pilotsRange": "{{low}} à {{high}} pour {{size}} personnes",
-      "pilotsLeader": "Le dirigeant ouvrira probablement la voie : prévoir la question sponsor pendant l'entretien.",
-      "pilotsUnknown": "Ajoutez l'effectif dans la fiche client pour obtenir une indication.",
-      "pilotsFactors": {
-        "small_team": "petite équipe : le dirigeant est proche du travail",
-        "large_slow": "grande entreprise qui bouge lentement : les volontaires se déclarent rarement dès un premier entretien",
-        "pace_urgent": "le secteur avance vite",
-        "pace_explorer": "le secteur est en retard",
-        "workforce_young": "des effectifs jeunes (signaux publics)",
-        "workforce_mature": "des effectifs expérimentés, plus âgés (signaux publics)"
-      },
-      "pilotsNote": "Une indication sur l'entreprise, jamais sur une personne.",
-      "workforce": "Effectifs :",
-      "workforces": {
-        "young": "jeunes",
-        "mixed": "mélangés",
-        "mature": "expérimentés, plus âgés",
-        "unknown": "aucun signal public"
-      }
+      "overrideSaved": "Rythme enregistré."
     },
     "ambassadors": {
       "hint": "Les personnes que les entretiens ont désignées comme pilotes potentiels du premier cas d'usage (il peut y en avoir plusieurs), avec les mots de la personne interrogée. Gardé sur ce Mac uniquement. Vos modifications sont conservées ; une personne retirée ne revient jamais.",
@@ -791,7 +772,8 @@
     },
     "contactNotes": "Notes (facultatif)",
     "personaTitle": "Persona : jusqu'où l'entretien descend avec cette personne",
-    "personaHint": "Chaque personne reçoit un persona d'après son poste, la taille de l'entreprise et vos notes (la recherche l'affine). Il oriente les questions ; changez-le ici s'il est faux."
+    "personaHint": "Une personne ou plusieurs. Chacune reçoit un persona d'après son poste, la taille de l'entreprise et vos notes (la recherche l'affine). Il oriente les questions ; changez-le ici s'il est faux.",
+    "prepLabel": "Préparation"
   },
   "thread": {
     "title": "Fil de l'entretien",
@@ -902,5 +884,19 @@
     },
     "auto": "Auto · {{persona}}",
     "confidence": "sûr à {{pct}} %"
+  },
+  "attendees": {
+    "prep": {
+      "executive": "Questions au niveau des processus : résultats, où passe le temps, qui fait quoi. Voir ce qu'il ferait lui-même : en tant que patron, il montre l'exemple. Position sur l'IA : inconnue avant la réunion.",
+      "function_leader": "Questions sur le déroulé du processus : qui porte chaque étape, les outils, les chiffres suivis. Voir ce qu'il essaierait d'abord sur son propre travail. Position sur l'IA : inconnue avant la réunion.",
+      "operator": "Questions étape par étape sur son dernier cas réel : volumes, temps par dossier, exceptions. Pas de stratégie. Position sur l'IA : inconnue avant la réunion."
+    },
+    "stance": {
+      "driver": "Moteur",
+      "open": "Ouvert",
+      "hesitant": "Hésitant",
+      "opposed": "Opposé",
+      "unknown": "Inconnu"
+    }
   }
 }

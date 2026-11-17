@@ -73,10 +73,12 @@
     "toCheck": "{{who}}: {{question}}",
     "deferred": "→ {{who}}",
     "sponsorProbe": {
-      "explorer": "When something new came in here, did it usually start with you?",
-      "pragmatic": "When you changed how the team works, did you try it on your own work first?",
+      "explorer": "And in your own week, what takes your time that you'd like to see done differently?",
+      "pragmatic": "In your own work, which report or decision do you prepare every week? How does it go today?",
       "urgent": "Would you be up for trying the quicker way first on your own work, so the team sees it?"
-    }
+    },
+    "askTo": "Ask {{who}}",
+    "askToWhy": "{{who}} · {{why}}"
   },
   "where": {
     "title": "Where we are",
@@ -102,8 +104,7 @@
     "speechHint": "Missing speech models are downloaded and checked when you press Start.",
     "ui": "Screen language",
     "admin": "⚙ Administration — clients, research, pre-plan",
-    "interviewee": "Who we interview",
-    "persona": "Persona",
+    "interviewee": "In the meeting",
     "noContact": "Nobody on the client sheet: asked as an executive."
   },
   "end": {
@@ -172,9 +173,14 @@
       "asked": "said"
     },
     "toCheck": "To check with others",
-    "interviewee": "Interviewing: {{who}}",
+    "interviewee": "In the meeting: {{who}}",
     "sponsorProbe": "Leading by example",
-    "sponsorTemplateWhy": "no pilot named so far: whether {{person}} would open the way on their own work"
+    "sponsorTemplateWhy": "what {{person}} would do themself, to lead by example",
+    "attendees": "In the meeting · stance on AI",
+    "attendeesNote": "Interviewer only, never in the plan. Read from what each person says; the transcript has no speakers, so a line counts only when it's clear who said it.",
+    "lead": "lead · sponsor",
+    "stanceSure": "{{pct}} % sure",
+    "others": "+{{n}}"
   },
   "interview": {
     "bannerDone": "All good, I'm taking care of the plan.",
@@ -445,22 +451,17 @@
         "everyone": "It becomes the usual way of working; the others follow, with no campaign aimed at them.",
         "everyoneTrigger": "once most of the company works this way.",
         "sponsorPlan": "uses it first on their own work (a report or a decision they prepare every week), then shows their own numbers to the team.",
-        "volunteersSponsor": "The sponsor ({{sponsor}}) opens the way on their own work, joined by the colleagues who want to try it: a demo on yesterday's case, then measured against today's figure."
+        "volunteersSponsor": "The sponsor ({{sponsor}}) uses it first on their own work, alongside the pilots and the colleagues keen to go first: a demo on yesterday's case, then measured against today's figure.",
+        "volunteersSponsorAlone": "The sponsor ({{sponsor}}) opens the way on their own work, joined by the colleagues who want to try it: a demo on yesterday's case, then measured against today's figure."
       },
       "leaderDefault": "The company's leader",
       "sponsorLine": "{{sponsor}}, leading by example: {{plan}}",
-      "hint": {
-        "range": "{{low}} to {{high}}",
-        "line": "A company of this size usually finds {{usual}} pilots; this interview named {{named}}.",
-        "one": "A company of this size usually finds {{usual}} pilots; this interview named one.",
-        "none": "A company of this size usually finds {{usual}} pilots; none was named yet.",
-        "leader": "In a company like this one, volunteers rarely come forward in a first interview: the leader opens the way, and pilots join once the first results show.",
-        "small": "In a team this size, the leader is often the first to use it, and shows the others."
-      }
+      "group": "{{group}} (as a group)",
+      "sponsorTbc": "to be confirmed with the leadership."
     },
     "freedLine": "{{task}} — {{who}} · time freed: {{time}} · moves up to: {{moves}}",
     "freedTeam": "the team",
-    "interviewed": "Interviewed",
+    "interviewed": "In the meeting",
     "toCheck": {
       "intro": "What the person interviewed could not answer, and who would know. Nothing here is a fact yet.",
       "with": "With {{who}}"
@@ -503,7 +504,7 @@
     "country": "Country",
     "countryPh": "e.g. France",
     "language": "Interview language",
-    "who": "Who we meet",
+    "who": "Who will be in the meeting",
     "addContact": "+ Add a person",
     "notes": "What we will talk about — context, goals, topics, constraints",
     "notesPh": "Why this meeting, what the client expects, topics to cover, what to avoid…",
@@ -752,27 +753,7 @@
       "rationale": "Why",
       "override": "Pace for the interview",
       "overrideAuto": "From the pre-study",
-      "overrideSaved": "Pace saved.",
-      "pilots": "Pilots to expect",
-      "pilotsRange": "{{low}} to {{high}} for {{size}} people",
-      "pilotsLeader": "The leader will likely open the way: plan the interview's sponsor question.",
-      "pilotsUnknown": "Add the headcount to the client sheet to get a hint.",
-      "pilotsFactors": {
-        "small_team": "small team: the leader is close to the work",
-        "large_slow": "large company that moves slowly: volunteers rarely surface in a first interview",
-        "pace_urgent": "the sector moves fast",
-        "pace_explorer": "the sector is behind",
-        "workforce_young": "a young workforce (public signals)",
-        "workforce_mature": "an experienced, older workforce (public signals)"
-      },
-      "pilotsNote": "A hint about the company, never about a person.",
-      "workforce": "Workforce:",
-      "workforces": {
-        "young": "young",
-        "mixed": "mixed",
-        "mature": "experienced, older",
-        "unknown": "no public signal"
-      }
+      "overrideSaved": "Pace saved."
     },
     "ambassadors": {
       "hint": "People the interviews suggested as potential pilots for the first use case (there can be several), with the words of the person interviewed. Stored on this Mac only. Your edits are kept; a removed person never comes back.",
@@ -791,7 +772,8 @@
     },
     "contactNotes": "Notes (optional)",
     "personaTitle": "Persona: how deep the interview goes with this person",
-    "personaHint": "Each person gets a persona from their title, the company's size and your notes (the research refines it). It shapes the questions; change it here if it's wrong."
+    "personaHint": "One person or several. Each gets a persona from their title, the company's size and your notes (the research refines it). It shapes the questions; change it here if it's wrong.",
+    "prepLabel": "Prep"
   },
   "thread": {
     "title": "Interview thread",
@@ -902,5 +884,19 @@
     },
     "auto": "Auto · {{persona}}",
     "confidence": "{{pct}} % sure"
+  },
+  "attendees": {
+    "prep": {
+      "executive": "Ask at workflow level: outcomes, where the time goes, who does what. Find out what they would do themself: as the boss, they lead by example. Stance on AI: unknown until the meeting.",
+      "function_leader": "Ask how the process runs: who owns each step, the tools, the figures they follow. Find out what they would try first on their own work. Stance on AI: unknown until the meeting.",
+      "operator": "Ask step by step on their last real case: volumes, time per item, exceptions. No strategy. Stance on AI: unknown until the meeting."
+    },
+    "stance": {
+      "driver": "Driver",
+      "open": "Open",
+      "hesitant": "Hesitant",
+      "opposed": "Opposed",
+      "unknown": "Unknown"
+    }
   }
 }

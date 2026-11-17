@@ -6,6 +6,7 @@ import json
 from typing import Mapping
 
 from . import ambassadors, briefs, horizons, i18n, lens, personas
+from . import attendees as attendees_lib
 from . import pilots as pilots_lib
 from . import phases as P
 from . import recipes as recipe_lib
@@ -199,9 +200,11 @@ POSTURE_NOTES = {"explorer": "explorer (sector behind, gentle approach)",
 AMBASSADORS_GUIDE = """\
 # Potential pilots (who could carry the first use case)
 A first use case spreads through pilots: colleagues the others listen to, not the consultant or the \
-management. There can be several (a dynamic company, a young team), or none in a large company that \
-moves slowly, where the leader then opens the way. {expected} Keep listening for pilots across every \
-workflow; do not stop at the first one, and never turn this into a count of people.
+management. Nobody knows in advance how many there are: none, a few, or a whole team keen to try (a team \
+of young people all keen; an old company where only one person cares). Infer it only from what is said, \
+across every workflow; do not stop at the first one, and never turn this into a count of people. A group \
+described as keen ("toute l'équipe ventes est partante") is recorded as that group, never with invented \
+names. While the picture is still unclear, the indirect people questions below help pin it down.
 - In the org map, `adoption_signal` = a short quote of what the interviewee said that makes this person a \
 potential ambassador: tries new tools or software first, shows the others how, is listened to when \
 they say something works, complains about a repetitive task they would gladly hand over, or would \
@@ -214,7 +217,8 @@ per workflow, and the screen shows them under the follow-up when the time is rig
 
 PEOPLE_GUIDE = """\
 # Reading the interviewee (interviewer-side only: never said out loud, never in the plan)
-Keep a light running read of the person you interview, from the conversation so far, and return \
+Keep a light running read of the person you interview (with several attendees: the main speaker, \
+usually the lead), from the conversation so far, and return \
 the full current view in interviewee_read on every sync (state.interviewee_read is the previous \
 one: keep what still holds, refine it):
 - role: their position and what they answer for; ai_stance: how they talk about new tools and AI \
@@ -244,23 +248,40 @@ through change; a numbers-first one through time saved.
 how, on a real case) AND the conversation is on that workflow or has just left it; else "later". \
 Never in the opening, never two in a row. "done" when the interviewee already told it (who tries new \
 things on that team, how they took the last change): the app stops suggesting it.
-- sponsor_probe: when no pilot was named so far (nobody in state.potential_ambassadors is keen) and the interviewee leads the company or a \
-function, the leader may have to open the way themself, leading by example. Write one indirect question \
-that checks whether they would be willing to try it first on their own work (a report or decision they \
-prepare every week) and show the team: through how changes usually started here, or what they did the \
-last time they changed how the team works ("When something new came in, did it start with you?"). Never \
-"would you be the ambassador / the sponsor", never as a test of their commitment, no AI vocabulary. \
-timing: "now" once the workflows were walked through and rapport is there, and more readily when the \
-expected pilots say the leader will likely open the way; "done" when they already said it (they started \
-the last change themself, or they said they would rather not). null when a pilot was named, when the \
-interviewee does the work themself, or when nothing changed; never change one already asked \
-(state.sponsor_probe).
+- sponsor_probe: when a leader of the company or of a function is in the meeting (the lead in state.attendees), \
+they sponsor the first wave whatever the pilots: they cannot ask their teams to adopt it and do nothing \
+themself. Find out what they could do themself: write one indirect question, addressed to them, about a \
+report or decision of their own they prepare every week, or how they tried the last change on their own \
+work first ("Dans votre propre semaine, qu'est-ce qui vous prend du temps ?"). Never "would you be the \
+ambassador / the sponsor", never as a test of their commitment, no AI vocabulary. timing: "now" once the \
+workflows were walked through and rapport is there; "done" when they already said what they would do \
+themself (or that they would rather not). null when no leader attends or when nothing changed; never change \
+one already asked (state.sponsor_probe).
 - ambassador_probes: at most one per workflow, use_case = its id in state.use_cases, only new or \
 changed ones (empty list when nothing changed); person = the person or role behind it as heard \
 ("" = the team); question = short, ready to say, in {lang_name}; reason = for the interviewer only, \
 a few words in {lang_name}: what the answer would tell ("whether Claire picks up new tools: pilot \
 for the orders"). state.ambassador_probes lists the ones given so far: never change one already \
 asked. What the interviewee answers about a person goes in the org map's adoption_signal.
+
+# Each attendee's stance toward AI (interviewer-side only: never said out loud, never in the plan)
+state.attendees lists who is in the meeting, with each one's stance so far. Several attendees may differ \
+(one driving it, two against it): discover each one's stance from what they say, never by asking it. \
+Return in attendee_stances only new or changed reads:
+- attendee: its id (a1, a2...); stance: driver (pushes for it, already uses such tools or asks for them), \
+open (curious, willing to try), hesitant (doubts, worries, "pas pour nous tout de suite"), opposed (against \
+it, firmly protects the current way), unknown; evidence: their own words, a short quote; confidence 0 to 1, \
+lower when the attribution is indirect; attributed: self (they introduced themself or spoke of their own \
+role), named (someone named them), addressed (it answers a question the interviewer addressed to them).
+- The transcript has no speaker labels: a line you cannot attribute that way moves no stance. Never guess \
+who spoke from the content alone.
+- Follow-ups adapt to the person they are addressed to: with an opposed or hesitant attendee, stay concrete \
+on the time given back and the decision they keep, never push, never argue; with a driver, explore what \
+they already do and what they would take further.
+- ask_to: with two attendees or more, who should answer a question: question_id (usually the current one), \
+attendee (its id), reason (a few words in {lang_name}: "fait les commandes tous les jours"). The per-item \
+detail to the one who does the work, how the process runs to the one who owns it, the outcome and the \
+decisions to the lead. Only new or changed ones; [] otherwise (and always [] with one attendee).
 """
 
 PROBE_TONES = {
@@ -356,11 +377,20 @@ def people_guide(state: SessionState) -> str:
 
 
 INTERVIEWEE_GUIDE = """\
-# Who you interview
-{who}. They are {rule}
-{reason}- When the interviewee cannot answer (they say they do not know, or that someone else handles it), \
-never push and never ask it again: {defer}; aim the follow-up at what they can answer.
+# Who is in the meeting
+{attendees}
+The questions are set for {who}. They are {rule}
+{reason}{several}- When the person asked cannot answer (they say they do not know, or that someone else \
+handles it), never push and never ask it again: {defer}; aim the follow-up at what they can answer.
 {reword}"""
+
+SEVERAL = """\
+- Several people attend. Word each question for the person it is addressed to: the outcome and the \
+decisions to the lead, how the process runs to the function leader, the per-item detail to the one who \
+does the work. The transcript has no speaker labels: never invent who said what. A line counts for an \
+attendee only when the conversation shows it (they introduce themself, "en tant que directeur commercial, \
+je..."; someone names them; or it answers a question addressed to them); otherwise the speaker is unknown.
+"""
 
 DEFER_SYNC = ("record it in to_check (the question to ask, who would know: a role, or a name as heard, the slots it "
               "leaves open, their words as evidence)")
@@ -381,8 +411,10 @@ def interviewee_guide(state: SessionState, fast: bool = False) -> str:
     persona = state.persona
     reason = (iv.get("reason") or "").strip()
     return INTERVIEWEE_GUIDE.format(
+        attendees=attendees_lib.prompt_block(state),
         who=personas.describe(iv), rule=personas.PERSONA_RULES[persona],
         reason=f"(Why this persona: {reason}.)\n" if reason else "",
+        several=SEVERAL if len(attendees_lib.of(state)) > 1 else "",
         defer=DEFER_FAST if fast else DEFER_SYNC,
         reword="" if fast else f"- The seed questions were written for an executive: {REWORD[persona]}\n")
 
@@ -396,7 +428,7 @@ def horizons_guide(state: SessionState) -> str:
         out += "\n" + POSTURE_GUIDE.format(posture=state.posture, posture_note=POSTURE_NOTES[state.posture],
                                            rationale=f"{rationale}\n" if rationale else "",
                                            posture_rule=POSTURE_RULES[state.posture])
-    return out + "\n" + AMBASSADORS_GUIDE.format(expected=pilots_lib.prompt_line(state.pilots_hint or None))
+    return out + "\n" + AMBASSADORS_GUIDE
 
 
 SLOTS_GUIDE = """\
@@ -437,7 +469,8 @@ flag or a jumpy question list derails the interview.
 # How the transcript is produced
 {streams}
 - There are no speaker labels. Infer who speaks from content: the interviewer asks questions, the \
-interviewee answers.
+interviewee answers. With several attendees, which one speaks is unknown unless the conversation shows it \
+(see Who is in the meeting).
 - The microphone also picks up the room: a TV or radio, people nearby, phone calls. Ignore \
 anything unrelated to the interview (for example a TV programme about politicians or \
 celebrities); never turn it into an answer, a note or a question.
@@ -521,6 +554,7 @@ coverage of at least about 0.6, or when the time budget is used up and the remai
 be listed as open points in the plan. Be conservative: once true, the interview ends and plan \
 writing starts. enough_data_reason: one sentence why (or why not yet).
 - interviewee_read, ambassador_probes and sponsor_probe: see Reading the interviewee and People questions above.
+- attendee_stances and ask_to: see Each attendee's stance above.
 - value_framings and metric_questions: see The executive lens above.
 - to_check: what the interviewee could not answer in this slice, new items only (see Who you \
 interview): use_case (its id, or null), question_id (or null), slots (the slot keys it leaves open, \
@@ -530,11 +564,14 @@ the ones recorded so far: never repeat one. Empty list when nothing new.
 
 
 def interviewee_label(state: SessionState) -> str:
-    """"the CFO (a function leader)": who is interviewed, for the first line of the prompts."""
+    """"the CFO (a function leader)", "the CEO (an executive) and 2 other attendees": who is in the
+    meeting, for the first line of the prompts (the lead first)."""
     role = ((state.interviewee or {}).get("role") or "").strip()
     name = personas.PERSONA_NAMES[state.persona]
     article = "an" if name[0] in "aeiou" else "a"
-    return f"the {role} ({article} {name})" if role else f"{article} {name}"
+    who = f"the {role} ({article} {name})" if role else f"{article} {name}"
+    others = len(attendees_lib.of(state)) - 1
+    return who + (f" and {others} other attendee{'s' if others > 1 else ''}" if others > 0 else "")
 
 
 def build_sync_system(state: SessionState, glossary: str, context: str = "") -> str:
@@ -619,19 +656,21 @@ def state_snapshot(state: SessionState, for_plan: bool = False) -> dict:
         # otherwise the interview only put them on that work
         "potential_ambassadors": [{k: e[k] for k in ("person", "role", "use_case", "quote", "keen")}
                                   for e in ambassadors.candidates(state)],
-        "expected_pilots": pilots_lib.prompt_line(state.pilots_hint or None),
         # what the interviewee could not answer, and who would know (personas.py)
         "to_check": [{"ask": t["ask"], "question": t["question"], "use_case": t.get("use_case")}
                      for t in state.to_check],
         "plan_notes": {k: v for k, v in state.plan_notes.items() if v},
     }
-    if for_plan:  # the talking points' task and the decision it frees time for, never why they were said
-        return out | {"value_framings": lens.for_plan(state)}
+    if for_plan:  # the talking points' task and the decision it frees time for, never why they were said;
+        # who attended by role and persona only (no stance: the plan is shared)
+        return out | {"value_framings": lens.for_plan(state), "attendees": attendees_lib.for_plan(state)}
     return out | {"value_framings": [{"use_case": uc, "point": f.get("point", ""), "timing": f.get("timing", ""),
                                       "asked": bool(f.get("asked"))} for uc, f in state.value_framings.items()],
                   "metric_questions": {k: {"kind": m.get("kind", ""), "question": m.get("question", "")}
                                        for k, m in state.metric_questions.items()},
                   "interviewee_read": state.interviewee_read or None,
+                  "attendees": attendees_lib.snapshot(state),
+                  "ask_to": {qid: x.get("attendee") for qid, x in state.ask_to.items()},
                   "ambassador_probes": [{"use_case": uc, "person": p.get("person", ""), "question": p.get("question", ""),
                                          "timing": p.get("timing", ""), "asked": bool(p.get("asked"))}
                                         for uc, p in state.ambassador_probes.items()],
@@ -847,29 +886,23 @@ person before they enter the library. Empty list when every opportunity has a re
 </other_recipes>
 
 # Adoption plan: three waves
-Bet on the people keen to go further, never on converting the reluctant: the pilots prove it, \
-their measured results convince most of the team, and once most of the company works this way the \
-rest follow. One lighthouse use case, visible beyond its user, carried by its pilots. {pilots_expected}
+Bet on the people keen to go further, never on converting the reluctant: the sponsor leads by example, \
+the pilots prove it, their measured results convince most of the team, and once most of the company works \
+this way the rest follow. One lighthouse use case, visible beyond its user, carried by its pilots.
 - adoption.lighthouse: the id of the opportunity to start with: an h1 one, high volume, a human \
 who validates, a metric already counted, a gain others will see.
-- adoption.pilots: everyone the interview named as keen to go first (0, 1 or several), each with person \
-(name or role, as heard) and evidence (the interviewee's quote); state.potential_ambassadors lists who \
-the interviewee put on each use case and what they said about them. Only as heard; never pick someone \
-the interviewee described as reluctant; never invent pilots to reach the expected number. Nobody \
-named: [] , question = the question to ask to find some ("Qui, dans l'équipe, aurait envie d'essayer \
-en premier ?"), ask = who to ask it.
-- adoption.sponsor and sponsor_plan: only when adoption.pilots is empty and {interviewee_short} leads \
-the company or a function: sponsor = their role (never their name), sponsor_plan = how they lead by \
-example, short and concrete: they use it first on their own work (a report or a decision they prepare \
-every week, from the interview when one was named), then show their own numbers to the team; when \
-the interview shows they would rather not try it themself, keep sponsor_plan modest (they announce it \
-and follow the first results). Worded as leading by example, never as a lack of volunteers or a failing of the \
-team. Otherwise both "".
+- adoption.pilots: everyone the interview named as keen to go first, only as heard: none, one, several \
+people, or a group the interviewee described as keen ("toute l'équipe ventes est partante": person = the \
+group as said, group = true; never invent names inside it). Each with evidence (the interviewee's quote); \
+state.potential_ambassadors lists who the interviewee put on each use case and what they said about them. \
+Never pick someone described as reluctant; never invent pilots. Nobody named: [], question = the question \
+to ask to find some ("Qui, dans l'équipe, aurait envie d'essayer en premier ?"), ask = who to ask it.
+- adoption.sponsor: {sponsor_rule}
 - The three waves, each with plan (what happens, short, concrete, plain business words) and \
 trigger (what starts it):
-  - volunteers: weeks 1 to 4: the pilots (or the sponsor, on their own work) and the colleagues keen \
-to go first run the lighthouse on real cases (a demo on yesterday's case, then shadow mode), measured \
-against today's figure.
+  - volunteers: weeks 1 to 4: the sponsor uses it first on their own work, and the pilots and the \
+colleagues keen to go first run the lighthouse on real cases (a demo on yesterday's case, then shadow \
+mode), measured against today's figure.
   - majority: most of the team: the volunteers show their own numbers (the lighthouse metric against \
 its baseline) in an existing meeting, and the next workflow or team starts. Its trigger is wave 1's \
 measured result: name the metric and the result that starts it.
@@ -878,14 +911,15 @@ others follow, with no campaign aimed at them.
   Never label an individual (no "reluctant", "undecided", "late adopter"), never name anyone in the \
 majority or everyone waves; "" when nothing supports a field.
 {pace}
-# Who was interviewed
-{interviewee}. What one person could not know stays open, never guessed: state.to_check lists what \
-the interviewee deferred and who would know; each one that is not already a slot gap goes in \
-open_items with that person as `ask`.
+# Who was in the meeting
+{interviewee}. state.attendees lists them by role and persona. Never write anything about how anyone \
+feels about AI or new tools (no "réticent", "opposed", "enthusiastic" about a person). What the people \
+in the meeting could not know stays open, never guessed: state.to_check lists what they deferred and who \
+would know; each one that is not already a slot gap goes in open_items with that person as `ask`.
 
 # Other fields
 - context: 2 to 4 sentences: who the client is, what the interview covered, the goals as \
-the interviewee stated them, and who was interviewed (by role, see Who was interviewed). Facts only.
+the interviewee stated them, and who was in the meeting (by role, see Who was in the meeting). Facts only.
 - open_items: open questions that belong to no single slot (budget, sponsor, who grants IT \
 access, security rules, use cases not covered...), each with topic, question and ask. Slot gaps \
 are collected automatically from the slots: do not repeat them here.
@@ -923,14 +957,33 @@ def plan_pace(state: SessionState) -> str:
     return PLAN_PACE.format(rule=POSTURE_NOTES[state.posture] + ".", plan_rule=PLAN_PACE_RULES[state.posture])
 
 
+SPONSOR_LEAD = (
+    "the app sets it to {role} (the lead in the meeting), alongside any pilots: the leader is always involved "
+    "and leads by example. adoption.sponsor_plan = what they will do themself in wave 1, as found out in the "
+    "interview (the report or decision of their own they would run it on first, then show their own numbers to "
+    "the team), short and concrete; when the interview did not say, keep it modest (they use it first on one "
+    "report of their own and follow the first results). Worded as leading by example, never as a lack of "
+    "volunteers or a failing of the team.")
+SPONSOR_NONE = (
+    "no leader of the company or of a function was in the meeting (operators only): the sponsor is to be "
+    "confirmed with the leadership. Leave adoption.sponsor and sponsor_plan \"\" and put the question in "
+    "open_items (who in the leadership sponsors it).")
+
+
+def sponsor_rule(state: SessionState) -> str:
+    lead = pilots_lib.sponsor(state)
+    if lead is None:
+        return SPONSOR_NONE
+    return SPONSOR_LEAD.format(role=(lead.get("role") or "").strip() or "the company's leader")
+
+
 def build_plan_system(state: SessionState, glossary: str, context: str = "") -> str:
     return PLAN_SYSTEM.format(
         who=interviewee_label(state),
         interviewee=interviewee_label(state)[0].upper() + interviewee_label(state)[1:],
         horizons=horizons.HORIZON_GUIDE,
         pace=plan_pace(state),
-        pilots_expected=pilots_lib.prompt_line(state.pilots_hint or None),
-        interviewee_short=interviewee_label(state),
+        sponsor_rule=sponsor_rule(state),
         streams=describe_streams(state),
         target=state.target_minutes,
         client=state.client,
