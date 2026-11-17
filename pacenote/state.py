@@ -24,7 +24,7 @@ Locking rules (enforced here, whatever the model returns):
     still mark it, or move on with n / Enter).
   * Use cases and integration slots (contract.SLOT_KEYS): a question attached to a use case gets
     its required slots as `expect` items (labels from the locale files). Those items are covered
-    only when the use case's slot holds a value the CEO actually gave (`slots` in a model
+    only when the use case's slot holds a value the interviewee actually gave (`slots` in a model
     result), never because the model lists them as covered; the question is sufficient (can be
     answered) only when ALL its required slots are filled. Slot values only grow, and they are
     shared by every question on the same use case. A new use case discovered live (an "add" queue
@@ -40,10 +40,10 @@ Locking rules (enforced here, whatever the model returns):
     interviewer skips it (`p`). The phase only changes at a focus change, so the current card is never
     interrupted. Queue edits may only add / reword / reorder / remove questions of the current
     phase; an "add" for a new use case is parked in the deep dives. Answers, slots and maps from
-    any phase are always captured: what the CEO says early is kept, the focus does not jump.
+    any phase are always captured: what the interviewee says early is kept, the focus does not jump.
   * Maps (contract.MapsUpdate): org, flows, stores, decisions and the tool catalog, merged per
     record id field by field, with the same optimistic versioning as the slots.
-  * Recipe matches (contract.RecipeMatch): library recipes the CEO's stories fit, one record per
+  * Recipe matches (contract.RecipeMatch): library recipes the interviewee's stories fit, one record per
     (recipe, use case), same optimistic versioning; heard signals only grow, `missing` is the latest
     view minus what was heard; unknown recipes and use cases are rejected. Applied after the queue
     edits, so a use case added in the same sync can hold a match.
@@ -62,7 +62,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-from . import ambassadors, fsutil, i18n, lens
+from . import ambassadors, fsutil, i18n, lens, personas
 from . import phases as P
 from . import recipes as recipe_lib
 from .contract import (CATALOG_CATEGORIES, MAP_KINDS, PLAN_SECTIONS, RUNGS, SLOT_KEYS, SLOT_RUNG, FastResult,
@@ -140,6 +140,14 @@ class QuestionState(BaseModel):
     slot_map: dict[str, str] = Field(default_factory=dict)  # expect item (source language) -> slot key
     gathers: list[str] = Field(default_factory=list)  # no use case: slots its answer feeds (questionnaire `slots:`)
     phase: str = P.DEEP_DIVES  # interview phase (phases.PHASE_IDS); sessions saved before phases: one phase
+    # the interviewee's persona (personas.py): the wording and priority per persona (questions.yaml
+    # `personas:`), the base ones kept to switch back, and whether this persona is not asked it at all
+    variants: dict[str, dict] = Field(default_factory=dict)
+    base: dict = Field(default_factory=dict)
+    persona_skip: bool = False
+    # expect items the interviewee could not give, -> who would know (personas.apply_to_check): no
+    # longer missing on the card, never aimed at by the follow-ups, listed in the plan
+    deferred: dict[str, str] = Field(default_factory=dict)
 
     @property
     def locked(self) -> bool:
@@ -198,11 +206,11 @@ class QuestionState(BaseModel):
         return list(self.expect.get(rung or self.rung, []))
 
     def missing(self, rung: str | None = None) -> list[str]:
-        """Details still missing on the current rung (or on `rung`)."""
-        return [e for e in self.rung_items(rung) if e not in self.covered]
+        """Details still missing on the current rung (or on `rung`); deferred ones are not missing."""
+        return [e for e in self.rung_items(rung) if e not in self.covered and e not in self.deferred]
 
     def missing_all(self) -> list[str]:
-        return [e for e in self.all_expect() if e not in self.covered]
+        return [e for e in self.all_expect() if e not in self.covered and e not in self.deferred]
 
     def required_covered(self) -> int:
         """Details needed before the question can be answered: every slot item, plus half of the
@@ -213,7 +221,8 @@ class QuestionState(BaseModel):
 
     def missing_slots(self) -> list[str]:
         """Slot keys this question still needs, in canonical order."""
-        missing = {self.slot_map[e] for e in self.all_expect() if e in self.slot_map and e not in self.covered}
+        missing = {self.slot_map[e] for e in self.all_expect()
+                   if e in self.slot_map and e not in self.covered and e not in self.deferred}
         return [k for k in SLOT_KEYS if k in missing]
 
     def sufficient(self) -> bool:
@@ -221,7 +230,8 @@ class QuestionState(BaseModel):
         of the other expect items heard (a question without expect items is always sufficient)."""
         others = [e for e in self.all_expect() if e not in self.slot_map]
         return not self.missing_slots() and (
-            sum(1 for e in others if e in self.covered) >= (math.ceil(len(others) / 2) if others else 0))
+            sum(1 for e in others if e in self.covered or e in self.deferred)
+            >= (math.ceil(len(others) / 2) if others else 0))
 
     @property
     def follow_up(self) -> str:
@@ -365,6 +375,11 @@ class SessionState(BaseModel):
     # the interview's pace from the pre-study (horizons.py), operator-only: explorer, pragmatic, urgent
     posture: str | None = None
     posture_rationale: str = ""
+    # who we interview (personas.py): {index, name, role, notes, persona, reason, confidence, origin},
+    # picked on the consent screen; {} = not set (the default persona). Interviewer-side.
+    interviewee: dict = Field(default_factory=dict)
+    # what the interviewee could not answer, with who would know (personas.apply_to_check)
+    to_check: list[dict] = Field(default_factory=list)
     # ambassadors.py: question id -> the person the screen suggested an indirect people question about,
     # recorded when the focus leaves that question, so it is suggested once
     ambassador_prompted: dict[str, str] = Field(default_factory=dict)
@@ -506,7 +521,7 @@ class SessionState(BaseModel):
         return next((u for u in self.use_cases if u.id == uid), None)
 
     def apply_slot_fills(self, fills: list[SlotFill], ok, reject, by: str, read: int | None = None) -> None:
-        """Fill use-case slots with what the CEO said (values only grow), then refresh the slot
+        """Fill use-case slots with what the interviewee said (values only grow), then refresh the slot
         items covered by every question on those use cases. `read`: the transcript version the
         analysis read (default: the newest applied); a slot written by a newer read is kept."""
         read = self.analysis_read if read is None else read
@@ -771,10 +786,42 @@ class SessionState(BaseModel):
     def theme_ids(self) -> set[str]:
         return {t.id for t in self.themes}
 
-    def computed_coverage(self) -> dict[str, float]:
-        """Per theme: answered = 1, partial = share of expected details heard (at least 0.25)."""
-        cov: dict[str, float] = {}
+    def hidden_themes(self) -> set[str]:
+        """Themes whose every question is not asked to this interviewee's persona (personas.py)."""
+        out = set()
         for t in self.themes:
+            qs = [q for q in self.questions if q.theme == t.id]
+            if qs and all(q.persona_skip for q in qs):
+                out.add(t.id)
+        return out
+
+    @property
+    def persona(self) -> str:
+        """The interviewee's persona (personas.PERSONAS); the default when nobody was picked."""
+        p = (self.interviewee or {}).get("persona")
+        return p if p in personas.PERSONAS else personas.DEFAULT
+
+    def set_interviewee(self, interviewee: dict) -> list[str]:
+        """Who we interview (before the interview starts): their persona re-words and re-weighs the
+        seed questions (questions.yaml `personas:`). Returns the question ids that changed."""
+        keep = ("index", "name", "role", "notes", "persona", "reason", "confidence", "origin")
+        self.interviewee = {k: interviewee.get(k) for k in keep if k in interviewee}
+        changed = personas.apply_to_questions(self, self.persona)
+        self.coverage = self.computed_coverage()
+        if self.focus_id and (f := self.get(self.focus_id)) is not None and f.status == "removed":
+            self.focus_history = [i for i in self.focus_history if i != self.focus_id]
+            self.focus_id = None
+        self._refill_next()
+        return changed
+
+    def computed_coverage(self) -> dict[str, float]:
+        """Per theme: answered = 1, partial = share of expected details heard (at least 0.25). Themes
+        not asked to this persona are left out."""
+        cov: dict[str, float] = {}
+        hidden = self.hidden_themes()
+        for t in self.themes:
+            if t.id in hidden:
+                continue
             qs = [q for q in self.questions if q.theme == t.id and q.status != "removed"]
             if not qs:
                 cov[t.id] = 0.0
@@ -997,6 +1044,8 @@ class SessionState(BaseModel):
         # 6c. the executive lens: talking points and metric questions per workflow (lens.py)
         lens.apply_framings(self, result.value_framings, read, ok, reject)
         lens.apply_metric_questions(self, result.metric_questions, read, ok, reject)
+        # 6d. what the interviewee could not answer, and who would know (personas.py)
+        personas.apply_to_check(self, result.to_check, read, ok, reject)
 
         # 7. enough_data is sticky
         if result.enough_data and not self.enough_data:
@@ -1343,7 +1392,8 @@ def _question_from_def(qd, theme: str, lang: str, phase: str = P.DEEP_DIVES) -> 
                     expect_i18n.setdefault(code, {})[canonical] = text
     q = QuestionState(id=qd.id, theme=theme, text_fr=qd.fr, text_en=qd.en, texts=dict(qd.text),
                       priority=qd.priority, expect=expect, expect_i18n=expect_i18n, keywords=qd.keywords,
-                      phase=phase)
+                      phase=phase, variants={k: {"priority": v.priority, "texts": dict(v.text)}
+                                             for k, v in getattr(qd, "personas", {}).items()})
     if qd.use_case:
         attach_slots(q, qd.use_case, qd.required_slots(), lang)
     else:

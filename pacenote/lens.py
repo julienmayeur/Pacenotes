@@ -1,10 +1,11 @@
 """The executive lens: what to say and what to measure, per workflow, in a 15-minute interview.
 
-Pacenote captures what it can in about fifteen minutes with the CEO or CIO, not by watching staff
+Pacenote captures what it can in about fifteen minutes with one person, not by watching staff
 for weeks: the weak signals from the floor rarely surface there. So the copilot helps the
-interviewer guide the executive on value and feasibility, workflow by workflow:
+interviewer guide the interviewee on value and feasibility, workflow by workflow (the talking points
+are for an executive or a function leader, never for an operator: see personas.py):
 
-- Value framings. When the CEO describes manual work (someone opens emails by hand and re-keys
+- Value framings. When the interviewee describes manual work (someone opens emails by hand and re-keys
   them into Excel), the live sync writes a short, tactful talking point: this task brings that
   person little, it can run on its own, and their time goes to higher-level decisions. It is about
   the task, never the person, and never says AI or "automate" (the questions' wording rule). The
@@ -33,7 +34,7 @@ KINDS = ("time", "volume", "errors", "delay")
 SIDES = ("baseline", "target")
 MAX_FRAMINGS = 12
 
-# A talking point is said to the CEO about their people's work: no AI vocabulary, and nothing that
+# A talking point is said to the interviewee about their people's work: no AI vocabulary, and nothing that
 # belittles the person or sounds like a job cut (the task brings little, never the person).
 _FRAMING_BANNED = [
     *_PROBE_BANNED,
@@ -45,7 +46,7 @@ _FRAMING_BANNED = [
 
 
 def wording_problem(text: str) -> str:
-    """The first word that makes `text` unfit to be said to the CEO ("" when it is fine)."""
+    """The first word that makes `text` unfit to be said to the interviewee ("" when it is fine)."""
     for p in _FRAMING_BANNED:
         if m := p.search(text or ""):
             return m.group(0)
@@ -110,6 +111,8 @@ def framing_for(state, qid: str | None = None, lang: str | None = None) -> dict 
     question where it showed, it shows again)."""
     q = _focused(state, qid)
     if q is None or not workflow_discussed(state, q.use_case):
+        return None
+    if getattr(state, "persona", "") == "operator":  # never tell someone their own task brings little
         return None
     f = state.value_framings.get(q.use_case)
     if f is None or f.get("timing") == "done" or not f.get("point"):

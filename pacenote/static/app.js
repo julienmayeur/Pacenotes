@@ -102,6 +102,7 @@ function render(state) {
   setText($("consent-error"), (S.capture_problems || []).join("\n\n"));
   setText($("consent-progress"), S.mode === "consent" && starting ? (S.capture_progress || "") : "");
   renderLanguages();
+  renderWho();
 
   renderInterview();
   renderWhere();
@@ -345,6 +346,10 @@ function renderAmbassadorAsk(cur) {
   setText($("ambassador-uc"), uc ? ` · ${uc}` : "");
   setText($("metric-text"), m ? m.question : "");
   setText($("ambassador-text"), a ? a.question : "");
+  // what this interviewee could not answer here: who would know (personas.py), never pushed
+  const tc = live ? cur.to_check || [] : [];
+  setClass($("to-check"), "hidden", !tc.length);
+  setText($("to-check-text"), tc.map((x) => t("focus.toCheck", { who: x.ask, question: x.question })).join("\n"));
 }
 
 /** The live answer: grows as the fast pass appends pieces, tightens when a full sync rewrites it. */
@@ -645,7 +650,7 @@ function renderRecipes() {
   renderConsoleAmbassadors();
 }
 
-// "Potential ambassadors" in the interviewer console: who, for which use case, the CEO's words
+// "Potential ambassadors" in the interviewer console: who, for which use case, the interviewee's words
 function renderConsoleAmbassadors() {
   const list = S.ambassadors || [];
   setClass($("console-ambassadors"), "hidden", !list.length);
@@ -684,7 +689,58 @@ function renderConsoleFramings() {
     + (f.moves_up_to ? `<br><small>${esc(t("console.framingMoves", { moves: f.moves_up_to }))}</small>` : "")
     + (f.reason ? `<br><small>${esc(t("console.probeWhy"))} : ${esc(f.reason)}</small>` : "") + `</li>`).join("");
   if ($("console-framing-list").innerHTML !== html) $("console-framing-list").innerHTML = html;
+  renderConsoleToCheck();
 }
+
+// What the interviewee could not answer, by who would know (it goes to the plan's "To check with" section).
+function renderConsoleToCheck() {
+  const list = S.to_check || [];
+  setClass($("console-to-check"), "hidden", !list.length);
+  const html = list.map((x) => `<li><b>${esc(x.ask)}</b>${x.use_case ? ` <span class="muted">· ${esc(x.use_case)}</span>` : ""}`
+    + `<br>${esc(x.question)}` + (x.evidence ? `<br><small>« ${esc(x.evidence)} »</small>` : "") + `</li>`).join("");
+  if ($("console-to-check-list").innerHTML !== html) $("console-to-check-list").innerHTML = html;
+}
+
+// --- who we interview: the person (client sheet) and their persona, on the consent screen; a quiet chip in the
+// header afterwards. The persona shapes the questions and the copilot (personas.py). ---
+const PERSONAS = ["executive", "function_leader", "operator"];
+function personLabel(p) {
+  return [p.role, p.name].filter(Boolean).join(" · ") || t(`persona.${p.persona}`);
+}
+function renderWho() {
+  const iv = S.interviewee || {};
+  const people = S.interviewees || [];
+  const persona = iv.persona || "executive";
+  const chip = $("who-chip");
+  setClass(chip, "hidden", S.mode === "consent");
+  setText(chip, t("console.interviewee", { who: [iv.role, t(`persona.${persona}`)].filter(Boolean).join(" · ") }));
+  if (S.mode !== "consent") return;
+  const sel = $("who-person");
+  const opts = people.map((p) => `<option value="${p.index}">${esc(personLabel(p))}</option>`).join("");
+  if (sel._opts !== opts) { sel.innerHTML = opts; sel._opts = opts; }
+  setClass(sel, "hidden", people.length < 2);
+  if (people.length) sel.value = String(iv.index != null && iv.index >= 0 ? iv.index : 0);
+  const inferred = people.find((p) => p.index === iv.index);
+  const auto = inferred ? inferred.persona : "executive";
+  const psel = $("who-persona");
+  const popts = [["", t("persona.auto", { persona: t(`persona.${auto}`) })], ...PERSONAS.map((k) => [k, t(`persona.${k}`)])]
+    .map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join("");
+  if (psel._opts !== popts) { psel.innerHTML = popts; psel._opts = popts; }
+  psel.value = iv.origin === "manual" ? persona : "";
+  const why = people.length
+    ? [people.length === 1 ? personLabel(people[0]) : "", t(`persona.hint.${persona}`), iv.origin !== "manual" ? iv.reason : ""]
+      .filter(Boolean).join(" — ")
+    : t("consent.noContact");
+  setText($("who-why"), why);
+}
+$("who-person").addEventListener("change", async (e) => {
+  try { render(await post("/api/interviewee", { index: Number(e.target.value) })); }
+  catch (err) { setText($("consent-error"), err.message); }
+});
+$("who-persona").addEventListener("change", async (e) => {
+  try { render(await post("/api/interviewee", { persona: e.target.value })); }
+  catch (err) { setText($("consent-error"), err.message); }
+});
 
 // --- languages: the same <language-select> component on the consent screen, header and console.
 // Display language: the header toggle (and the consent screen's, before the interview). Interview

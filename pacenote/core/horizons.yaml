@@ -4,7 +4,8 @@
 #   - explorer (gentle): only the two-year question, if time allows; no competitor pressure;
 #   - pragmatic: both, important;
 #   - urgent (competitors already report results): both, must-have, competitors first.
-# Without a posture, none of them is asked. Same wording rules as core/questions.yaml: a story on a
+# Without a posture, none of them is asked. Never asked to a hands-on operator (personas.py): strategy
+# belongs to the executive. Same wording rules as core/questions.yaml: a story on a
 # real case, no AI vocabulary (tests/test_questions.py checks this file too).
 
 postures:
@@ -31,6 +32,8 @@ theme:
         implementation:
           - {fr: "ce que vos clients attendent désormais (délai, prix, réponse le soir)", en: "what your customers now expect (lead time, price, an answer in the evening)"}
       keywords: [concurrent, concurrents, clients, changé, délai, competitor, competitors]
+      personas:
+        operator: {priority: 0}  # strategy: asked to the executive, not to the person doing the work
     - id: hz-two-years
       priority: 3
       slots: [target]
@@ -44,3 +47,5 @@ theme:
         implementation:
           - {fr: "ce qui manque aujourd'hui pour s'y mettre", en: "what is missing today to start on it"}
       keywords: [deux ans, demain, nouveau, marché, service, two years, market]
+      personas:
+        operator: {priority: 0}

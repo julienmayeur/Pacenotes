@@ -33,6 +33,7 @@ VALID = {
     "ambassador_probes": [],
     "value_framings": [],
     "metric_questions": [],
+    "to_check": [],
 }
 
 

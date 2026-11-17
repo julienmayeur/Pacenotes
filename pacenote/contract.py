@@ -102,7 +102,7 @@ class QueueEdit(_Strict):
 
 
 class SlotFill(_Strict):
-    """An integration slot of a use case, filled with what the CEO actually said."""
+    """An integration slot of a use case, filled with what the interviewee actually said."""
 
     use_case: str
     slot: SlotKey
@@ -110,7 +110,7 @@ class SlotFill(_Strict):
     evidence: str  # a short corrected quote
 
 
-# --- the maps: how the company works, filled implicitly from the CEO's stories ----------------
+# --- the maps: how the company works, filled implicitly from the interviewee's stories ----------------
 # Durable records next to the use cases: who carries the signal (org), how it travels (flows),
 # where information lives (stores), where expertise decides (decisions), and the tool catalog, a
 # hidden checklist of categories the follow-ups aim at. Each record has a stable `id` the model
@@ -144,7 +144,7 @@ class OrgFact(_Strict):
     reports_to: str  # name or role
     time_split: str  # share of time on judgment / decisions vs repetitive glue (chasing, re-keying), as said
     notes: str
-    # the CEO's words that make this person a potential ambassador for a first pilot (tries new tools
+    # the interviewee's words that make this person a potential ambassador for a first pilot (tries new tools
     # first, shows others, is listened to, would be keen to try a tool on their work), quoted; "" when none
     adoption_signal: str
     evidence: str
@@ -236,7 +236,7 @@ RecipeFit = Literal["strong", "partial", "none"]
 
 
 class RecipeMatch(_Strict):
-    """A library recipe (recipes.py) the CEO's stories fit, as heard so far. Merged per
+    """A library recipe (recipes.py) the interviewee's stories fit, as heard so far. Merged per
     (recipe_id, use_case) with the same optimistic versioning as the slots and maps (state.py)."""
 
     recipe_id: str
@@ -252,7 +252,7 @@ ProbeTiming = Literal["now", "later", "done"]
 
 
 class IntervieweeRead(_Strict):
-    """A light running read of the person interviewed (the CEO or CIO), only to phrase the people
+    """A light running read of the person interviewed (whatever their persona), only to phrase the people
     questions well (ambassadors.py). Interviewer-side, kept in the session; never in the plan. Only
     what the conversation shows, in plain words; "" (or unknown / building) when nothing shows yet."""
 
@@ -262,7 +262,7 @@ class IntervieweeRead(_Strict):
     pride: str  # what they are proud of in their team or company
     politics: str  # sensitivities heard: who they protect, tensions, who really decides
     tone: str  # how they talk: warm, guarded, numbers first, formal...
-    rapport: Rapport  # established = the CEO tells stories at ease
+    rapport: Rapport  # established = the interviewee tells stories at ease
     approach: str  # one line: how to ask this person about their people
 
 
@@ -283,13 +283,13 @@ MetricSide = Literal["baseline", "target"]
 
 
 class ValueFraming(_Strict):
-    """The executive lens (lens.py): the CEO describes manual, low-value work (someone opens emails by
+    """The executive lens (lens.py): the interviewee describes manual, low-value work (someone opens emails by
     hand and re-keys them into Excel); the interviewer gets a short, tactful talking point that this
     task brings that person little, can run on its own, and frees them for higher-level decisions."""
 
     use_case: str  # the state use case (the workflow) it is tied to
     person: str  # who does the task today, as heard ("" = the team doing it)
-    task: str  # the manual task, as the CEO described it
+    task: str  # the manual task, as the interviewee described it
     point: str  # the talking point, in the interview language, ready to say: about the task, never the person
     moves_up_to: str  # the higher-level decision or work the person would move up to
     reason: str  # interviewer-only, a few words: why say it now
@@ -304,6 +304,18 @@ class MetricQuestion(_Strict):
     kind: MetricKind  # time spent, volume, error rate or delay
     side: MetricSide  # baseline = today's figure; target = how success would show, by when
     question: str  # short, ready to say, in the interview language
+
+
+class ToCheck(_Strict):
+    """Something the interviewee could not answer (an executive asked a per-item detail, an operator
+    asked about strategy): who would know, instead of pushing (personas.py). Listed in the plan."""
+
+    use_case: str | None  # the state use case it belongs to (null when none)
+    question_id: str | None  # the question it came up on (null when none)
+    slots: list[str]  # the integration slots it leaves open (slot keys), [] when none
+    question: str  # what to ask that person, short, in the interview language
+    ask: str  # who would know: a role, or a name as heard ("Claire, order desk")
+    evidence: str  # what the interviewee said (a short quote: "I don't know, Claire handles it")
 
 
 def empty_read() -> IntervieweeRead:
@@ -327,6 +339,7 @@ class SyncResult(_Strict):
     ambassador_probes: list[AmbassadorProbe]  # new or changed probes only; empty list when nothing changed
     value_framings: list[ValueFraming]  # new or changed talking points only; empty list when nothing changed
     metric_questions: list[MetricQuestion]  # for workflows still missing a baseline or a target; new ones only
+    to_check: list[ToCheck]  # new items the interviewee could not answer, with who would know; [] when none
 
 
 class FastResult(_Strict):
@@ -618,7 +631,7 @@ class AdoptionPlan(_Strict):
 
     lighthouse: str  # id of the opportunity to start with (an h1 one)
     ambassador: str  # the person (name or role) who pilots it, as heard in the interview; "" when nobody was named
-    evidence: str  # the CEO's quote supporting that choice ("" when none)
+    evidence: str  # the interviewee's quote supporting that choice ("" when none)
     question: str  # when no ambassador was named: the question to ask to find one ("" otherwise)
     ask: str  # who to ask it (a name or role heard; "" when unknown)
     volunteers: AdoptionWave  # wave 1, weeks 1-4: the colleagues keen to go first run it on real cases
@@ -738,4 +751,5 @@ def empty_result() -> SyncResult:
         ambassador_probes=[],
         value_framings=[],
         metric_questions=[],
+        to_check=[],
     )

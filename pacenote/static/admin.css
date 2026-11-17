@@ -154,7 +154,10 @@ button.icon:hover { color: var(--accent); }
 .linked tr:hover td.rm button, .fact:hover .rm { visibility: visible; }
 
 /* who we meet: contacts and their profile cards */
-.contacts li { grid-template-columns: 1fr 1fr auto auto; }
+.contacts li { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr) auto auto auto; }
+.contacts .c-persona { font-size: 13px; padding: 4px 6px; max-width: 190px; }
+.contacts .c-why { grid-column: 1 / -1; margin: -2px 2px 4px; line-height: 1.4; }
+.contacts .c-why.unsure::before { content: "? "; color: var(--accent); font-weight: 600; }
 .profiles { display: grid; gap: 10px; margin-top: 10px; }
 .pcard { border: 1px solid var(--rule); border-radius: 12px; padding: 10px 14px; background: var(--bg); display: grid; gap: 6px; }
 .pcard header { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 14.5px; }

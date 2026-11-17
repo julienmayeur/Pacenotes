@@ -8,7 +8,8 @@ clients/<slug>/
                        company facts (HQ city, headcount, description, products, leadership,
                        LinkedIn, working languages), linked brands / entities, and per-field
                        provenance (agent or manual), all filled by "Auto-fill" (pacenote/autofill.py);
-                       who we meet, the interviewer's notes, whether the pre-plan feeds the interview
+                       who we meet (name, role, notes, persona: personas.py), the interviewer's notes,
+                       whether the pre-plan feeds the interview
   people/<contact>.json  the interviewee profile cards (pacenote/people.py), regenerated, not in git
   research.md          research with sources            } written by "Lancer la recherche"
   preplan.md           the pre-plan (editable)          } (pacenote/research.py); previous
@@ -48,9 +49,23 @@ class ClientError(ValueError):
 
 
 class Contact(BaseModel):
+    """A person we will interview: name, title or role, optional notes, and the persona picked by hand
+    ("" = inferred: the pre-study's guess, else the rule from title and headcount; personas.py)."""
     model_config = ConfigDict(extra="ignore")
     name: str = ""
     role: str = ""
+    notes: str = ""
+    persona: str = ""
+
+    @field_validator("persona")
+    @classmethod
+    def _persona(cls, v: str) -> str:
+        from .personas import PERSONAS
+
+        v = (v or "").strip().lower()
+        if v and v not in PERSONAS:
+            raise ValueError(f"unknown persona {v!r} (known: {', '.join(PERSONAS)})")
+        return v
 
 
 class LinkedEntity(BaseModel):
@@ -454,7 +469,7 @@ def client_context(base: str, info: ClientInfo | None, preplan: dict | None,
         linked = linked_summary(info)
         if linked:
             sheet.append(f"Linked brands and entities: {linked}")
-        people = "; ".join(f"{c.name} ({c.role})" if c.role else c.name for c in info.contacts if c.name or c.role)
+        people = "; ".join(f"{c.name} ({c.role})" if c.role else (c.name or c.role) for c in info.contacts if c.name or c.role)
         if people:
             sheet.append(f"People we meet: {people}")
         if sheet:

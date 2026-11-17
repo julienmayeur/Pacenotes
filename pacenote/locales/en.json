@@ -68,7 +68,10 @@
         "errors": "Which figure would tell you it got better: how few errors per week, and by when?",
         "delay": "Which figure would tell you it got better: done within how long, and by when?"
       }
-    }
+    },
+    "toCheckLabel": "To check with",
+    "toCheck": "{{who}}: {{question}}",
+    "deferred": "→ {{who}}"
   },
   "where": {
     "title": "Where we are",
@@ -93,7 +96,10 @@
     "speech": "Spoken languages (transcription)",
     "speechHint": "Missing speech models are downloaded and checked when you press Start.",
     "ui": "Screen language",
-    "admin": "⚙ Administration — clients, research, pre-plan"
+    "admin": "⚙ Administration — clients, research, pre-plan",
+    "interviewee": "Who we interview",
+    "persona": "Persona",
+    "noContact": "Nobody on the client sheet: asked as an executive."
   },
   "end": {
     "generating": "Writing the plan…",
@@ -159,7 +165,9 @@
       "now": "to say now",
       "later": "later",
       "asked": "said"
-    }
+    },
+    "toCheck": "To check with others",
+    "interviewee": "Interviewing: {{who}}"
   },
   "interview": {
     "bannerDone": "All good, I'm taking care of the plan.",
@@ -184,7 +192,8 @@
       "metrics": "Metrics",
       "timeline": "Engagement timeline",
       "recipe_candidates": "Recipe candidates (drafts)",
-      "adoption": "Adoption plan"
+      "adoption": "Adoption plan",
+      "to_check": "To check with other people"
     },
     "status": {
       "answered": "answered",
@@ -430,7 +439,16 @@
       }
     },
     "freedLine": "{{task}} — {{who}} · time freed: {{time}} · moves up to: {{moves}}",
-    "freedTeam": "the team"
+    "freedTeam": "the team",
+    "interviewed": "Interviewed",
+    "toCheck": {
+      "intro": "What the person interviewed could not answer, and who would know. Nothing here is a fact yet.",
+      "with": "With {{who}}"
+    },
+    "speaker": {
+      "interviewer": "Interviewer",
+      "interviewee": "Interviewee"
+    }
   },
   "offline": {
     "followUp": "Concretely: {{item}}?"
@@ -503,7 +521,7 @@
       "running": "Research running…"
     },
     "contactName": "Name",
-    "contactRole": "Role (e.g. CEO)",
+    "contactRole": "Title or role (e.g. CFO, order desk)",
     "remove": "Remove",
     "saved": "Saved {{when}}",
     "error": "Error: {{error}}",
@@ -717,12 +735,12 @@
       "overrideSaved": "Pace saved."
     },
     "ambassadors": {
-      "hint": "People the interviews suggested as potential ambassadors for a first pilot, with the CEO's words. Stored on this Mac only. Your edits are kept; a removed person never comes back.",
-      "empty": "None yet: the interview suggests them when the CEO names who does the work.",
+      "hint": "People the interviews suggested as potential ambassadors for a first pilot, with the words of the person interviewed. Stored on this Mac only. Your edits are kept; a removed person never comes back.",
+      "empty": "None yet: the interview suggests them when the person interviewed names who does the work.",
       "person": "Person",
       "role": "Role",
       "useCase": "Use case",
-      "quote": "What the CEO said",
+      "quote": "What the interviewee said",
       "add": "+ Add a person",
       "save": "Save",
       "saved": "Saved.",
@@ -730,7 +748,10 @@
         "agent": "from the interview",
         "manual": "edited by you"
       }
-    }
+    },
+    "contactNotes": "Notes (optional)",
+    "personaTitle": "Persona: how deep the interview goes with this person",
+    "personaHint": "Each person gets a persona from their title, the company's size and your notes (the research refines it). It shapes the questions; change it here if it's wrong."
   },
   "thread": {
     "title": "Interview thread",
@@ -800,7 +821,7 @@
   },
   "maps": {
     "gap": {
-      "people": "the people around the CEO",
+      "people": "the people and their roles",
       "reportsTo": "who reports to whom",
       "departments": "the departments",
       "waitsOnCeo": "what waits on the CEO's desk",
@@ -823,5 +844,23 @@
       "task_tracking": "how tasks and status are tracked",
       "reporting": "how figures reach the CEO"
     }
+  },
+  "persona": {
+    "executive": "Executive",
+    "function_leader": "Function leader",
+    "operator": "Hands-on operator",
+    "hint": {
+      "executive": "Big picture: outcomes, value, where time goes, who does what",
+      "function_leader": "Process and team: who owns each step, tools, KPIs",
+      "operator": "The work itself: step by step, volumes, exceptions"
+    },
+    "origin": {
+      "rule": "from the title and size",
+      "research": "from the pre-study",
+      "manual": "set by hand",
+      "default": "default"
+    },
+    "auto": "Auto · {{persona}}",
+    "confidence": "{{pct}} % sure"
   }
 }

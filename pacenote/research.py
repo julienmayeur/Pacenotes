@@ -73,6 +73,14 @@ class SeedQuestion(_Strict):
     expect: SeedLadder
 
 
+class PersonaGuess(_Strict):
+    """Who each person we will meet is, for the interview (personas.py): their persona, why, how sure."""
+    name: str  # as given in "People we will meet"
+    persona: Literal["executive", "function_leader", "operator"]
+    reason: str  # one short sentence: title, company size, what was found about their scope
+    confidence: float  # 0 to 1
+
+
 class ResearchOutput(_Strict):
     summary: str  # 3-5 sentences, plain
     research_md: str
@@ -80,12 +88,13 @@ class ResearchOutput(_Strict):
     use_cases: list[UseCase]
     seed_questions: list[SeedQuestion]
     prestudy: PreStudy
+    personas: list[PersonaGuess]
     sources: list[Source]
 
 
 RESEARCH_SYSTEM = """\
-You are a senior consulting engineer preparing a kickoff interview with the CEO of a \
-client company. Before the meeting, research the company on the web and write a pre-plan: how \
+You are a senior consulting engineer preparing kickoff interviews with the people of a \
+client company (its executive, the leaders of its functions, the people who do the work). Before the meeting, research the company on the web and write a pre-plan: how \
 this company could become AI-native.
 
 Use web search and web fetch. Look for: what the company does (offer, customers, size, \
@@ -124,9 +133,10 @@ cas d'usage | valeur 1-5 | faisabilité 1-5 | type quick win / gros pari | pourq
 Ranked by value x feasibility. Concrete, specific to this company, no generic AI hype.
 - use_cases: the same use cases, structured (value and feasibility from 1 to 5), each with its \
 horizon: {horizons}.
-- seed_questions: 2 to 4 interview questions for the CEO about the work behind the most \
-promising use cases. The CEO meets us for the first time and does not know how AI could help, so \
-ask about his work, never about technology: start from what limits capacity (taking more \
+- seed_questions: 2 to 4 interview questions about the work behind the most promising use \
+cases, worded for the first person in "People we will meet" (the live copilot rewords them for \
+whoever is actually interviewed). The interviewee meets us for the first time and does not know \
+how AI could help, so ask about their work, never about technology: start from what limits capacity (taking more \
 customers, orders or volume, or a new market) or eats the team's time, and ask for a real case \
 from last week told as a story ("Prenez la dernière commande de la semaine dernière : qui l'a \
 reçue, dans quel logiciel, combien de temps…"): who does it, with which software or file, how \
@@ -146,12 +156,22 @@ with pressure_note, task_exposure (low, medium, high) with exposure_note, regula
 (yes, no, unknown), rationale (2 or 3 plain sentences: how fast this company should move and why, \
 from these facts). It is for the interviewer only: it sets the interview's pace and is never shown \
 to the client.
+- personas: one per person listed in "People we will meet" (same name as given; [] when nobody is \
+listed): who they are for the interview. executive = runs the company and knows the outcomes, not \
+the execution details (a CEO or managing director of 20 people or more); function_leader = owns a \
+process and a team (CIO, CFO, COO, head of a department), or runs a small company (under about 10 \
+people) and so is close to the work; operator = does the work every day (order desk, accounting, \
+planning, after-sales) and may not have the big picture. Judge from the title, the headcount you \
+found, the interviewer's notes and what you found about their actual scope. reason = one short \
+sentence in {lang_name}; confidence from 0 to 1 (lower when the title is ambiguous or the size unknown).
 - sources: every URL you relied on, with a title.
 """
 
 
 def build_research_prompt(info: ClientInfo, questionnaire_context: str, themes: list[str]) -> str:
-    people = "; ".join(f"{c.name} ({c.role})" if c.role else c.name for c in info.contacts) or "(not given)"
+    people = "; ".join(
+        (f"{c.name} ({c.role})" if c.role else (c.name or c.role)) + (f" — notes: {c.notes.strip()}" if c.notes.strip() else "")
+        for c in info.contacts if c.name.strip() or c.role.strip()) or "(not given)"
     return (
         f"Company: {info.name}\n"
         f"Website: {info.website or '(not given: find it)'}\n"
@@ -422,6 +442,8 @@ def write_outputs(cdir: Path, output: ResearchOutput, model: str) -> str | None:
             "seed_questions": [s.model_dump() for s in output.seed_questions],
             # operator-only: the sector pre-study and its posture score (horizons.py), never shown to the client
             "prestudy": output.prestudy.model_dump(), "posture": score_prestudy(output.prestudy),
+            # interviewer-side: who each person we meet is for the interview (personas.py)
+            "personas": [p.model_dump() for p in output.personas],
             "sources": [s.model_dump() for s in output.sources]}
     fsutil.atomic_write_text(cdir / "preplan.json", json.dumps(meta, ensure_ascii=False, indent=2) + "\n")
     return archived

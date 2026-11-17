@@ -68,7 +68,10 @@
         "errors": "Quel chiffre vous dirait que ça va mieux : combien d'erreurs par semaine au plus, et d'ici quand ?",
         "delay": "Quel chiffre vous dirait que ça va mieux : traité en combien de temps, et d'ici quand ?"
       }
-    }
+    },
+    "toCheckLabel": "À vérifier avec",
+    "toCheck": "{{who}} : {{question}}",
+    "deferred": "→ {{who}}"
   },
   "where": {
     "title": "Où on en est",
@@ -93,7 +96,10 @@
     "speech": "Langues parlées (transcription)",
     "speechHint": "Les modèles de reconnaissance manquants sont téléchargés et vérifiés au démarrage.",
     "ui": "Langue de l'écran",
-    "admin": "⚙ Administration — clients, recherche, pré-plan"
+    "admin": "⚙ Administration — clients, recherche, pré-plan",
+    "interviewee": "Qui on interroge",
+    "persona": "Persona",
+    "noContact": "Personne sur la fiche client : posé comme à un dirigeant."
   },
   "end": {
     "generating": "Rédaction du plan en cours…",
@@ -159,7 +165,9 @@
       "now": "à dire maintenant",
       "later": "plus tard",
       "asked": "dit"
-    }
+    },
+    "toCheck": "À vérifier avec d'autres",
+    "interviewee": "Entretien avec : {{who}}"
   },
   "interview": {
     "bannerDone": "C'est parfait, j'ai ce qu'il me faut. Je m'occupe du plan.",
@@ -184,7 +192,8 @@
       "metrics": "Indicateurs",
       "timeline": "Calendrier d'engagement",
       "recipe_candidates": "Recettes candidates (brouillons)",
-      "adoption": "Plan d'adoption"
+      "adoption": "Plan d'adoption",
+      "to_check": "À vérifier avec d'autres personnes"
     },
     "status": {
       "answered": "répondu",
@@ -430,7 +439,16 @@
       }
     },
     "freedLine": "{{task}} — {{who}} · temps libéré : {{time}} · pour se consacrer à : {{moves}}",
-    "freedTeam": "l'équipe"
+    "freedTeam": "l'équipe",
+    "interviewed": "Personne interrogée",
+    "toCheck": {
+      "intro": "Ce que la personne interrogée ne pouvait pas dire, et qui le saurait. Rien ici n'est encore un fait.",
+      "with": "Avec {{who}}"
+    },
+    "speaker": {
+      "interviewer": "Intervieweur",
+      "interviewee": "Personne interrogée"
+    }
   },
   "offline": {
     "followUp": "Concrètement : {{item}} ?"
@@ -503,7 +521,7 @@
       "running": "Recherche en cours…"
     },
     "contactName": "Nom",
-    "contactRole": "Rôle (ex. PDG)",
+    "contactRole": "Poste ou rôle (ex. DAF, ADV)",
     "remove": "Retirer",
     "saved": "Enregistré le {{when}}",
     "error": "Erreur : {{error}}",
@@ -717,12 +735,12 @@
       "overrideSaved": "Rythme enregistré."
     },
     "ambassadors": {
-      "hint": "Les personnes que les entretiens ont désignées comme ambassadeurs potentiels d'un premier pilote, avec les mots du dirigeant. Gardé sur ce Mac uniquement. Vos modifications sont conservées ; une personne retirée ne revient jamais.",
-      "empty": "Personne pour l'instant : l'entretien les propose quand le dirigeant nomme qui fait le travail.",
+      "hint": "Les personnes que les entretiens ont désignées comme ambassadeurs potentiels d'un premier pilote, avec les mots de la personne interrogée. Gardé sur ce Mac uniquement. Vos modifications sont conservées ; une personne retirée ne revient jamais.",
+      "empty": "Personne pour l'instant : l'entretien les propose quand la personne interrogée nomme qui fait le travail.",
       "person": "Personne",
       "role": "Rôle",
       "useCase": "Cas d'usage",
-      "quote": "Ce qu'a dit le dirigeant",
+      "quote": "Ce qu'a dit la personne interrogée",
       "add": "+ Ajouter une personne",
       "save": "Enregistrer",
       "saved": "Enregistré.",
@@ -730,7 +748,10 @@
         "agent": "issu de l'entretien",
         "manual": "modifié par vous"
       }
-    }
+    },
+    "contactNotes": "Notes (facultatif)",
+    "personaTitle": "Persona : jusqu'où l'entretien descend avec cette personne",
+    "personaHint": "Chaque personne reçoit un persona d'après son poste, la taille de l'entreprise et vos notes (la recherche l'affine). Il oriente les questions ; changez-le ici s'il est faux."
   },
   "thread": {
     "title": "Fil de l'entretien",
@@ -800,7 +821,7 @@
   },
   "maps": {
     "gap": {
-      "people": "les personnes autour du PDG",
+      "people": "les personnes et leurs rôles",
       "reportsTo": "qui rapporte à qui",
       "departments": "les services",
       "waitsOnCeo": "ce qui attend sur le bureau du PDG",
@@ -823,5 +844,23 @@
       "task_tracking": "le suivi des tâches et des statuts",
       "reporting": "comment les chiffres remontent"
     }
+  },
+  "persona": {
+    "executive": "Dirigeant",
+    "function_leader": "Responsable de fonction",
+    "operator": "Opérationnel",
+    "hint": {
+      "executive": "Vue d'ensemble : résultats, valeur, où passe le temps, qui fait quoi",
+      "function_leader": "Processus et équipe : qui porte chaque étape, outils, indicateurs",
+      "operator": "Le travail lui-même : étape par étape, volumes, exceptions"
+    },
+    "origin": {
+      "rule": "d'après le poste et la taille",
+      "research": "d'après la pré-étude",
+      "manual": "choisi à la main",
+      "default": "par défaut"
+    },
+    "auto": "Auto · {{persona}}",
+    "confidence": "sûr à {{pct}} %"
   }
 }

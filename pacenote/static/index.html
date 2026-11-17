@@ -13,6 +13,8 @@
     <header class="top">
       <div class="brand">
         <span id="client"></span>
+        <!-- who we interview: their role and persona (personas.py), picked on the consent screen -->
+        <span id="who-chip" class="who-chip hidden"></span>
         <span id="listen" class="listen idle" title="">
           <span class="meter" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
           <span id="listen-label" class="listen-label"></span>
@@ -81,6 +83,12 @@
               <span class="amb-label"><span data-i18n="focus.ambassadorLabel"></span><span id="ambassador-uc" class="amb-uc"></span></span>
               <span id="metric-text" class="amb-text"></span>
               <span id="ambassador-text" class="amb-text"></span>
+            </p>
+            <!-- what the interviewee could not answer here, and who would know (personas.py): noted for the plan,
+                 never pushed -->
+            <p id="to-check" class="ambassador-ask to-check hidden" aria-live="polite">
+              <span class="amb-label"><span data-i18n="focus.toCheckLabel"></span></span>
+              <span id="to-check-text" class="amb-text"></span>
             </p>
 
             <!-- secondary, quiet: what is still missing / already heard, the answer so far -->
@@ -153,6 +161,15 @@
     <div class="card">
       <h2 id="consent-client"></h2>
       <p id="consent-primary" class="consent-primary"></p>
+      <!-- who we interview (the client sheet's people) and their persona: shapes the questions -->
+      <div class="consent-who" id="consent-who">
+        <div class="ls-title" data-i18n="consent.interviewee"></div>
+        <div class="who-row">
+          <select id="who-person" class="who-person"></select>
+          <select id="who-persona" class="who-persona" data-i18n-attr="title:consent.persona"></select>
+        </div>
+        <p id="who-why" class="muted small"></p>
+      </div>
       <div class="consent-langs">
         <div class="ls-title" data-i18n="consent.languages"></div>
         <language-select id="consent-interview" label="consent.interview" allow-other></language-select>
@@ -224,6 +241,11 @@
     <div class="console-row recipes hidden" id="console-framings">
       <span class="ls-title" data-i18n="console.framings"></span>
       <ul id="console-framing-list" class="recipe-list"></ul>
+    </div>
+    <!-- what the interviewee could not answer, and who would know (goes to the plan) -->
+    <div class="console-row recipes hidden" id="console-to-check">
+      <span class="ls-title" data-i18n="console.toCheck"></span>
+      <ul id="console-to-check-list" class="recipe-list"></ul>
     </div>
     <div class="console-row links" id="console-links"></div>
     <div class="console-row paths" id="console-paths"></div>

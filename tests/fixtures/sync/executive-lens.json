@@ -67,7 +67,8 @@
     "side": "baseline",
     "question": "La semaine dernière, combien de temps Claire a passé chaque jour à ressaisir les commandes ?"
    }
-  ]
+  ],
+  "to_check": []
  },
  {
   "question_updates": [],
@@ -131,7 +132,8 @@
     "side": "target",
     "question": "Si ça marchait, combien de temps par jour Claire y passerait encore, et d'ici quand ?"
    }
-  ]
+  ],
+  "to_check": []
  },
  {
   "question_updates": [],
@@ -188,6 +190,7 @@
     "timing": "done"
    }
   ],
-  "metric_questions": []
+  "metric_questions": [],
+  "to_check": []
  }
 ]

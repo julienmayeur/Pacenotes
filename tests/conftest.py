@@ -63,6 +63,7 @@ def result(**kw) -> SyncResult:
         ambassador_probes=[],
         value_framings=[],
         metric_questions=[],
+        to_check=[],
     )
     base.update(kw)
     return SyncResult.model_validate(base)

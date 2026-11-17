@@ -203,7 +203,7 @@ def test_research_admin_and_client_sheet_writes_are_atomic(tmp_path, monkeypatch
     real = fsutil.atomic_write_text
     monkeypatch.setattr(fsutil, "atomic_write_text", lambda p, t: written.append(Path(p).name) or real(p, t))
     out = ResearchOutput.model_validate({"summary": "s", "research_md": "# R", "preplan_md": "# P",
-                                         "use_cases": [], "seed_questions": [], "sources": [],
+                                         "use_cases": [], "seed_questions": [], "sources": [], "personas": [],
                                          "prestudy": PRESTUDY})
     write_outputs(tmp_path, out, "m")
     assert {"research.md", "preplan.md", "preplan.json"} <= set(written)

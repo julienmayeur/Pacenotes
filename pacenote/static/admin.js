@@ -160,10 +160,16 @@ function fillSaveState(d) {
 function addContact(c = { name: "", role: "" }) {
   const li = document.createElement("li");
   li.innerHTML = `<input class="c-name" data-i18n-attr="placeholder:admin.contactName" value="${esc(c.name)}">` +
-    `<input class="c-role" data-i18n-attr="placeholder:admin.contactRole" value="${esc(c.role)}">
+    `<input class="c-role" data-i18n-attr="placeholder:admin.contactRole" value="${esc(c.role)}">` +
+    `<input class="c-notes" data-i18n-attr="placeholder:admin.contactNotes" value="${esc(c.notes || "")}">
+    <select class="c-persona" data-i18n-attr="title:admin.personaTitle"></select>
     <button type="button" class="ghost icon c-research" data-i18n-attr="title:admin.person.research">🔎</button>
-    <button type="button" class="ghost icon c-remove" data-i18n-attr="title:admin.remove">×</button>`;
+    <button type="button" class="ghost icon c-remove" data-i18n-attr="title:admin.remove">×</button>
+    <div class="c-why muted small"></div>`;
+  li.dataset.persona = c.persona || "";
   i18n.translatePage(li);
+  drawPersona(li, null);
+  li.querySelector(".c-persona").addEventListener("change", (e) => { li.dataset.persona = e.target.value; saveSheet(); });
   li.querySelector(".c-remove").addEventListener("click", () => { li.remove(); renderProfiles(); });
   li.querySelector(".c-research").addEventListener("click", () => people.request(li, { force: true }));
   li.querySelector(".c-name").addEventListener("input", () => people.typed(li));
@@ -175,7 +181,39 @@ $("add-contact").addEventListener("click", () => addContact());
 // the whole sheet as the page holds it: the form inputs + the cells (company fields, linked
 // entities, provenance) kept in `sheet`
 function contactsNow() {
-  return [...$("f-contacts").children].map((li) => ({ name: li.querySelector(".c-name").value, role: li.querySelector(".c-role").value }));
+  return [...$("f-contacts").children].map((li) => ({ name: li.querySelector(".c-name").value, role: li.querySelector(".c-role").value,
+    notes: li.querySelector(".c-notes").value, persona: li.dataset.persona || "" }));
+}
+
+// --- who we meet: each person's persona (pacenote/personas.py), inferred, overridable -------------
+const PERSONAS = ["executive", "function_leader", "operator"];
+function drawPersona(li, p) {
+  // p: {persona, reason, confidence, origin, inferred} as the server computed it (null: not saved yet)
+  const sel = li.querySelector(".c-persona");
+  const inferred = p && (p.inferred || p);
+  const auto = inferred ? t("persona.auto", { persona: t(`persona.${inferred.persona}`) }) : t("persona.auto", { persona: "…" });
+  sel.innerHTML = [["", auto], ...PERSONAS.map((k) => [k, t(`persona.${k}`)])]
+    .map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join("");
+  sel.value = li.dataset.persona || "";
+  const why = li.querySelector(".c-why");
+  if (!p) { why.textContent = ""; return; }
+  const shown = p.origin === "manual" ? p : inferred;
+  const bits = [`${t(`persona.${p.persona}`)} — ${t(`persona.hint.${p.persona}`)}`];
+  if (p.origin === "manual") bits.push(t("persona.origin.manual"));
+  if (shown && shown.reason) bits.push(shown.reason);
+  if (shown && shown.origin && shown.origin !== "manual") bits.push(t(`persona.origin.${shown.origin}`));
+  if (shown && shown.origin !== "manual" && shown.confidence) bits.push(t("persona.confidence", { pct: Math.round(shown.confidence * 100) }));
+  why.textContent = bits.join(" · ");
+  why.classList.toggle("unsure", !!(shown && shown.origin !== "manual" && shown.confidence < 0.5));
+}
+function renderPersonas(d) {
+  const byKey = {};
+  (d.info.contacts || []).forEach((c, i) => { byKey[`${c.name.trim()}|${c.role.trim()}`] = (d.personas || [])[i]; });
+  for (const li of $("f-contacts").children) {
+    const p = byKey[`${li.querySelector(".c-name").value.trim()}|${li.querySelector(".c-role").value.trim()}`];
+    if (p) li.dataset.persona = p.origin === "manual" ? p.persona : "";
+    drawPersona(li, p || null);
+  }
 }
 function currentInfo() {
   return { ...sheet, name: $("f-name").value, language: $("f-language").value, contacts: contactsNow(),
@@ -425,6 +463,7 @@ function fillSheet(d) {
   renderCells();
   renderLinked();
   people.load(d.profiles || {});
+  renderPersonas(d);
 }
 
 function renderCells() {

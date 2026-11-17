@@ -77,7 +77,29 @@ class LadderDef(BaseModel):
         return [x if isinstance(x, str) else _check_texts(x, "expect item") for x in v]
 
 
-_QUESTION_FIELDS = {"id", "fr", "en", "text", "priority", "expect", "keywords", "use_case", "slots", "phase", "replaces"}
+_QUESTION_FIELDS = {"id", "fr", "en", "text", "priority", "expect", "keywords", "use_case", "slots", "phase", "replaces",
+                    "personas"}
+
+
+class PersonaVariant(BaseModel):
+    """How a question changes for one interviewee persona (personas.py): its wording ({fr, en, ...},
+    replacing every language) and/or its priority (0 = not asked to this persona)."""
+
+    model_config = ConfigDict(extra="forbid")
+    priority: int | None = None
+    text: dict[str, str] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _gather(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)
+        texts = dict(data.pop("text", None) or {})
+        for k in [k for k in data if k != "priority" and i18n.is_language(str(k))]:
+            texts[k] = data.pop(k)
+        data["text"] = _check_texts(texts, "persona variant") if texts else {}
+        return data
 
 
 class QuestionDef(BaseModel):
@@ -119,6 +141,21 @@ class QuestionDef(BaseModel):
         default_factory=list,
         description="Core questions only: client question ids this one stands for (the client's wording wins).",
     )
+    personas: dict[str, PersonaVariant] = Field(
+        default_factory=dict,
+        description="Per interviewee persona (executive, function_leader, operator): another wording and/or "
+                    "priority; priority 0 = not asked to that persona (personas.py).",
+    )
+
+    @field_validator("personas")
+    @classmethod
+    def _personas(cls, v: dict) -> dict:
+        from .personas import PERSONAS
+
+        unknown = [k for k in v if k not in PERSONAS]
+        if unknown:
+            raise ValueError(f"unknown personas {unknown} (known: {', '.join(PERSONAS)})")
+        return v
 
     @field_validator("phase")
     @classmethod
@@ -258,6 +295,8 @@ class ClientConfig(BaseModel):
     questionnaire: Questionnaire  # tailored: seed questionnaire + pre-plan questions + client context
     glossary: str
     base_questionnaire: Questionnaire | None = None  # questionnaire.yaml as written
+    # the people we will interview, each with their persona (personas.interviewees); the first is the default
+    interviewees: list[dict] = Field(default_factory=list)
 
 
 def load_questionnaire(path: Path) -> Questionnaire:
@@ -284,9 +323,12 @@ def load_client(clients_dir: Path, slug: str, use_preplan: bool = True) -> Clien
         info = ClientInfo.model_validate(_yaml.safe_load((cdir / "client.yaml").read_text(encoding="utf-8")) or {})
     from .people import load_profiles
 
-    tailored = tailor_questionnaire(base, info, load_preplan(cdir) if use_preplan else None,
-                                    load_profiles(cdir, info) if info is not None else None)
-    return ClientConfig(dir=cdir, questionnaire=tailored, glossary=glossary, base_questionnaire=base)
+    from .personas import interviewees
+
+    preplan = load_preplan(cdir) if use_preplan else None
+    tailored = tailor_questionnaire(base, info, preplan, load_profiles(cdir, info) if info is not None else None)
+    return ClientConfig(dir=cdir, questionnaire=tailored, glossary=glossary, base_questionnaire=base,
+                        interviewees=interviewees(info, preplan) if info is not None else [])
 
 
 _SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")

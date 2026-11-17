@@ -39,6 +39,11 @@ class LanguageBody(BaseModel):
     speech: list[str] | None = None  # speech locales, before the interview starts
 
 
+class IntervieweeBody(BaseModel):
+    index: int | None = None  # which person of the client sheet (client.interviewees)
+    persona: str | None = None  # executive, function_leader, operator; "" = back to the inferred one
+
+
 class NextBody(BaseModel):
     from_: str | None = Field(default=None, alias="from")
 
@@ -118,6 +123,15 @@ def create_app(session: Session, auto_start: bool = False, research: ResearchMan
         except i18n.LanguageError as exc:
             raise HTTPException(status_code=409 if body.speech is not None and session.state.mode != "consent"
                                 else 400, detail=str(exc)) from exc
+        return session.view()
+
+    @app.post("/api/interviewee")
+    async def set_interviewee(body: IntervieweeBody) -> dict:
+        """Who we interview, before Start: their persona shapes the questions and the copilot."""
+        try:
+            await session.set_interviewee(body.index, body.persona)
+        except ValueError as exc:
+            raise HTTPException(status_code=409 if session.state.mode != "consent" else 400, detail=str(exc)) from exc
         return session.view()
 
     @app.post("/api/sync")

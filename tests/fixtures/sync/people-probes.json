@@ -57,7 +57,8 @@
    }
   ],
   "value_framings": [],
-  "metric_questions": []
+  "metric_questions": [],
+  "to_check": []
  },
  {
   "question_updates": [],
@@ -125,7 +126,8 @@
    }
   ],
   "value_framings": [],
-  "metric_questions": []
+  "metric_questions": [],
+  "to_check": []
  },
  {
   "question_updates": [],
@@ -185,6 +187,7 @@
    }
   ],
   "value_framings": [],
-  "metric_questions": []
+  "metric_questions": [],
+  "to_check": []
  }
 ]

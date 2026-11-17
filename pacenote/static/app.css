@@ -430,3 +430,18 @@ language-select .ls-seg button:focus-visible { outline: 2px solid var(--accent);
 .admin-link { margin: 22px 0 0; font-size: 13px; }
 .admin-link a, a.admin-link { color: var(--muted); text-decoration: none; }
 .admin-link a:hover, a.admin-link:hover { color: var(--accent); }
+
+/* --- who we interview (personas.py): a small picker on the consent screen, a quiet chip afterwards --- */
+.consent-who { display: grid; gap: 6px; margin: 18px 0 0; padding: 12px 14px; border: 1px solid var(--rule);
+  border-radius: 10px; text-align: left; }
+.consent-who .who-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.consent-who select { font: inherit; font-size: 14px; padding: 4px 8px; border: 1px solid var(--rule); border-radius: 6px;
+  background: var(--surface, var(--bg)); color: var(--ink); }
+.consent-who select.hidden { display: none; }
+.consent-who p { margin: 0; line-height: 1.4; }
+.who-chip { font-size: 12px; font-weight: 500; letter-spacing: 0; color: var(--muted); padding: 2px 10px;
+  border: 1px solid var(--rule); border-radius: 999px; white-space: nowrap; }
+.who-chip.hidden { display: none; }
+/* what the interviewee could not answer: who would know (quiet, never pushed) */
+.ambassador-ask.to-check { border-style: dotted; color: var(--muted); }
+.ambassador-ask.to-check .amb-text { white-space: pre-line; color: var(--ink); }

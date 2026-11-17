@@ -1,14 +1,14 @@
 """Potential ambassadors: people inside the client company who could carry a first pilot.
 
-A pilot spreads through a respected colleague, not through the consultant or the CEO. During the
-interview the engine notices when a use case maps to a named person or role (the CEO puts them on
+A pilot spreads through a respected colleague, not through the consultant or the management. During the
+interview the engine notices when a use case maps to a named person or role (the interviewee puts them on
 that workflow: the use case's `actors` slot, or its answers, names someone of the org map), and the
 live sync keeps a light read of the interviewee (role, stance on new tools, worries, pride in the
 team, sensitivities, tone, rapport) and writes, per workflow, an indirect people question phrased
 for that person ("when the team picks up a new Excel trick, does it come from Claire?"), never
 head-on, never as an assessment, softer in a sector that has not taken the turn. The interview
 screen shows it under the follow-up once the workflow was walked through (the reason, the
-ambassador angle, stays in the interviewer console). The CEO's answer, and what he says when asked who tries new tools first and who the others listen to (a
+ambassador angle, stays in the interviewer console). The interviewee's answer, and what they say when asked who tries new tools first and who the others listen to (a
 signal-carriers core question), land in the org map's `adoption_signal`, quoted.
 
 Only a light label is kept per person: name or role, the use case, the supporting quote. It is
@@ -71,7 +71,7 @@ def _people(state) -> list[dict]:
 
 
 def links(state) -> list[dict]:
-    """(person, use case) pairs the CEO's words establish: the use case's actors slot, or an answer
+    """(person, use case) pairs the interviewee's words establish: the use case's actors slot, or an answer
     to one of its questions, names a person (or role) of the org map. Without a match, a short
     actors value is itself the person or role. Each: {person, role, use_case, title, quote}."""
     people = _people(state)
@@ -129,7 +129,7 @@ def probe_problem(text: str) -> str:
 
 def workflow_discussed(state, use_case: str) -> bool:
     """The workflow was walked through: one of its workflow-rung slots (trigger, actors, processing,
-    distribution) holds what the CEO said."""
+    distribution) holds what the interviewee said."""
     u = state.get_use_case(use_case)
     return u is not None and any(u.filled(k) for k in WORKFLOW_SLOTS)
 
@@ -284,7 +284,7 @@ def read_view(state) -> dict | None:
 
 def for_use_case(state, use_case: str) -> dict | None:
     """The person to propose as the ambassador of a use case: one the interview put on that work,
-    preferring one the CEO described as keen (adoption_signal, quoted). {person, role, quote} or None."""
+    preferring one the interviewee described as keen (adoption_signal, quoted). {person, role, quote} or None."""
     linked = [x for x in links(state) if x["use_case"] == use_case]
     signals = {person_id(p["label"]): p["signal"] for p in _people(state) if p["signal"]}
     for x in linked:

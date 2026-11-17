@@ -101,7 +101,7 @@ def test_admin_create_and_edit_a_client(clients):
             "contacts": [{"name": "Marie Durand", "role": "PDG"}, {"name": "", "role": ""}],
             "notes": "Parler des devis et du stock.", "use_preplan": False}
     d = http.put(f"/admin/api/clients/{slug}", json=info).json()
-    assert d["info"]["contacts"] == [{"name": "Marie Durand", "role": "PDG"}]  # empty rows dropped
+    assert d["info"]["contacts"] == [{"name": "Marie Durand", "role": "PDG", "notes": "", "persona": ""}]  # empty rows dropped
     sheet = yaml.safe_load((clients / slug / "client.yaml").read_text())
     assert sheet["website"] == "https://example.org" and sheet["notes"] == "Parler des devis et du stock."
     q = (clients / slug / "questionnaire.yaml").read_text()
@@ -152,6 +152,7 @@ RESULT = {
                  "task_exposure": "high", "exposure_note": "Commandes par mail ressaisies.",
                  "regulated": False, "ceo_uses_ai": "unknown",
                  "rationale": "Secteur en retard mais un concurrent a déjà un résultat publié."},
+    "personas": [],
     "sources": [{"title": "Fornaxa", "url": "https://www.fornaxa.example"}],
 }
 

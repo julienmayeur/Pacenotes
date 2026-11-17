@@ -643,6 +643,7 @@ class OfflineEngine:
                 ambassador_probes=[],
                 value_framings=[],
                 metric_questions=[],
+                to_check=[],
             )
         )
         coverage = trial.computed_coverage()
@@ -667,6 +668,7 @@ class OfflineEngine:
             ambassador_probes=[],
             value_framings=[],  # no model: no talking point (metric questions fall back to templates)
             metric_questions=[],
+            to_check=[],
         )
 
     def fast(self, system: str, user: str, *, state: SessionState, lines: list[Segment]) -> FastResult:

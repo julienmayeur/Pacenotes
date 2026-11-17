@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Mapping
 
-from . import ambassadors, briefs, horizons, i18n, lens
+from . import ambassadors, briefs, horizons, i18n, lens, personas
 from . import phases as P
 from . import recipes as recipe_lib
 from .contract import CATALOG_DESCRIPTIONS, SLOT_DESCRIPTIONS, SLOT_KEYS, SLOT_RUNG
@@ -40,7 +40,7 @@ def describe_streams(state: SessionState) -> str:
 def language_rule(state: SessionState) -> str:
     name = i18n.english_name(state.language)
     return (f"Output language: {name}. Write every follow-up, answer, note and question text in {name}, "
-            "even when the CEO speaks another language or the state below holds text in another language "
+            "even when the interviewee speaks another language or the state below holds text in another language "
             "(translate it). Quotes in `evidence` stay as said.")
 
 def slot_list() -> str:
@@ -50,9 +50,10 @@ def slot_list() -> str:
 
 QUESTION_STYLE = """\
 # How every question and follow-up is worded
-The CEO meets a consulting engineer for the first time. He has heard of AI but does not \
-know how to use it: he cannot say what success looks like in the abstract, nor imagine what could \
-be taken off his team's hands. So the interviewer asks about his work, never about technology:
+The interviewee meets a consulting engineer for the first time. They have heard of AI but do \
+not know how to use it: they cannot say what success looks like in the abstract, nor imagine what \
+could be taken off their team's hands. So the interviewer asks about their work, never about \
+technology (who the interviewee is, and how deep to go with them, is under "Who you interview"):
 - Start from capacity: what stops the company from taking more customers, orders or volume, or \
 a new market, and what eats the team's time today.
 - Ask for concrete, operational detail on a real case, ideally one from last week: who does it \
@@ -63,19 +64,19 @@ the time, what would you do with it: how many more orders or customers could you
 - No AI vocabulary in anything the interviewer asks: never "IA"/"AI", "intelligence artificielle", \
 "agent", "automatiser"/"automate"/"automation", "LLM", "bot", "algorithme"/"algorithm" (use cases, \
 slots and the plan use them internally; the questions do not).
-- One point per follow-up, short, in the CEO's own words.
+- One point per follow-up, short, in the interviewee's own words.
 - Every question is a story about value: where the company makes money, where information \
 travels and gets lost, where experienced people spend their time on low-value work. Never run \
 through a checklist out loud, never ask "which tools do you use?": ask about the last real case \
 ("when Claire needs the delivery date, where does she look?").
 - In the opening, the walkthroughs and the return, leave every important workflow with at least \
-one number for today (hours, delays, volumes, errors) and how the CEO would see it improve, in his \
-own words ("how would you notice: which figure, in which file?").
+one number for today (hours, delays, volumes, errors) and how the interviewee would see it improve, \
+in their own words ("how would you notice: which figure, in which file?").
 """
 
 
 PHASES_GUIDE = """\
-# Interview phases (an internal backbone, enforced by the app; the CEO never sees it as a form)
+# Interview phases (an internal backbone, enforced by the app; the interviewee never sees it as a form)
 The interview runs through ordered phases; state.phase says which one is current, its goal, its \
 time left and what its maps still miss (`map_gaps`):
 {phase_list}
@@ -85,20 +86,20 @@ always in story form on a real recent case, never as a list of topics.
 or a workflow mentioned early is recorded now (question_updates, slots, maps); the focus does not \
 jump to it.
 - queue_edits may only add, reword, reorder or remove questions of the CURRENT phase (state.phase.id; \
-each question shows its phase). Edits on other phases are rejected. A workflow the CEO mentions \
-that is worth a walkthrough: add ONE question with a use_case; the app parks it in the deep dives.
+each question shows its phase). Edits on other phases are rejected. A workflow the interviewee \
+mentions that is worth a walkthrough: add ONE question with a use_case; the app parks it in the deep dives.
 - next_questions: only questions of the current phase.
 """
 
 
 MAPS_GUIDE = """\
-# Maps: how the company works (filled implicitly from the CEO's stories)
+# Maps: how the company works (filled implicitly from the interviewee's stories)
 Next to the use cases, keep five maps; every record has a short stable `id` (a slug: reuse the id \
 shown in state.maps to update a record, a new id adds one). Give a record only when the new lines \
 state at least one of its facts; "" for anything not said ("unknown" for yes/no fields). Values as \
 said (names, tools, numbers), in {lang_name}; evidence = a short corrected quote. Never guess, never \
 fill from the client background.
-- org: people around the CEO: person, role, department, reports_to, time_split (share of time on \
+- org: the people of the company the stories show: person, role, department, reports_to, time_split (share of time on \
 judgment and decisions vs repetitive glue: chasing status, re-keying, jumping between systems), notes, \
 adoption_signal (see Potential ambassadors below).
 - flows: information passing between people or departments: sender, receiver, what, channel \
@@ -124,13 +125,13 @@ grants access).
 RECIPES_GUIDE = """\
 # Recipes: workflows that already worked at other companies
 The catalogue below lists recipes (id, title, type, the signals that show one fits, its \
-preconditions, and the baseline numbers it is measured on). While the CEO tells his stories, \
-recognise the recipes they fit, from what was actually said (the maps, the slots, the answers), \
+preconditions, and the baseline numbers it is measured on). While the interviewee tells their \
+stories, recognise the recipes they fit, from what was actually said (the maps, the slots, the answers), \
 never from the client background alone.
 - recipe_matches: each recipe the facts heard so far point to, as the full current view of that \
 match: recipe_id; use_case = the id of the state use case it would serve (null when no use case \
 holds it yet); fit = "strong" (most of its signals heard on a real case), "partial" (some), or \
-"none" (a match listed in state.recipe_matches that the CEO's facts now contradict); heard_signals \
+"none" (a match listed in state.recipe_matches that the interviewee's facts now contradict); heard_signals \
 = its signals now heard, copied verbatim from the catalogue; missing = its preconditions not heard \
 yet and its baseline numbers nobody gave yet, copied verbatim from the catalogue. Leave out the \
 recipes nothing points to. Empty list when nothing changed.
@@ -166,10 +167,10 @@ def maps_guide(state: SessionState) -> str:
 
 
 HORIZONS_GUIDE = """\
-# Horizons (internal framing; never say "horizon" or H1/H2/H3 to the CEO)
+# Horizons (internal framing; never say "horizon" or H1/H2/H3 to the interviewee)
 Every opportunity the interview uncovers sits on one horizon: {horizons}. Most follow-ups serve \
 h1: today's work on a real recent case, with its numbers, so a pilot can start this week. Keep \
-an h2 or h3 idea the CEO raises (note it in plan_delta.priorities with its horizon, e.g. "(h2) …"), \
+an h2 or h3 idea the interviewee raises (note it in plan_delta.priorities with its horizon, e.g. "(h2) …"), \
 without promising anything.
 """
 
@@ -185,10 +186,10 @@ POSTURE_RULES = {
                 "work (h1), in a reassuring tone (\"we try it together\"); no competitor pressure; ask about "
                 "the future only if time allows.",
     "pragmatic": "steady pace. One measured improvement of today's work (h1), and one dated option for the "
-                 "next quarter (h2) when the CEO opens one.",
+                 "next quarter (h2) when the interviewee opens one.",
     "urgent": "brisk pace. Competitors already report results: inaction is the risk. Get today's quick "
               "improvement (h1) and the workflow redesign for the next quarter (h2) in parallel, ask what "
-              "competitors changed, and who sponsors the work on the CEO's side.",
+              "competitors changed, and who sponsors the work on the client's side.",
 }
 POSTURE_NOTES = {"explorer": "explorer (sector behind, gentle approach)",
                  "pragmatic": "pragmatic (one measured step now, one dated option next)",
@@ -196,13 +197,13 @@ POSTURE_NOTES = {"explorer": "explorer (sector behind, gentle approach)",
 
 AMBASSADORS_GUIDE = """\
 # Potential ambassadors (who could carry a first pilot)
-A pilot spreads through a colleague the others listen to, not through the consultant or the CEO.
-- In the org map, `adoption_signal` = a short quote of what the CEO said that makes this person a \
+A pilot spreads through a colleague the others listen to, not through the consultant or the management.
+- In the org map, `adoption_signal` = a short quote of what the interviewee said that makes this person a \
 potential ambassador: tries new tools or software first, shows the others how, is listened to when \
 they say something works, complains about a repetitive task they would gladly hand over, or would \
-be keen to try a tool on their work. "" when nothing like that was said. Only the CEO's words, \
+be keen to try a tool on their work. "" when nothing like that was said. Only the interviewee's words, \
 never an inference from a role; never record reluctance, criticism or personal judgments.
-- Never ask the CEO head-on whether a person would be keen, open or reluctant ("Claire, elle aurait \
+- Never ask the interviewee head-on whether a person would be keen, open or reluctant ("Claire, elle aurait \
 envie d'essayer ce genre d'outil ?" is too direct): the full sync writes indirect people questions, \
 per workflow, and the screen shows them under the follow-up when the time is right.
 """
@@ -224,34 +225,34 @@ diagnosis, no personality labels, nothing private.
 # People questions: could the staff behind a workflow carry a first pilot? (never head-on)
 For each workflow (use case) that is a good candidate (a strong or partial recipe match, or \
 repetitive work, re-keying or waiting described on a real case), help the interviewer find out, \
-from the CEO, whether the people doing it could be the pilot's ambassadors: open to trying a new \
+from the interviewee, whether the people doing it could be the pilot's ambassadors: open to trying a new \
 tool, the one the others go to for tricks, listened to when they say something works.
 - Never head-on, never like an assessment of people: no "is Claire resistant?", "would Claire \
 accept it?", "who is good with tools?", never "ambassador", never AI vocabulary. Ask through \
-curiosity about how the team works, in the CEO's register: who on the team likes trying new \
+curiosity about how the team works, in the interviewee's register: who on the team likes trying new \
 things, who people go to for an Excel or software trick, how the team handled the last change \
 of software, what Claire would do with an hour back every day.
-- Phrase it for this person, from interviewee_read: a CEO proud of his team hears it as a chance \
+- Phrase it for this person, from interviewee_read: someone proud of their team hears it as a chance \
 to talk about them; a wary or protective one gets it only through habits and mutual help, never \
 through change; a numbers-first one through time saved.
 - The sector's pace sets how direct it may be: {tone}
 - timing: "now" only when rapport is established AND the workflow was walked through (who does it, \
 how, on a real case) AND the conversation is on that workflow or has just left it; else "later". \
-Never in the opening, never two in a row. "done" when the CEO already told it (who tries new \
+Never in the opening, never two in a row. "done" when the interviewee already told it (who tries new \
 things on that team, how they took the last change): the app stops suggesting it.
 - ambassador_probes: at most one per workflow, use_case = its id in state.use_cases, only new or \
 changed ones (empty list when nothing changed); person = the person or role behind it as heard \
 ("" = the team); question = short, ready to say, in {lang_name}; reason = for the interviewer only, \
 a few words in {lang_name}: what the answer would tell ("whether Claire picks up new tools: pilot \
 for the orders"). state.ambassador_probes lists the ones given so far: never change one already \
-asked. What the CEO answers about a person goes in the org map's adoption_signal.
+asked. What the interviewee answers about a person goes in the org map's adoption_signal.
 """
 
 PROBE_TONES = {
     "explorer": "softest. The sector has barely taken the turn: wait for an established rapport and a "
                 "workflow fully walked through; go through habits and mutual help (\"when Excel gets in the "
                 "way, who do people turn to?\"), never through new tools, change or the future; keep it "
-                "\"later\" while the CEO sounds wary or protective.",
+                "\"later\" while the interviewee sounds wary or protective.",
     "pragmatic": "indirect, through curiosity about how the team works (who brings the Excel or software "
                  "tricks, how the last change of software went), once rapport is there.",
     "urgent": "more direct. The sector already has results: you may ask whether a person would like to be "
@@ -261,48 +262,114 @@ PROBE_TONES = {
 
 
 LENS_GUIDE = """\
-# The executive lens: guide the CEO on value, workflow by workflow
-You have about {target} minutes with an executive, not weeks with the staff: the weak signals from \
-the floor will rarely come up. So help the interviewer guide the CEO on what is worth doing and \
-what it would change.
-- value_framings: when the CEO describes manual, repetitive work on a real case (someone opens \
-emails by hand and re-keys them into Excel, copies figures between files, chases a status by phone), \
-write ONE short talking point for the interviewer to say, in {lang_name}, in the CEO's register: \
-this task brings that person little, it can run on its own, and their time would go to the \
-decisions only they can make (which supplier, which customer first, what to do about a late order). \
-About the task, never the person: no "useless", no "replace", no job cut, no head count, never AI \
-vocabulary ("it can run on its own", "ça peut se faire tout seul"). Like "Re-keying each order is \
-work nobody chose this job for: it can run on its own, and Claire's time goes to the big accounts." \
-Use the figure the CEO gave when there is one ("six hours a week"); never invent one. Fields: \
-use_case (its id in state.use_cases), person (who does it, as heard; "" = the team), task (as the \
-CEO described it), point, moves_up_to (the higher-level decision or work they would move up to, as \
-the CEO's words suggest), reason (interviewer only, a few words: why now). timing: "now" once the \
-task was described on a real case and the conversation is on that workflow; "later" otherwise; \
-"done" when the CEO already said it himself or agreed. At most one per workflow, only new or changed \
-ones; state.value_framings lists the ones given so far: never change one already said.
+# The executive lens: guide the interviewee on value, workflow by workflow
+You have about {target} minutes with {who_short}, not weeks with the staff: the weak signals from \
+the floor will rarely come up. So help the interviewer guide them on what is worth doing and what \
+it would change.
+{framings}
 - Metrics: every workflow worth doing needs a baseline (today, with a number) and a success metric \
-(how the CEO would see it improve, by when), of one kind: time spent, volume, error rate or delay. \
+(how the client would see it improve, by when), of one kind: time spent, volume, error rate or delay. \
 They show whether the work heads the right way, and they are what will convince the rest of the \
 team. metric_questions: for each workflow whose baseline or target slot is still empty, the next \
 question to get it, on a real recent case, in {lang_name}: use_case, kind (time, volume, errors, \
 delay: the one this workflow is best judged on), side (baseline first, then target), question \
 (short, ready to say: "Last week, how long did Claire spend re-keying the orders?"; "If it worked, \
-which figure would tell you, and by when?"). Only new or changed ones; none for a side already filled.
+which figure would tell you, and by when?"). {metric_rule} Only new or changed ones; none for a \
+side already filled.
 """
+
+FRAMINGS_RULE = """\
+- value_framings: when the interviewee describes manual, repetitive work on a real case (someone \
+opens emails by hand and re-keys them into Excel, copies figures between files, chases a status by \
+phone), write ONE short talking point for the interviewer to say, in {lang_name}, in the \
+interviewee's register: this task brings that person little, it can run on its own, and their time \
+would go to the decisions only they can make (which supplier, which customer first, what to do about \
+a late order). About the task, never the person: no "useless", no "replace", no job cut, no head \
+count, never AI vocabulary ("it can run on its own", "ça peut se faire tout seul"). Like "Re-keying \
+each order is work nobody chose this job for: it can run on its own, and Claire's time goes to the \
+big accounts." Use the figure the interviewee gave when there is one ("six hours a week"); never \
+invent one. Fields: use_case (its id in state.use_cases), person (who does it, as heard; "" = the \
+team), task (as the interviewee described it), point, moves_up_to (the higher-level decision or work \
+they would move up to, as the interviewee's words suggest), reason (interviewer only, a few words: \
+why now). timing: "now" once the task was described on a real case and the conversation is on that \
+workflow; "later" otherwise; "done" when the interviewee already said it or agreed. At most one per \
+workflow, only new or changed ones; state.value_framings lists the ones given so far: never change \
+one already said."""
+
+FRAMINGS_OFF = """\
+- value_framings: always an empty list. The interviewee does this work every day: never tell them \
+that their own task brings little; the talking points are for an executive or a function leader."""
+
+METRIC_RULES = {
+    "executive": "An executive often knows the outcome they watch (a delay, a volume a month) but not the "
+                 "per-item time: ask for the figure they follow; when they cannot give it, record it in to_check "
+                 "with who counts it.",
+    "function_leader": "A function leader usually follows the figure (a KPI, a weekly count): ask for it as they "
+                       "track it, and where it is tracked.",
+    "operator": "Ask for concrete numbers from their own week: how many per day, how long per item, how many "
+                "errors or reworks.",
+}
 
 
 def lens_guide(state: SessionState) -> str:
-    """The executive lens (lens.py): talking points on manual work, and the metric questions. Full
-    sync only."""
-    return LENS_GUIDE.format(target=state.target_minutes, lang_name=LANG_NAME[state.language])
+    """The executive lens (lens.py): talking points on manual work (not for an operator: they do that
+    work), and the metric questions worded for the persona. Full sync only."""
+    persona = state.persona
+    lang_name = LANG_NAME[state.language]
+    framings = FRAMINGS_OFF if persona == "operator" else FRAMINGS_RULE.format(lang_name=lang_name)
+    who_short = {"executive": "an executive", "function_leader": "a function leader",
+                 "operator": "a person who does the work"}[persona]
+    return LENS_GUIDE.format(target=state.target_minutes, lang_name=lang_name, framings=framings,
+                             who_short=who_short, metric_rule=METRIC_RULES[persona])
+
+
+PROBE_OPERATOR = (
+    "\n- The interviewee does the work themself: ask about their own habits and their colleagues' mutual help, "
+    "never ask them to judge a colleague (\"when the software gets in the way, who do you turn to?\", \"would you "
+    "like to be the first to try a quicker way on your orders?\"). They may be the ambassador themself: say so in "
+    "the reason, never to them.")
 
 
 def people_guide(state: SessionState) -> str:
     """The interviewee read and the indirect people questions, in the tone the sector's pace sets
-    (no pre-study: pragmatic). Full sync only (the fast pass returns neither)."""
+    (no pre-study: pragmatic), adjusted for an operator. Full sync only (the fast pass returns neither)."""
     pace = state.posture if state.posture in PROBE_TONES else None
     rule = PROBE_TONES[pace or "pragmatic"] + ("" if pace else " (no pre-study: the default tone)")
+    if state.persona == "operator":
+        rule += PROBE_OPERATOR
     return PEOPLE_GUIDE.format(lang_name=LANG_NAME[state.language], tone=rule)
+
+
+INTERVIEWEE_GUIDE = """\
+# Who you interview
+{who}. They are {rule}
+{reason}- When the interviewee cannot answer (they say they do not know, or that someone else handles it), \
+never push and never ask it again: {defer}; aim the follow-up at what they can answer.
+{reword}"""
+
+DEFER_SYNC = ("record it in to_check (the question to ask, who would know: a role, or a name as heard, the slots it "
+              "leaves open, their words as evidence)")
+DEFER_FAST = "the full analysis records who would know"
+REWORD = {
+    "executive": "they fit; keep them at workflow level.",
+    "function_leader": "reword an upcoming one (queue_edits reword) when it asks about the whole company instead "
+                       "of their process and team.",
+    "operator": "reword an upcoming one (queue_edits reword) into their own day and their last real case, and "
+                "remove the ones about strategy or the company's future.",
+}
+
+
+def interviewee_guide(state: SessionState, fast: bool = False) -> str:
+    """Who is interviewed (role and persona, personas.py) and how deep to go with them; what they cannot
+    answer goes to to_check (full sync) instead of being pushed."""
+    iv = state.interviewee or {}
+    persona = state.persona
+    reason = (iv.get("reason") or "").strip()
+    return INTERVIEWEE_GUIDE.format(
+        who=personas.describe(iv), rule=personas.PERSONA_RULES[persona],
+        reason=f"(Why this persona: {reason}.)\n" if reason else "",
+        defer=DEFER_FAST if fast else DEFER_SYNC,
+        reword="" if fast else f"- The seed questions were written for an executive: {REWORD[persona]}\n")
 
 
 def horizons_guide(state: SessionState) -> str:
@@ -324,13 +391,13 @@ by the same integration slots:
 {slot_list}
 A question attached to a use case (`use_case`) lists its `missing_slots`; it can only be \
 "answered" once ALL of them are filled. Aim each follow-up at the first missing slot of the \
-current rung, in concrete words the CEO can answer (which mailbox, which software, how many per \
-week, who, how long). A slot is filled only by facts the CEO actually said (names, tools, \
+current rung, in concrete words the interviewee can answer (which mailbox, which software, how many per \
+week, who, how long). A slot is filled only by facts the interviewee actually said (names, tools, \
 numbers): never guess, never fill it from the client background or the pre-plan, and a vague \
 answer ("we have an ERP", "quite a lot") fills nothing. Slot values belong to the use case, so an \
 answer to another question may fill them too. A question without a use case may list \
-`gathers_slots`: the slots its answer should give for the workflow the CEO describes. Aim its \
-follow-ups at them too, and once the CEO names that workflow, fill them on the matching use case \
+`gathers_slots`: the slots its answer should give for the workflow the interviewee describes. Aim its \
+follow-ups at them too, and once the interviewee names that workflow, fill them on the matching use case \
 (or add a question with a new use case for it).
 - slots: every slot the new lines fill or complete, for any use case id in the state: use_case, \
 slot (key), value = everything now known for this slot (merged with its current value), in \
@@ -341,7 +408,7 @@ list when nothing new.
 
 SYNC_SYSTEM = """\
 You are the live co-pilot of a consulting engineer who is interviewing \
-the CEO of {client} for about {target} minutes, to scope an engagement and write a plan. \
+{who} at {client} for about {target} minutes, to scope an engagement and write a plan. \
 Every 30-45 seconds you receive the newest slice of a live transcript plus the current \
 interview state, and you return one JSON object that updates that state. The interviewer reads \
 your output on a screen while talking, so it must be accurate and calm: a wrong "answered" \
@@ -349,12 +416,13 @@ flag or a jumpy question list derails the interview.
 
 {context}
 
+{interviewee_guide}
 {language_rule}
 
 # How the transcript is produced
 {streams}
-- There are no speaker labels. Infer who speaks from content: the interviewer asks questions, the CEO \
-answers.
+- There are no speaker labels. Infer who speaks from content: the interviewer asks questions, the \
+interviewee answers.
 - The microphone also picks up the room: a TV or radio, people nearby, phone calls. Ignore \
 anything unrelated to the interview (for example a TV programme about politicians or \
 celebrities); never turn it into an answer, a note or a question.
@@ -376,15 +444,15 @@ For each question the interviewer digs down a ladder, rung by rung:
 how long, how often.
 3. implementation: the people and roles involved, and the technical side: tools by name (ERP, \
 email, Excel, portals), data, integrations, volumes.
-Each question lists `expect`, the concrete details each rung needs. CEOs answer vaguely ("we \
+Each question lists `expect`, the concrete details each rung needs. People answer vaguely ("we \
 have an ERP", "we roughly know the stock", "orders go by email"); a generic statement covers \
 nothing.
 - covered: the expect items (any rung) the answer now really provides, copied verbatim.
 - rung: where the digging is now. Move down only when the current rung is mostly covered (or the \
-CEO clearly cannot say more on it); "done" when the implementation rung is covered too.
+interviewee clearly cannot say more on it); "done" when the implementation rung is covered too.
 - follow_up: ONE short, natural follow-up question in {lang_name} that digs deeper into the \
 original question on the current rung, aimed at its first missing item. When the answer is \
-vague, ask for a concrete recent example, a number, a name or a tool, in the CEO's own words \
+vague, ask for a concrete recent example, a number, a name or a tool, in the interviewee's own words \
 ("Prenons la dernière commande de Marc : il l'a saisie dans quel outil, combien de \
 temps ?"; "Si ça prenait deux fois moins de temps, combien de commandes en plus pourriez-vous \
 prendre ?"), following the wording rules below. Never repeat a follow-up already in the thread. \
@@ -401,7 +469,7 @@ locks the question. Otherwise "partial".
 {lens_guide}
 # Output fields
 - question_updates: questions whose status, answer, covered items, rung or follow-up change in \
-this slice (the current question first; also any question the CEO answered spontaneously).
+this slice (the current question first; also any question the interviewee answered spontaneously).
 - maps: the map records these lines add or complete (see above); empty lists when nothing new.
 - recipe_matches: see Recipes above; empty list when nothing changed.
   - answer: a concise summary in {lang_name}; if the question already has an answer, return the \
@@ -411,11 +479,11 @@ full merged summary. Keep figures, volumes, tools and names as said (glossary-co
 - queue_edits (upcoming questions only, never the current one, never answered ones): "add" a \
 question when an answer opens an important thread (give theme, a short slug as question_id, \
 text = the wording in {lang_name}, text_fr and text_en (French and English wordings), and `expect`: 1 to 3 concrete details per rung: business, workflow, \
-implementation); when the CEO describes a workflow an agent could take over that is not one of \
+implementation); when the interviewee describes a workflow an agent could take over that is not one of \
 state.use_cases, add ONE question that walks through it, with use_case = a new short slug and \
 use_case_title = its short title in {lang_name}: it gets its own slot set (to drill a known use \
 case, give its id as use_case; otherwise use_case and use_case_title are null); "reword" an upcoming \
-question to make it concrete for this CEO (prefer workflow phrasing: "walk me through the last \
+question to make it concrete for this interviewee and their persona (prefer workflow phrasing: "walk me through the last \
 time…, who touches it, in which tool, how long, how often"; give text in {lang_name}, plus text_fr \
 and text_en). Added and reworded questions follow the wording rules above. "reorder" (after_id = the question \
 it should follow, null = top of the upcoming list); "remove" pending questions made irrelevant. \
@@ -429,7 +497,7 @@ theme for planning (concrete details, not just a topic mentioned), and a few wor
 missing.
 - plan_delta: only NEW insights from this slice, as short bullets in {lang_name}: context, \
 priorities, workflows (current processes and pain points), quick_wins, risks, budget (amounts, \
-ranges, constraints the CEO mentioned), open_points. Do not repeat state.plan_notes.
+ranges, constraints the interviewee mentioned), open_points. Do not repeat state.plan_notes.
 - clean_passages: a cleaned, readable version of this slice (best stream, glossary applied), \
 one item per speaker turn: start (mm:ss), speaker (fde = the interviewer, client or unknown), lang, text. Drop \
 noise, the room (TV, nearby voices) and unrelated chatter.
@@ -439,12 +507,26 @@ be listed as open points in the plan. Be conservative: once true, the interview 
 writing starts. enough_data_reason: one sentence why (or why not yet).
 - interviewee_read and ambassador_probes: see Reading the interviewee and People questions above.
 - value_framings and metric_questions: see The executive lens above.
+- to_check: what the interviewee could not answer in this slice, new items only (see Who you \
+interview): use_case (its id, or null), question_id (or null), slots (the slot keys it leaves open, \
+[] when none), question (short, in {lang_name}), ask (who would know), evidence. state.to_check lists \
+the ones recorded so far: never repeat one. Empty list when nothing new.
 """
+
+
+def interviewee_label(state: SessionState) -> str:
+    """"the CFO (a function leader)": who is interviewed, for the first line of the prompts."""
+    role = ((state.interviewee or {}).get("role") or "").strip()
+    name = personas.PERSONA_NAMES[state.persona]
+    article = "an" if name[0] in "aeiou" else "a"
+    return f"the {role} ({article} {name})" if role else f"{article} {name}"
 
 
 def build_sync_system(state: SessionState, glossary: str, context: str = "") -> str:
     return SYNC_SYSTEM.format(
         client=state.client,
+        who=interviewee_label(state),
+        interviewee_guide=interviewee_guide(state),
         target=state.target_minutes,
         context=f"# Client background\n{context.strip()}\n" if context.strip() else "",
         glossary=glossary.strip() or "(none)",
@@ -488,7 +570,7 @@ def use_cases_snapshot(state: SessionState) -> list[dict]:
 
 def state_snapshot(state: SessionState, for_plan: bool = False) -> dict:
     """The interview state as the model sees it. `for_plan`: the plan's input, which leaves out the
-    interviewee read and the people questions (interviewer-side only; the plan is read by the CEO)."""
+    interviewee read and the people questions (interviewer-side only; the plan is read by the client)."""
     lang = state.language
 
     def qd(q, thread: bool = False) -> dict:
@@ -520,6 +602,9 @@ def state_snapshot(state: SessionState, for_plan: bool = False) -> dict:
         "recipe_matches": recipe_matches_snapshot(state),
         "potential_ambassadors": [{k: e[k] for k in ("person", "role", "use_case", "quote")}
                                   for e in ambassadors.candidates(state)],
+        # what the interviewee could not answer, and who would know (personas.py)
+        "to_check": [{"ask": t["ask"], "question": t["question"], "use_case": t.get("use_case")}
+                     for t in state.to_check],
         "plan_notes": {k: v for k, v in state.plan_notes.items() if v},
     }
     if for_plan:  # the talking points' task and the decision it frees time for, never why they were said
@@ -557,7 +642,7 @@ def build_sync_user(
 
 PLAN_HEADING_KEYS = ("context", "priorities", "workflows", "quick_wins", "plan_30_60_90", "risks", "budget", "log",
                      "current_state", "bottlenecks", "metrics", "timeline",
-                     "use_cases", "details", "recipe_candidates", "open_items", "adoption")
+                     "use_cases", "details", "recipe_candidates", "open_items", "adoption", "to_check")
 
 
 def plan_headings(lang: str, overlay: Mapping[str, str] | None = None) -> dict[str, str]:
@@ -582,10 +667,10 @@ def state_headings(state: SessionState) -> dict[str, str]:
 PLAN_SECTION_ORDER = ("context", "priorities", "workflows", "quick_wins", "plan_30_60_90", "risks", "budget")
 
 PLAN_SYSTEM = """\
-You are a senior consulting engineer turning a {target}-minute kickoff interview with the \
-CEO of {client} into a FACTUAL INTEGRATION PROPOSAL: for each use case, how an agent would be \
+You are a senior consulting engineer turning a {target}-minute kickoff interview with \
+{who} at {client} into a FACTUAL INTEGRATION PROPOSAL: for each use case, how an agent would be \
 wired into their real systems and what it would change, measured. It is not a summary of the \
-interview. The readers are the CEO and his team, then the engineer who builds it.
+interview. The readers are the client's leadership and team, then the engineer who builds it.
 
 The lens: the goal is to raise the company's performance. Communication does not scale (that is \
 why a manager handles 4 to 10 people); agents can synthesise, summarise and route it, so each \
@@ -608,8 +693,8 @@ Write every text value in {lang_name} (translate what was said in another langua
 `evidence` stay as said). Return one JSON object matching the schema.
 
 # The rule: facts come from the interview, everything else is "to confirm"
-- A fact is "stated" only when it was said in this interview by the CEO (or by the interviewer and \
-confirmed by the CEO). `value` keeps names, tools and figures as said (glossary-corrected); \
+- A fact is "stated" only when it was said in this interview by the interviewee (or by the interviewer \
+and confirmed by the interviewee). `value` keeps names, tools and figures as said (glossary-corrected); \
 `evidence` is a short quote from the transcript that supports it.
 - The client background and the pre-plan come from desk research: hypotheses, never facts.
 - NEVER invent a tool or software name, a mailbox, a volume, a person, a delay, a price or any \
@@ -643,13 +728,13 @@ asks), or to_confirm.
 - model: the provider for this use case: anthropic, openai or xai, with a concrete reason tied \
 to this use case and its stated facts (quality of extraction from emails, PDFs or scans; \
 reasoning over messy free-text requests; latency or cost at the stated volume; a data-residency \
-or security constraint the CEO stated). Build the reason only on stated facts, never on \
+or security constraint the interviewee stated). Build the reason only on stated facts, never on \
 assumptions (languages, document formats, volumes nobody gave). If the deciding fact is unknown, \
 still choose and say which open item could change the choice; to_confirm only when nothing \
 supports a choice.
 - impact and feasibility: a score from 1 to 5 each, with a reason drawn from what was said \
-(impact: time lost, volume, who is blocked, the CEO's goal; feasibility: whether the source is \
-reachable, whether the tool exports or has an API, security constraints the CEO mentioned). \
+(impact: time lost, volume, who is blocked, the client's goal; feasibility: whether the source is \
+reachable, whether the tool exports or has an API, security constraints the interviewee mentioned). \
 0 when the interview gives nothing to judge it.
 
 # Integration slots (the same nine for every use case)
@@ -748,10 +833,10 @@ rest follow. One lighthouse use case, visible beyond its user, carried by one am
 - adoption.lighthouse: the id of the opportunity to start with: an h1 one, high volume, a human \
 who validates, a metric already counted, a gain others will see.
 - adoption.ambassador: the person (name or role) who would pilot it, only as heard in the \
-interview (state.potential_ambassadors lists who the CEO put on each use case and what he said \
-about them); evidence = the CEO's quote. Nobody named: ambassador and evidence "", question = the \
+interview (state.potential_ambassadors lists who the interviewee put on each use case and what \
+they said about them); evidence = the interviewee's quote. Nobody named: ambassador and evidence "", question = the \
 question to ask to find one ("Qui, dans l'équipe, aurait envie d'essayer en premier ?"), ask = who \
-to ask it. Never pick someone the CEO described as reluctant.
+to ask it. Never pick someone the interviewee described as reluctant.
 - The three waves, each with plan (what happens, short, concrete, plain business words) and \
 trigger (what starts it):
   - volunteers: weeks 1 to 4: the ambassador and the colleagues keen to go first run the lighthouse \
@@ -764,9 +849,14 @@ others follow, with no campaign aimed at them.
   Never label an individual (no "reluctant", "undecided", "late adopter"), never name anyone in the \
 majority or everyone waves; "" when nothing supports a field.
 {pace}
+# Who was interviewed
+{interviewee}. What one person could not know stays open, never guessed: state.to_check lists what \
+the interviewee deferred and who would know; each one that is not already a slot gap goes in \
+open_items with that person as `ask`.
+
 # Other fields
-- context: 2 to 4 sentences: who the client is, what the interview covered, the CEO's goals as \
-he stated them. Facts only.
+- context: 2 to 4 sentences: who the client is, what the interview covered, the goals as \
+the interviewee stated them, and who was interviewed (by role, see Who was interviewed). Facts only.
 - open_items: open questions that belong to no single slot (budget, sponsor, who grants IT \
 access, security rules, use cases not covered...), each with topic, question and ask. Slot gaps \
 are collected automatically from the slots: do not repeat them here.
@@ -806,12 +896,14 @@ def plan_pace(state: SessionState) -> str:
 
 def build_plan_system(state: SessionState, glossary: str, context: str = "") -> str:
     return PLAN_SYSTEM.format(
+        who=interviewee_label(state),
+        interviewee=interviewee_label(state)[0].upper() + interviewee_label(state)[1:],
         horizons=horizons.HORIZON_GUIDE,
         pace=plan_pace(state),
         streams=describe_streams(state),
         target=state.target_minutes,
         client=state.client,
-        context=f"Client background (desk research and interviewer notes, not facts from the CEO):\n{context.strip()}\n"
+        context=f"Client background (desk research and interviewer notes, not facts from the interviewee):\n{context.strip()}\n"
         if context.strip() else "",
         glossary=glossary.strip() or "(none)",
         lang_name=LANG_NAME[state.language],
@@ -863,18 +955,19 @@ def build_plan_user(state: SessionState, transcript: list[Segment], wispr_text: 
 
 FAST_SYSTEM = """\
 You run the live interview thread of a kickoff between a consulting engineer and \
-the CEO of {client}. A few seconds after someone speaks you get the newest transcript lines and \
+{who} at {client}. A few seconds after someone speaks you get the newest transcript lines and \
 the question on screen with its thread so far. Your output is shown to the interviewer at once: the new \
 piece of answer is appended under the question, then ONE follow-up question to ask next. Be \
 fast, literal and conservative.
 
 Each message is independent: rely only on the state and lines in that message.
 
+{interviewee_guide}
 {language_rule}
 
 Transcript:
 {streams}
-A gibberish line looks like "tornay, avic, so more". No speaker labels: the interviewer asks, the CEO answers. The \
+A gibberish line looks like "tornay, avic, so more". No speaker labels: the interviewer asks, the interviewee answers. The \
 microphone also picks up the room (TV, radio, people nearby): ignore anything unrelated to the \
 interview. Fix mishearings with this glossary and never invent facts:
 {glossary}
@@ -885,7 +978,7 @@ The ladder. Each question is dug rung by rung:
 how long, how often;
 3. implementation: people and roles, and the technical side: tools by name (ERP, email, Excel, \
 portals), data, integrations, volumes.
-`expect` lists the concrete details each rung needs. CEOs answer vaguely ("we have an ERP", \
+`expect` lists the concrete details each rung needs. People answer vaguely ("we have an ERP", \
 "orders go by email"); a generic statement covers nothing.
 
 {question_style}
@@ -893,9 +986,9 @@ portals), data, integrations, volumes.
 {maps_guide}
 Return:
 - question_updates: for the current question if the new lines touch it, and for any other \
-question the CEO just answered. Skip questions the lines don't touch. For each:
+question the interviewee just answered. Skip questions the lines don't touch. For each:
   - answer_piece: ONLY what the new lines add, 1 or 2 short plain sentences in {lang_name}, \
-written as neutral notes of the CEO's facts (figures, names, tools as said), not "il dit". "" if \
+written as neutral notes of the interviewee's facts (figures, names, tools as said), not "il dit". "" if \
 the lines add nothing to this question.
   - answer: "" (the app appends the piece to the draft), unless the draft must be corrected: then \
 the full corrected draft.
@@ -903,12 +996,12 @@ the full corrected draft.
   - covered: the `expect` items (any rung) now really provided, copied verbatim, including ones \
 already covered.
   - rung: business, workflow or implementation: where the digging is now. Move down only when \
-the current rung is mostly covered (or the CEO cannot say more); "done" when implementation is \
+the current rung is mostly covered (or the interviewee cannot say more); "done" when implementation is \
 covered too.
   - follow_up: ONE short natural follow-up question in {lang_name} for the interviewer to ask now, \
 digging into the original question on the current rung, aimed at its first missing item. When \
-the answer is vague, ask for a concrete recent example, a number, a name or a tool, in the CEO's \
-own words, following the wording rules above. Never repeat one from the thread. "" when the \
+the answer is vague, ask for a concrete recent example, a number, a name or a tool, in the \
+interviewee's own words, following the wording rules above. Never repeat one from the thread. "" when the \
 ladder is done.
   - vague: true when the answer is still generic (no recent example, number, name or tool).
   - status: "partial" until the ladder is done; "answered" only when most details on every rung \
@@ -920,7 +1013,7 @@ as a concrete story question.
 - coverage: only for themes these lines improved, score 0.0 to 1.0. Empty list if nothing changed.
 - noise: the ids (e.g. "57" for a line tagged #57) of new lines that are not part of the \
 interview: a TV or radio, nearby voices, off-topic chatter. Do NOT list the gibberish lines of the \
-other recogniser (they are filtered already), nor anything the interviewer or the CEO says. Usually empty.
+other recogniser (they are filtered already), nor anything the interviewer or the interviewee says. Usually empty.
 Keep the output short: it is shown to the interviewer as soon as it arrives.
 If the new lines are only the interviewer asking, small talk or noise, return empty question_updates.
 """
@@ -931,7 +1024,7 @@ FAST_CONTEXT_CHARS = 1500
 
 def build_fast_system(state: SessionState, glossary: str, context: str = "") -> str:
     system = FAST_SYSTEM.format(
-        client=state.client, glossary=glossary.strip() or "(none)", lang_name=LANG_NAME[state.language],
+        client=state.client, who=interviewee_label(state), interviewee_guide=interviewee_guide(state, fast=True), glossary=glossary.strip() or "(none)", lang_name=LANG_NAME[state.language],
         language_rule=language_rule(state), streams=describe_streams(state), question_style=QUESTION_STYLE,
         slots_guide=SLOTS_GUIDE.format(slot_list=slot_list(), lang_name=LANG_NAME[state.language]),
         maps_guide=maps_guide(state),

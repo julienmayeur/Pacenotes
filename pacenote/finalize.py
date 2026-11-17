@@ -12,7 +12,7 @@ import markdown as md_lib
 from markdown.extensions import Extension
 from markdown.treeprocessors import Treeprocessor
 
-from . import ambassadors, briefs, fsutil
+from . import ambassadors, briefs, fsutil, personas
 from . import recipes as recipe_lib
 from .contract import SLOT_KEYS, Fact, Measure, PlanDoc, PlanUseCase, Recipe
 from .horizons import HORIZONS, checked_horizon
@@ -39,7 +39,7 @@ def interview_log_md(state: SessionState) -> str:
             if q.answer:
                 lines.append(f"  - {q.answer}")
         lines.append("")
-    removed = [q for q in state.questions if q.status == "removed"]
+    removed = [q for q in state.questions if q.status == "removed" and not q.persona_skip]
     if removed:
         lines.append("### " + tr("plan.removedQuestions"))
         lines.append("")
@@ -48,7 +48,7 @@ def interview_log_md(state: SessionState) -> str:
     if state.passages:
         lines.append("### " + tr("plan.cleanedExcerpts"))
         lines.append("")
-        who = {"fde": "Interviewer", "client": "CEO", "unknown": "?"}
+        who = {"fde": tr("plan.speaker.interviewer"), "client": tr("plan.speaker.interviewee"), "unknown": "?"}
         for p in state.passages:
             lines.append(f"- `{p.start}` **{who.get(p.speaker, p.speaker)}** : {p.text}")
         lines.append("")
@@ -251,12 +251,16 @@ def _cell(text: str) -> str:
     return _one_line(text) or "—"
 
 
-def open_items(doc: PlanDoc, tr, library: dict | None = None) -> list[tuple[str, str, str]]:
+def open_items(doc: PlanDoc, tr, library: dict | None = None,
+               state: SessionState | None = None) -> list[tuple[str, str, str]]:
     """Every gap of the proposal as (topic, question, who to ask): missing baselines and targets
     first (no number is ever invented), then the slots that are not stated, the model choice when it
-    is open, bottlenecks to confirm, then the general open items."""
+    is open, bottlenecks to confirm, then the general open items. A slot the interviewee deferred
+    (state.to_check) is asked of the person they named when the plan names nobody."""
     rows: list[tuple[str, str, str]] = []
     unknown = tr("plan.askUnknown")
+    deferred = {(t.get("use_case"), k): t["ask"] for t in (state.to_check if state is not None else [])
+                for k in t.get("slots") or []}
     for m in doc.metrics:
         for which in ("baseline", "target"):
             ms = clean_measure(getattr(m, which))
@@ -271,7 +275,7 @@ def open_items(doc: PlanDoc, tr, library: dict | None = None) -> list[tuple[str,
                 continue
             question = f.question or (tr("plan.confirmStated") if f.status == "partial" and f.value
                                       else tr(f"plan.slotQuestion.{k}"))
-            rows.append((f"{u.title} — {tr(f'plan.fields.{k}')}", question, f.ask or unknown))
+            rows.append((f"{u.title} — {tr(f'plan.fields.{k}')}", question, f.ask or deferred.get((u.id, k)) or unknown))
         if u.model.provider == "to_confirm":
             rows.append((f"{u.title} — {tr('plan.fields.model')}", u.model.reason.strip() or tr("plan.modelQuestion"),
                          unknown))
@@ -496,6 +500,8 @@ def render_plan_md(doc: PlanDoc, state: SessionState) -> str:
     metric_by_case = {u.id: _metric_of(doc, u) for u in cases}
     out = [f"# {h['title']} — {state.client}", "", f"## {h['context']}", "",
            doc.context.strip() or f"_{tr('plan.toComplete')}_", ""]
+    if line := interviewed_line(state, tr):
+        out += [line, ""]
 
     # 1. current state: who carries the signal, how it travels, where it lives, who decides
     out += [f"## {h['current_state']}", ""]
@@ -666,7 +672,10 @@ def render_plan_md(doc: PlanDoc, state: SessionState) -> str:
             out.append(f"    - {tr('plan.adoption.proof', proof=proof)}")
     out.append("")
 
-    rows = open_items(doc, tr, library)
+    # 8. what the interviewee could not answer, by who would know (personas.py)
+    out += to_check_md(state, tr, h)
+
+    rows = open_items(doc, tr, library, state)
     out += [f"## {h['open_items']}", ""]
     if rows:
         out += [f"| {tr('plan.table.topic')} | {tr('plan.table.question')} | {tr('plan.table.ask')} |", "|---|---|---|"]
@@ -674,6 +683,32 @@ def render_plan_md(doc: PlanDoc, state: SessionState) -> str:
     else:
         out.append("—")
     return "\n".join(out).rstrip() + "\n"
+
+
+def interviewed_line(state: SessionState, tr) -> str:
+    """"**Interviewed**: Finance director — function leader": the role and the persona, never the name
+    (the plan is shared). "" when nobody was picked (an older session, or no contact on the sheet)."""
+    iv = state.interviewee or {}
+    if not iv or iv.get("origin") == "default" and not iv.get("role"):
+        return ""
+    persona = tr(f"persona.{state.persona}")
+    role = (iv.get("role") or "").strip()
+    return tr("plan.fieldLine", label=tr("plan.interviewed"), value=f"{role} — {persona}" if role else persona)
+
+
+def to_check_md(state: SessionState, tr, h: dict) -> list[str]:
+    """The section "To check with other people": per person (a role, or a name as heard), what the
+    interviewee could not answer. Nothing when the interviewee answered everything."""
+    groups = personas.by_person(state)
+    if not groups:
+        return []
+    out = [f"## {h['to_check']}", "", f"_{tr('plan.toCheck.intro')}_", ""]
+    for ask, items in groups:
+        out.append(f"- **{tr('plan.toCheck.with', who=_one_line(ask))}**")
+        for item in items:
+            where = f" _({_one_line(item['use_case'])})_" if item.get("use_case") else ""
+            out.append(f"    - {_one_line(item['question'])}{where}")
+    return out + [""]
 
 
 def assemble_plan(body_md: str, state: SessionState) -> str:
