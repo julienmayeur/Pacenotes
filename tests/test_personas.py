@@ -19,7 +19,7 @@ from pacenote.clients import ClientInfo, Contact
 from pacenote.finalize import render_plan_md
 from pacenote.llm import OfflineEngine, offline_plan_doc
 from pacenote.prompts import build_fast_system, build_plan_system, build_sync_system, lens_guide, state_snapshot
-from pacenote.questionnaire import load_client
+from pacenote.preparation import load_client
 from pacenote.research import RESEARCH_SYSTEM, ResearchOutput, build_research_prompt, write_outputs
 from pacenote.session import Session, Settings
 from pacenote.state import SessionState

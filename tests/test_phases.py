@@ -13,11 +13,12 @@ import yaml
 from fastapi.testclient import TestClient
 
 from pacenote import phases as P
-from pacenote.clients import load_core_themes, merge_core
+from pacenote.preparation import load_core_themes, merge_core
 from pacenote.contract import FastResult, MapsUpdate, empty_maps, parse_sync_result
 from pacenote.llm import OfflineEngine
 from pacenote.capture import ReplaySource
-from pacenote.questionnaire import load_client, load_questionnaire
+from pacenote.questionnaire import load_questionnaire
+from pacenote.preparation import load_client
 from pacenote.server import create_app
 from pacenote.session import Session, Settings
 from pacenote.state import SessionState

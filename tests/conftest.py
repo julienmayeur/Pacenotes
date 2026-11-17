@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from pacenote.contract import PLAN_SECTIONS, PlanDelta, SyncResult, empty_maps, empty_read
-from pacenote.questionnaire import load_client
+from pacenote.preparation import load_client
 from pacenote.state import SessionState
 
 from .srt_samples import write_samples

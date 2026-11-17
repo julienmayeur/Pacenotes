@@ -32,6 +32,8 @@ from typing import Literal
 import yaml
 from pydantic import BaseModel, ConfigDict
 
+from .questionnaire import ThemeDef
+
 HORIZONS = ("h1", "h2", "h3")
 Horizon = Literal["h1", "h2", "h3"]
 POSTURES = ("explorer", "pragmatic", "urgent")
@@ -204,8 +206,6 @@ def posture_theme(posture: str | None, path: Path = HORIZON_FILE):
     posture). Each posture keeps its own questions with its own priorities (core/horizons.yaml):
     an explorer interview only touches the future if time allows; an urgent one checks what the
     competitors changed, as a must-have."""
-    from .questionnaire import ThemeDef  # (avoid an import cycle)
-
     if posture not in POSTURES:
         return None
     data = load_horizon_file(path)

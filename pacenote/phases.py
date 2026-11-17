@@ -3,7 +3,7 @@
 The phases are an internal structure, never a form read out to the CEO. Inside a phase the
 questions stay conversational; between phases the focus only moves forward. Phases 1 to 4 ship
 with the app as core questions (core/questions.yaml, merged into every client's questionnaire by
-clients.tailor_questionnaire); a client questionnaire keeps the opening (wealth), the use-case
+preparation.tailor_questionnaire); a client questionnaire keeps the opening (wealth), the use-case
 walkthroughs (deep-dives) and the return questions.
 
 Each phase is framed by value, from the lens the whole interview follows: where the company makes

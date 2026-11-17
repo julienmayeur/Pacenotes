@@ -1,5 +1,5 @@
 # Core questions, shipped with the app: phases 1 to 4 of every interview (pacenote/phases.py),
-# merged into each client's questionnaire by clients.tailor_questionnaire. A client questionnaire
+# merged into each client's questionnaire by preparation.tailor_questionnaire. A client questionnaire
 # keeps the opening (phase `wealth`), the use-case walkthroughs (`deep-dives`) and the return.
 #
 # Same wording rules as clients.example/brioche-four/questionnaire.yaml (read its header), plus:

@@ -13,7 +13,7 @@ from pacenote.contract import ContractError, PlanDoc, parse_plan_doc
 from pacenote.finalize import apply_recipes, is_typical, ranked, recipe_rank, render_plan_md
 from pacenote.llm import offline_plan_doc
 from pacenote.prompts import build_plan_system
-from pacenote.questionnaire import load_client
+from pacenote.preparation import load_client
 from pacenote.state import SessionState
 
 from .conftest import CLIENTS, plan_doc, plan_use_case, result

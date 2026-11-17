@@ -28,7 +28,8 @@ from pacenote.prompts import (
     describe_streams,
     plan_headings,
 )
-from pacenote.questionnaire import load_client, load_questionnaire
+from pacenote.questionnaire import load_questionnaire
+from pacenote.preparation import load_client
 from pacenote.server import create_app
 from pacenote.session import Session, Settings
 from pacenote.state import SessionState

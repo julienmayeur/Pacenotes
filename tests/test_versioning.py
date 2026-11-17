@@ -14,7 +14,7 @@ from pacenote.server import create_app
 from pacenote.session import Session, Settings
 from pacenote.state import SessionState
 
-from pacenote.questionnaire import load_client
+from pacenote.preparation import load_client
 
 from .conftest import CLIENTS, edit, fill, result, upd
 

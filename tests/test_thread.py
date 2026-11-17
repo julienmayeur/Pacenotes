@@ -12,7 +12,7 @@ from pacenote.capture import ReplaySource
 from pacenote.contract import FastResult, SyncResult
 from pacenote.llm import OfflineEngine
 from pacenote.prompts import build_fast_system, build_sync_system
-from pacenote.questionnaire import load_client
+from pacenote.preparation import load_client
 from pacenote.server import create_app
 from pacenote.session import Session, Settings
 from pacenote.state import SessionState

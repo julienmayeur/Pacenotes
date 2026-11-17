@@ -13,19 +13,11 @@ from fastapi.testclient import TestClient
 from pacenote.admin import create_admin_app
 from pacenote.capture import ReplaySource
 from pacenote.cli import main
-from pacenote.clients import (
-    load_core_themes,
-    PREPLAN_THEME,
-    TEMPLATE_CONTEXT,
-    client_context,
-    ClientError,
-    get_next_client,
-    resolve_client,
-    slug_from_name,
-)
+from pacenote.clients import ClientError, get_next_client, resolve_client, slug_from_name
+from pacenote.preparation import load_core_themes, PREPLAN_THEME, TEMPLATE_CONTEXT, client_context
 from pacenote.llm import OfflineEngine
 from pacenote.prompts import build_fast_system, build_sync_system
-from pacenote.questionnaire import load_client
+from pacenote.preparation import load_client
 from pacenote.research import ResearchManager
 from pacenote.web_agent import AgentJob, progress
 from pacenote.server import create_app

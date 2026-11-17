@@ -34,7 +34,8 @@ from pacenote.autofill import (
     merge_into_sheet,
     parse_output,
 )
-from pacenote.clients import ClientInfo, client_context, create_client, load_info, save_info
+from pacenote.clients import ClientInfo, create_client, load_info, save_info
+from pacenote.preparation import client_context
 
 from .conftest import REAL_CLIENTS
 

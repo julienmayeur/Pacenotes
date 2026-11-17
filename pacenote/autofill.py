@@ -44,6 +44,7 @@ from typing import Callable, Literal
 from pydantic import BaseModel, ConfigDict
 
 from . import i18n
+from .clients import LinkedEntity
 from .llm import find_claude, kill_group
 from .web_agent import AgentJob, run_claude_stream
 
@@ -400,8 +401,6 @@ def merge_into_sheet(info, result: dict | None):
     takes the new value with its provenance (source, confidence); manual fields are never touched.
     Linked entities are merged by name: manual ones and the ones the interviewer removed stay as they are.
     Returns (the new ClientInfo, the fields written)."""
-    from .clients import LinkedEntity
-
     if not result or result.get("status") != "fields":
         return info, []
     update, prov, written = {}, dict(info.provenance or {}), []

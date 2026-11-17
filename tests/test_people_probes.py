@@ -19,7 +19,7 @@ from pacenote.contract import FastResult, SyncResult, parse_sync_result
 from pacenote.llm import OfflineEngine
 from pacenote.prompts import (build_fast_system, build_plan_user, build_sync_system, build_sync_user,
                               people_guide, state_snapshot)
-from pacenote.questionnaire import load_client
+from pacenote.preparation import load_client
 from pacenote.session import Session, Settings
 from pacenote.state import SessionState
 

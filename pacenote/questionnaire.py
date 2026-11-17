@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Any, Literal
 
@@ -12,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, m
 from . import i18n
 from . import phases as _phases
 from .contract import SLOT_KEYS
+from .personas import PERSONAS
 
 Lang = str  # any language tag (fr, en, de, es…); validated with i18n.is_language
 
@@ -150,8 +150,6 @@ class QuestionDef(BaseModel):
     @field_validator("personas")
     @classmethod
     def _personas(cls, v: dict) -> dict:
-        from .personas import PERSONAS
-
         unknown = [k for k in v if k not in PERSONAS]
         if unknown:
             raise ValueError(f"unknown personas {unknown} (known: {', '.join(PERSONAS)})")
@@ -302,37 +300,3 @@ class ClientConfig(BaseModel):
 def load_questionnaire(path: Path) -> Questionnaire:
     data = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     return Questionnaire.model_validate(data)
-
-
-def load_client(clients_dir: Path, slug: str, use_preplan: bool = True) -> ClientConfig:
-    """use_preplan=False ignores clients/<slug>/preplan.json (local, untracked desk research): the
-    questionnaire exactly as written plus the client sheet."""
-    cdir = Path(clients_dir) / slug
-    qpath = cdir / "questionnaire.yaml"
-    if not qpath.exists():
-        raise FileNotFoundError(f"no questionnaire at {qpath}")
-    gpath = cdir / "glossary.md"
-    glossary = gpath.read_text(encoding="utf-8") if gpath.exists() else ""
-    from .clients import ClientInfo, load_preplan, tailor_questionnaire  # (avoid an import cycle)
-
-    base = load_questionnaire(qpath)
-    info = None
-    if (cdir / "client.yaml").exists():
-        import yaml as _yaml
-
-        info = ClientInfo.model_validate(_yaml.safe_load((cdir / "client.yaml").read_text(encoding="utf-8")) or {})
-    from .people import load_profiles
-
-    from .personas import interviewees
-
-    preplan = load_preplan(cdir) if use_preplan else None
-    tailored = tailor_questionnaire(base, info, preplan, load_profiles(cdir, info) if info is not None else None)
-    return ClientConfig(dir=cdir, questionnaire=tailored, glossary=glossary, base_questionnaire=base,
-                        interviewees=interviewees(info, preplan) if info is not None else [])
-
-
-_SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
-
-
-def valid_slug(slug: str) -> bool:
-    return bool(_SLUG.match(slug))

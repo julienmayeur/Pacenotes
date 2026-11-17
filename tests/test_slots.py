@@ -11,7 +11,8 @@ from pacenote import i18n
 from pacenote.contract import SLOT_KEYS, SLOT_RUNG, FastResult
 from pacenote.llm import OfflineEngine
 from pacenote.prompts import build_fast_system, build_fast_user, build_sync_system, build_sync_user
-from pacenote.questionnaire import load_client, load_questionnaire
+from pacenote.questionnaire import load_questionnaire
+from pacenote.preparation import load_client
 from pacenote.capture import ReplaySource
 from pacenote.session import Session, Settings
 from pacenote.state import SessionState

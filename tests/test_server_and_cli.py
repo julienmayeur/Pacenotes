@@ -87,7 +87,7 @@ def test_purge(tmp_path):
 
 
 def test_new_client_scaffold_is_loadable(tmp_path):
-    from pacenote.questionnaire import load_client
+    from pacenote.preparation import load_client
 
     assert main(["new-client", "acme", "--name", "ACME", "--clients-dir", str(tmp_path)]) == 0
     cfg = load_client(tmp_path, "acme")

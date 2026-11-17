@@ -33,6 +33,8 @@ import re
 import time
 import unicodedata
 
+from .contract import SLOT_KEYS
+
 PERSONAS = ("executive", "function_leader", "operator")
 DEFAULT = "executive"  # no contact, or a title the rule does not know: the interview's former default
 SMALL_COMPANY = 10  # under this headcount, titles sit close to the work
@@ -252,8 +254,6 @@ def apply_to_check(state, items, read: int, ok, reject) -> None:
     """Record what the interviewee could not answer, with who would know. Each new item defers the
     expect items behind its slots on the questions of that use case (or on that question): the card
     stops listing them as missing and the follow-ups move on."""
-    from .contract import SLOT_KEYS  # (avoid an import cycle)
-
     for t in items or []:
         question, ask = _clean(t.question), _clean(t.ask)
         if not question or not ask:

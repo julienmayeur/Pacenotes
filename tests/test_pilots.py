@@ -20,7 +20,7 @@ from pacenote.contract import SponsorProbe, parse_plan_doc
 from pacenote.finalize import apply_horizons, render_plan_md
 from pacenote.i18n import catalog as load_locale
 from pacenote.prompts import build_plan_system, build_sync_system, state_snapshot
-from pacenote.questionnaire import load_client
+from pacenote.preparation import load_client
 from pacenote.state import SessionState
 
 from .conftest import CLIENTS, REAL_CLIENTS, plan_doc, plan_use_case, result, fill

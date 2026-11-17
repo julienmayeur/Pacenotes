@@ -15,7 +15,7 @@ from pacenote.contract import AskTo
 from pacenote.finalize import render_plan_md
 from pacenote.llm import OfflineEngine, offline_plan_doc
 from pacenote.prompts import build_fast_system, build_plan_system, build_sync_system, state_snapshot
-from pacenote.questionnaire import load_client
+from pacenote.preparation import load_client
 from pacenote.server import create_app
 from pacenote.session import Session
 from pacenote.state import SessionState

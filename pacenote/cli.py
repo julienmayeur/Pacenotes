@@ -21,7 +21,7 @@ from .finalize import archive_plan, read_wispr
 from .llm import DEFAULT_FAST_MODEL, DEFAULT_MODEL, ENGINES, ClaudeCliEngine, ClaudeCliNotFound, SyncFailed, find_claude, make_engine
 from .clients import (ClientError, create_client, get_next_client, list_slugs, load_info, resolve_client,
                       set_next_client)
-from .questionnaire import load_client
+from .preparation import load_client
 from .session import Session, Settings, new_session_dir, purge
 
 ROOT = Path.cwd()

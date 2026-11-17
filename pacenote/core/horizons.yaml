@@ -1,5 +1,5 @@
 # Horizon questions, shipped with the app (pacenote/horizons.py). When the pre-study gives the client
-# a posture (or the interviewer sets one in the admin), clients.tailor_questionnaire adds the
+# a posture (or the interviewer sets one in the admin), preparation.tailor_questionnaire adds the
 # posture's questions at the end of the `return` phase, with the posture's priorities:
 #   - explorer (gentle): only the two-year question, if time allows; no competitor pressure;
 #   - pragmatic: both, important;

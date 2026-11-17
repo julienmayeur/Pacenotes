@@ -11,14 +11,14 @@ import pytest
 import yaml
 
 from pacenote import horizons
-from pacenote.clients import load_core_themes
+from pacenote.preparation import load_core_themes
 from pacenote.contract import parse_plan_doc
 from pacenote.finalize import apply_horizons, by_horizon, ranked, render_plan_md
 from pacenote.horizons import (checked_horizon, counted_signals, effective_posture, offline_horizon, posture_for,
                                posture_theme, preplan_horizon, score_prestudy)
 from pacenote.llm import offline_plan_doc
 from pacenote.prompts import build_fast_system, build_plan_system, build_sync_system
-from pacenote.questionnaire import load_client
+from pacenote.preparation import load_client
 from pacenote.research import ResearchOutput, write_outputs
 from pacenote.state import SessionState
 

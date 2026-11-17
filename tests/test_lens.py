@@ -19,7 +19,7 @@ from pacenote.contract import FastResult, SyncResult, parse_plan_doc, parse_sync
 from pacenote.finalize import apply_horizons, render_plan_md, wave_text
 from pacenote.llm import OfflineEngine, offline_plan_doc
 from pacenote.prompts import build_plan_system, build_plan_user, build_sync_system, state_snapshot
-from pacenote.questionnaire import load_client
+from pacenote.preparation import load_client
 from pacenote.session import Session, Settings
 from pacenote.state import SessionState
 

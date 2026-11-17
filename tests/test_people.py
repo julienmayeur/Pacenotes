@@ -32,7 +32,7 @@ from pacenote.people import (
     privacy_filter,
     sensitive_reason,
 )
-from pacenote.questionnaire import load_client
+from pacenote.preparation import load_client
 
 from .test_autofill import _node_playwright, _serve, calls, clients  # noqa: F401  (the clients fixture)
 

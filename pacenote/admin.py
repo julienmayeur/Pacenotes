@@ -39,6 +39,7 @@ from .people import (DEFAULT_PEOPLE_MODEL, CATEGORIES as PERSON_CATEGORIES, Peop
 from .finalize import md_to_html
 from .llm import DEFAULT_MODEL
 from .research import ResearchManager, list_history, restore_version
+from .web_guard import SameOriginGuard
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -449,8 +450,6 @@ def create_admin_app(clients_dir: Path, claude_bin: str | None = None, model: st
                      autofill: AutofillManager | None = None, people_model: str | None = None,
                      people: PeopleManager | None = None, bind_host: str | None = None) -> FastAPI:
     """The admin panel on its own (`pacenote admin`), without an interview session."""
-    from .web_guard import SameOriginGuard
-
     app = FastAPI(title="Pacenote — admin", docs_url=None, redoc_url=None)
     app.add_middleware(SameOriginGuard, bind_host=bind_host)  # no other web page can drive it
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

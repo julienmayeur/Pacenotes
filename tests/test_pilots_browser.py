@@ -17,7 +17,7 @@ from pacenote.admin import create_admin_app
 from pacenote.capture import ReplaySource
 from pacenote.contract import parse_plan_doc
 from pacenote.llm import OfflineEngine
-from pacenote.questionnaire import load_client
+from pacenote.preparation import load_client
 from pacenote.server import create_app
 from pacenote.session import Session, Settings
 

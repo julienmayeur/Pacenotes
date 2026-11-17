@@ -19,7 +19,7 @@ from pacenote import i18n, planview
 from pacenote.admin import create_admin_app
 from pacenote.capture import ReplaySource
 from pacenote.llm import OfflineEngine
-from pacenote.questionnaire import load_client
+from pacenote.preparation import load_client
 from pacenote.server import STATIC_DIR, create_app
 from pacenote.session import Session, Settings
 

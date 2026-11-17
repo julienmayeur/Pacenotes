@@ -16,7 +16,8 @@ from pacenote import i18n
 from pacenote.clients import create_client
 from pacenote.contract import SLOT_KEYS
 from pacenote.prompts import QUESTION_STYLE, build_fast_system, build_fast_user, build_sync_system, build_sync_user
-from pacenote.questionnaire import Questionnaire, load_client
+from pacenote.questionnaire import Questionnaire
+from pacenote.preparation import load_client
 from pacenote.state import SessionState
 
 from .conftest import CLIENTS, real_client

@@ -16,11 +16,11 @@ from fastapi.testclient import TestClient
 from pacenote import ambassadors
 from pacenote.admin import create_admin_app
 from pacenote.capture import ReplaySource
-from pacenote.clients import load_core_themes
+from pacenote.preparation import load_core_themes
 from pacenote.contract import parse_plan_doc
 from pacenote.llm import OfflineEngine
 from pacenote.prompts import build_fast_system, build_sync_system, state_snapshot
-from pacenote.questionnaire import load_client
+from pacenote.preparation import load_client
 from pacenote.session import Session, Settings
 from pacenote.state import SessionState
 

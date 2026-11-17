@@ -14,7 +14,7 @@ from pacenote.finalize import archive_plan, clean_fact, open_items, ranked, rend
 from pacenote.planview import print_document
 from pacenote.llm import OfflineEngine, offline_plan_doc
 from pacenote.prompts import build_plan_system, build_plan_user
-from pacenote.questionnaire import load_client
+from pacenote.preparation import load_client
 from pacenote.session import Session, Settings
 from pacenote.state import SessionState
 
