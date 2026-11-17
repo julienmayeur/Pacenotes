@@ -1,9 +1,12 @@
 # Seed questionnaire — Brioche & Four (bakery equipment distributor)
 #
 # How to write questions here (the app relies on it):
-#   - The CEO meets a consulting engineer for the first time. He has heard of AI but does
-#     not know how to use it, so he cannot say what success looks like in the abstract nor imagine
-#     what could be taken off his team's hands. Ask about his work, never about technology.
+#   - The interviewee meets a consulting engineer for the first time. They have heard of AI but do
+#     not know how to use it, so they cannot say what success looks like in the abstract nor imagine
+#     what could be taken off their team's hands. Ask about their work, never about technology.
+#     Write the questions for the company's executive: the copilot rewords them live for a function
+#     leader or a hands-on operator (pacenote/personas.py), and a question may carry `personas:`
+#     variants (see pacenote/core/questions.yaml).
 #   - Start from CAPACITY: what stops the company from taking more customers, orders or volume, or a
 #     new market, and what eats the team's time today. The target comes out of that discussion
 #     ("if this took half the time, what would you do with it, how many more orders?"); never ask

@@ -63,7 +63,7 @@ flowchart LR
 | Module | Role |
 |---|---|
 | `cli.py` | Entry point (`pacenote`, or `python -m pacenote`): `run`, `replay`, `finalize`, `purge`, `new-client`, `check`, `soak`, `next`, `admin`, `capabilities`, `metrics`, `recipes` |
-| `server.py` | FastAPI app for one interview: `/` page, `/api/state`, `/api/events` (SSE), actions (`/api/start`, `/api/next`, `/api/next-phase`, `/api/sync`, `/api/questions/{id}/answered|skip`, `/api/enough`, `/api/wispr`, `/api/finalize`, `/api/language`), Plan view (`/plan`, `/api/plan`, `/api/plan/pdf`); mounts the admin router |
+| `server.py` | FastAPI app for one interview: `/` page, `/api/state`, `/api/events` (SSE), actions (`/api/start`, `/api/next`, `/api/next-phase`, `/api/sync`, `/api/questions/{id}/answered|skip`, `/api/enough`, `/api/wispr`, `/api/finalize`, `/api/language`, `/api/interviewee`), Plan view (`/plan`, `/api/plan`, `/api/plan/pdf`); mounts the admin router |
 | `admin.py` | `/admin` page and `/admin/api/*`: clients, next client, research, pre-plan and history, Auto-fill, people cards, metrics, saved sessions and their plans |
 | `web_guard.py` | Host allow-list and same-origin guard on every server |
 | `listen/pacenote_listen.swift` | The speech helper: mic once, one `SpeechAnalyzer` + `SpeechTranscriber` per locale, JSON lines on stdout |
@@ -81,6 +81,7 @@ flowchart LR
 | `research.py`, `autofill.py`, `people.py` | Admin web agents: research + pre-plan + sector pre-study (Opus), client-sheet Auto-fill (Sonnet), interviewee profile cards (Sonnet) with a privacy filter |
 | `horizons.py` | Horizon tags (h1 execution now, h2 emerging, h3 foresight), the pre-study's 0–10 score and posture (explorer / pragmatic / urgent, operator-only), the posture's questions (`core/horizons.yaml`) |
 | `ambassadors.py` | Use case → person links; the interviewee read and the indirect people questions per workflow (merge, wording guard, timing, tone from the pace, template fallback); the local `ambassadors.json` (engine fills, hand edit wins) |
+| `personas.py` | Who is interviewed: the persona (executive, function leader, operator) inferred from title, headcount and notes, refined by the research, overridden by hand; questions re-worded and re-weighed per persona (`personas:` in the questions YAML); what the interviewee can't answer recorded as "to check with" (defers those details on the card, listed in the plan) |
 | `lens.py` | The executive lens: talking points on manual work and metric questions per workflow (merge, wording guard, timing, template fallback for metric questions); what the plan may use of them |
 | `recipes.py`, `metrics.py`, `briefs.py` | Recipe library schema and evidence; per-client metrics with locking; the dated knowledge briefs and their refresh |
 | `i18n.py`, `translate.py`, `locales/` | Catalogs shared with the browser, language resolution, on-the-fly translation through Claude |
@@ -94,10 +95,10 @@ flowchart LR
 clients/<slug>/                 one folder per client (git-ignored; clients.example/ holds the fictional one)
   questionnaire.yaml            seed questionnaire: use cases, themes, questions, ladders, slots, consent
   glossary.md                   known mishearings → correct terms, read by Claude
-  client.yaml                   client sheet (admin form): company fields with provenance, contacts, notes
+  client.yaml                   client sheet (admin form): company fields with provenance, contacts (name, role, notes, persona), notes
   research.md, preplan.md, preplan.json, history/<ts>/   admin research and pre-plan, previous versions
   people/<contact>.json         interviewee profile cards
-  ambassadors.json              potential ambassadors (person or role, use case, the CEO's quote); git-ignored everywhere
+  ambassadors.json              potential ambassadors (person or role, use case, the interviewee's quote); git-ignored everywhere
   metrics.yaml                  metric definitions from the plan + dated measurements
 
 sessions/<slug>/<YYYYMMDD-HHMMSS>/   one interview (git-ignored)
@@ -155,9 +156,9 @@ the plan is written from:
 | `volume` | how many per day or week, peaks | implementation |
 
 A question on a use case shows its unfilled required slots as « Ce qui manque » and is answered
-only once all of them hold what the CEO said (value + quote). A question without a use case keeps
+only once all of them hold what the interviewee said (value + quote), or were deferred to someone else ("to check with"). A question without a use case keeps
 its `expect` ladder (answered once at least half its items are heard) and sends its `slots` to the
-model as `gathers_slots`, so the answer fills them on whichever use case the CEO describes.
+model as `gathers_slots`, so the answer fills them on whichever use case the interviewee describes.
 
 ## The live interview loop
 
@@ -258,7 +259,7 @@ Whatever the model returns:
 
 ### Phases and maps
 
-`phases.py` orders the interview in seven phases, an internal backbone the CEO never hears as a
+`phases.py` orders the interview in seven phases, an internal backbone the interviewee never hears as a
 form:
 
 | # | Phase | About | Minutes (15-min interview) | Source |
@@ -275,7 +276,7 @@ Budgets scale with `target_minutes` (`phase_minutes:` overrides). A phase hands 
 focus change once its questions are done, its maps hold enough facts (`MAP_ENOUGH`, after at least
 one of its questions was asked), or its budget is spent.
 
-The maps (`maps` in the contract, `state.maps`) are filled from the CEO's stories: `org` (person,
+The maps (`maps` in the contract, `state.maps`) are filled from the interviewee's stories: `org` (person,
 role, department, reports to, time on judgment vs glue), `flows` (sender, receiver, what, channel,
 cadence, wait, who waits, confidential, CEO pattern), `stores` (what, where, owner, how found, reuse
 pain; know-how "in someone's head"), `decisions` (owner, frequency, inputs, prep vs decide time) and
@@ -450,6 +451,27 @@ stream-json progress shown live, stoppable, no API key in the child environment.
 | Research + pre-plan (`research.py`) | Opus, effort high, 30 min timeout | `research.md`, `preplan.md`, `preplan.json`; previous run in `history/` | use cases scored on value × feasibility, seed questions with ladders; a failed or stopped run changes nothing |
 | Auto-fill (`autofill.py`) | Sonnet, effort medium | `client.yaml` fields with per-field provenance | registered company first, distributed brands as linked entities; unsourced or < 0.3 confidence dropped; source pages checked (private addresses never opened); manual values never overwritten; candidates listed when the name is ambiguous; same request reused for 30 min |
 | People (`people.py`) | Sonnet | `people/<contact>.json` | professional, publicly self-published facts only; `privacy_filter` drops family, health, religion, politics, orientation, origin, finances, legal, birth dates, addresses, contact details; homonyms listed for a pick |
+
+### Interviewee personas
+
+`personas.py`. Each contact of the client sheet (name, title, optional notes) gets one of three personas:
+`executive` (outcomes, value, where time goes, who does what), `function_leader` (a process and its team:
+owners, tools, figures) or `operator` (the work itself: steps, volumes, exceptions). Precedence: the
+interviewer's pick (`contacts[].persona`), else the research run's guess (`preplan.json` → `personas`,
+with a reason and a confidence), else a deterministic rule on the title, the headcount (under 10 people a
+CEO is asked like a function leader and a department head like an operator; from 20 a CEO no longer knows
+the execution details) and the notes (a hands-on note moves one step towards the work). The admin shows
+the persona, why and how sure, next to a small override menu.
+
+On the consent screen (`/api/interviewee`, before Start only) the interviewer picks who is in front of
+them and may change the persona for that session. `state.set_interviewee` applies the questions'
+`personas:` variants (wording and priority; priority 0 = not asked, its theme drops out of the coverage),
+and the prompts get a "Who you interview" block: how deep to go, what not to ask, and what to do when the
+person can't answer. The full sync then returns `to_check` items (question, who would know, the slots it
+leaves open, the quote): those expect items stop counting as missing (`QuestionState.deferred`), the card
+shows "To check with", and the plan gets a "To check with other people" section grouped by person plus
+the interviewee's role and persona under the context (never the name). The talking points (`lens.py`)
+are off for an operator.
 
 The « next client » (`~/.pacenote/config.json`, `pacenote next`) is the default for `run`, `replay`,
 `finalize`, `check` and `soak`.

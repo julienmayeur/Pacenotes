@@ -4,7 +4,7 @@ Pace notes for your interviews.
 
 In a rally, the co-driver reads the pace notes so the driver keeps their eyes on the road. Pacenote
 is a live interview copilot for consulting and discovery kickoffs: during a 10–15 minute
-conversation with a client's CEO, it listens, keeps the question on screen, captures the answer,
+conversation with someone at a client (its CEO, a function leader or a person who does the work), it listens, keeps the question on screen, captures the answer,
 proposes the next follow-up, and writes the integration plan when you stop. You keep your mind on
 the conversation.
 
@@ -23,7 +23,7 @@ prepare (admin) ─► consent ─► interview: capture + follow-ups ─► sto
   volumes).
 - **Follow-ups.** A fast pass a few seconds after each answer proposes one follow-up at a time; a
   full sync every ~40 s updates the answers, the facts still missing and the maps of who carries
-  which information. Phases order the interview behind the scenes; the CEO never hears a form.
+  which information. Phases order the interview behind the scenes; the interviewee never hears a form.
 - **Admin auto-fill.** Before the interview, the admin panel fills the client sheet from public web
   sources (with provenance per field; your own edits are never overwritten) and prepares profile
   cards of the people you will meet (professional, publicly self-published facts only).
@@ -47,10 +47,21 @@ prepare (admin) ─► consent ─► interview: capture + follow-ups ─► sto
   workflow, once that workflow has been walked through (in a sector that is behind, only once rapport
   is there), once per person. Why it is asked and the read stay in your console (`c`). A core
   question asks who tries new tools first and who the others listen to. Each potential ambassador is kept as a
-  light label with the CEO's words, on your Mac only, and you can edit or remove it in the admin
+  light label with the interviewee's words, on your Mac only, and you can edit or remove it in the admin
   (your edits are kept; a removed person never comes back).
-- **Guiding the executive on value.** Fifteen minutes with the CEO is not weeks with the staff, so
-  the copilot helps you steer toward value, workflow by workflow. When the CEO describes manual work
+- **Who you interview.** In the admin, list the people you will meet (name, title, optional notes). Each
+  gets a persona, with a short reason and how sure it is: **executive** (runs the company: outcomes,
+  value, where time goes, who does what), **function leader** (owns a process and a team: who owns each
+  step, tools, figures) or **hands-on operator** (does the work: step by step, volumes, exceptions). It
+  comes from the title, the company's size and your notes (the CEO of a 6-person company is close to
+  the work; the CEO of 20+ is not), and the research refines it; a small menu changes it. On the consent
+  screen you pick who is in front of you. The persona shapes the whole interview: the wording and
+  priority of the questions (an operator is never asked about strategy), how deep the follow-ups go, the
+  talking points (never for an operator) and the metric questions. When the person can't answer
+  something, the copilot doesn't push: it shows "To check with" and who would know, and the plan lists
+  those points per person.
+- **Guiding the executive on value.** Fifteen minutes with an executive is not weeks with the staff, so
+  the copilot helps you steer toward value, workflow by workflow. When the interviewee describes manual work
   (someone opens emails by hand and re-keys them into Excel), a short, tactful talking point shows
   under the follow-up ("Worth saying"): the task brings that person little, it can run on its own, and
   their time goes to the decisions only they can make. It is about the task, never the person; why it
@@ -103,11 +114,11 @@ A client folder holds:
 
 | File | Purpose |
 |---|---|
-| `client.yaml` | The client sheet (company, people met, your notes) |
+| `client.yaml` | The client sheet (company, the people you will interview and their persona, your notes) |
 | `questionnaire.yaml` | Seed questions, phases and languages |
 | `glossary.md` | Expected mishearings (people, products, jargon) → what was said |
 | `research.md`, `preplan.md`, `preplan.json` | Written by the research run: the brief, the pre-plan, the pre-study |
-| `ambassadors.json` | Potential ambassadors from the interviews, with the CEO's words (edit them in the admin) |
+| `ambassadors.json` | Potential ambassadors from the interviews, with the interviewee's words (edit them in the admin) |
 
 Start a new one with `pacenote new-client <slug> --name "Company"`, or in the admin panel.
 
@@ -221,7 +232,7 @@ Chrome-family browser.
 - Only text (questions, transcript lines, client context) is sent to Claude. `sync_log.jsonl` in each
   session folder is the exact record of what was sent.
 - Profile cards keep professional, publicly self-published facts only.
-- Potential ambassadors are a name or role, the use case and the CEO's own words, nothing more.
+- Potential ambassadors are a name or role, the use case and the interviewee's own words, nothing more.
   They stay in `clients/<slug>/ambassadors.json`, which git ignores wherever it is.
 - The read of the interviewee and the people questions stay in the session (`sessions/` is
   git-ignored) and in your console. They are never sent to the plan or shown in it.
