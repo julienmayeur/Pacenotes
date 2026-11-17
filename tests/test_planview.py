@@ -16,7 +16,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from pacenote.shared import i18n
-from pacenote.plan import view as planview
+from pacenote.plan import view as plan_view
 from pacenote.web.admin import create_admin_app
 from pacenote.transcription.capture import ReplaySource
 from pacenote.copilot.engines import OfflineEngine
@@ -29,7 +29,7 @@ from .conftest import CLIENTS, fill, result
 QUIET = Settings(sync_interval=3600, first_sync_delay=3600, poll_interval=3600, fast_enabled=False)
 SLUG = "brioche-four-slots"
 SID = "20261102-164906"
-HAS_CHROME = planview.find_chrome() is not None
+HAS_CHROME = plan_view.find_chrome() is not None
 
 
 def _session(sessions: Path, finalize: bool = True) -> Session:
@@ -154,9 +154,9 @@ def test_find_chrome_honours_pacenote_chrome(tmp_path, monkeypatch):
     exe.write_text("#!/bin/sh\n")
     exe.chmod(0o755)
     monkeypatch.setenv("PACENOTE_CHROME", str(exe))
-    assert planview.find_chrome() == str(exe)
+    assert plan_view.find_chrome() == str(exe)
     monkeypatch.setenv("PACENOTE_CHROME", str(tmp_path / "missing"))
-    assert planview.find_chrome() is None
+    assert plan_view.find_chrome() is None
 
 
 def test_a_browser_that_writes_nothing_is_a_clear_error(tmp_path, monkeypatch):

@@ -2,13 +2,13 @@
 
 A first use case spreads through pilots: colleagues keen to go first, who prove it on real cases and
 show their own numbers to the others. Nobody can say in advance how many there are (none, a few, or a whole
-team): they come only from the interview's answers (ambassadors.py), as named people or as a group the
+team): they come only from the interview's answers (pilots.py), as named people or as a group the
 interviewee describes ("the whole sales team is up for it"), recorded as a group, never with invented names.
 
 The boss is always involved. When the leader of the company or of a function is in the meeting
 (attendees.lead), the plan always names them as the sponsor who leads by example, alongside any pilots:
 they cannot ask their teams to adopt it and do nothing themself. What they will do themself is found out
-during the interview (the sponsor question, ambassadors.py) and goes into the first wave. An operator alone
+during the interview (the sponsor question, pilots.py) and goes into the first wave. An operator alone
 in the meeting is never made the sponsor: the plan then says the sponsor is to be confirmed with the
 leadership.
 """

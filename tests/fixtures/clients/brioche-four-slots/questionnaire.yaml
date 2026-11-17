@@ -54,7 +54,7 @@
 #     theme (or a question): `wealth` (where the company makes and loses money, what limits growth),
 #     `deep-dives` (the use-case walkthroughs) and `return` (ROI, budget, decision). The four phases
 #     in between (who carries the signal, how it travels, where knowledge lives, where expertise
-#     decides) ship with the app (pacenote/core/questions.yaml) and are merged in at load time.
+#     decides) ship with the app (pacenote/interview/core/questions.yaml) and are merged in at load time.
 #     A file without `phase:` still loads: use-case questions go to the deep dives, capacity /
 #     strategy themes open, ROI / budget close, the rest are deep dives. `phase_minutes:` overrides
 #     the time budget per phase (scaled to target_minutes).

@@ -9,7 +9,7 @@ Every opportunity is tagged with a horizon:
 The client never reads "H1 / H2 / H3": the plan groups opportunities under plain words
 ("This week / This quarter / Within two years", locale keys `plan.horizon.*`).
 
-The posture sets the interview's pace and tone. The pre-study (research.py) gathers four public
+The posture sets the interview's pace and tone. The pre-study (desk.py) gathers four public
 signals and this module scores them, 0 to 10:
 
 - A. sector adoption: share of companies of the client's sector and size using AI (0 to 3);
@@ -67,7 +67,7 @@ class CompetitorSignal(_Strict):
 
 
 class PreStudy(_Strict):
-    """The structured part of the pre-study (research.py): what the posture is scored from."""
+    """The structured part of the pre-study (desk.py): what the posture is scored from."""
 
     sector: str  # the client's sector, in a few words
     size_band: str  # the size class the benchmark uses, e.g. "10-49 employees"
@@ -203,7 +203,7 @@ def load_horizon_file(path: Path = HORIZON_FILE) -> dict:
 
 def posture_theme(posture: str | None, path: Path = HORIZON_FILE):
     """The horizon questions the posture asks for, as a theme of the `return` phase (None without a
-    posture). Each posture keeps its own questions with its own priorities (core/horizons.yaml):
+    posture). Each posture keeps its own questions with its own priorities (horizons.yaml):
     an explorer interview only touches the future if time allows; an urgent one checks what the
     competitors changed, as a must-have."""
     if posture not in POSTURES:

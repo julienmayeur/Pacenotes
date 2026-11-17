@@ -16,7 +16,7 @@ CEO of 20+ people is not. A department head in a company under 10 people usually
 
 Where a contact's persona comes from (first that applies):
 1. manual: the interviewer picked it in the admin (client.yaml, contact `persona`);
-2. research: the pre-study's guess (research.py, preplan.json `personas`), from what it found about
+2. research: the pre-study's guess (research/desk.py, preplan.json `personas`), from what it found about
    the person and the company;
 3. rule: infer() below, from the title, the headcount and the interviewer's notes, so a contact added
    after the research still gets one at once.

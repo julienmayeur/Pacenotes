@@ -54,7 +54,7 @@ themes:
           implementation:
             - {fr: "combien de personnes par service", en: "how many people per department"}
         keywords: [clés, absent, vacances, indispensable, service, entrepôt, comptabilité, keys]
-      # who could be the pilots of the first use case (ambassadors.py, pilots.py): who tries new tools first
+      # who could be the pilots of the first use case (people/pilots.py, people/sponsor.py): who tries new tools first
       # (one person, several, or the leader themself), who the others listen to
       - id: core-first-to-try
         priority: 2

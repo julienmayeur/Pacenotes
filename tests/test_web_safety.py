@@ -15,7 +15,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from pacenote.web import guard as web_guard
+from pacenote.web import guard
 from pacenote.web.admin import create_admin_app
 from pacenote.transcription.capture import ListenCapture, ReplaySource
 from pacenote.plan.finalize import md_to_html, safe_url
@@ -113,14 +113,14 @@ def test_admin_app_refuses_cross_origin_writes(tmp_path):
 
 
 def test_guard_rules():
-    hosts = web_guard.allowed_hosts("127.0.0.1")
-    assert web_guard.check("GET", "/", {"host": "127.0.0.1:8765"}, hosts) is None
-    assert web_guard.check("GET", "/", {"host": "[::1]:8765"}, hosts) is None
-    assert web_guard.check("POST", "/api/start", {"host": "localhost:8765", "origin": "http://localhost:8765"}, hosts) is None
-    assert web_guard.check("POST", "/api/start", {"host": "localhost:8765", "origin": "http://localhost:9999"}, hosts)
-    assert web_guard.check("GET", "/", {"host": "attacker.test"}, hosts)
-    assert "192.168.1.20" in web_guard.allowed_hosts("192.168.1.20")  # --host on a LAN address
-    assert web_guard.allowed_hosts("0.0.0.0") == web_guard.allowed_hosts(None)  # wildcard: no name
+    hosts = guard.allowed_hosts("127.0.0.1")
+    assert guard.check("GET", "/", {"host": "127.0.0.1:8765"}, hosts) is None
+    assert guard.check("GET", "/", {"host": "[::1]:8765"}, hosts) is None
+    assert guard.check("POST", "/api/start", {"host": "localhost:8765", "origin": "http://localhost:8765"}, hosts) is None
+    assert guard.check("POST", "/api/start", {"host": "localhost:8765", "origin": "http://localhost:9999"}, hosts)
+    assert guard.check("GET", "/", {"host": "attacker.test"}, hosts)
+    assert "192.168.1.20" in guard.allowed_hosts("192.168.1.20")  # --host on a LAN address
+    assert guard.allowed_hosts("0.0.0.0") == guard.allowed_hosts(None)  # wildcard: no name
 
 
 # --- 3. web research / model text is data ----------------------------------------------------------

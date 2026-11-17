@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from pacenote.shared import i18n
-from pacenote.plan import view as planview
+from pacenote.plan import view as plan_view
 from pacenote.web.admin import admin_router
 from pacenote.research.autofill import DEFAULT_AUTOFILL_MODEL, AutofillManager, dead_links
 from pacenote.people.profiles import DEFAULT_PEOPLE_MODEL, PeopleManager
@@ -59,7 +59,7 @@ def create_app(session: Session, auto_start: bool = False, research: ResearchMan
             await session.shutdown()
 
     app = FastAPI(title="Pacenote", lifespan=lifespan, docs_url=None, redoc_url=None)
-    app.add_middleware(SameOriginGuard, bind_host=bind_host)  # no other web page can drive it (web_guard.py)
+    app.add_middleware(SameOriginGuard, bind_host=bind_host)  # no other web page can drive it (web/guard.py)
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     app.include_router(i18n.api_router())  # catalogs for static/i18n.js (any screen)
     # the admin panel (clients, research, pre-plan) on its own page: /admin
@@ -179,19 +179,19 @@ def create_app(session: Session, auto_start: bool = False, research: ResearchMan
     # the Plan view of this session (static/plan.html), its data and its PDF export
     @app.get("/plan", response_class=HTMLResponse)
     async def plan_page() -> HTMLResponse:
-        return planview.page_response()
+        return plan_view.page_response()
 
     @app.get("/api/plan")
     async def plan_data() -> dict:
-        return planview.payload_response(session.session_dir)
+        return plan_view.payload_response(session.session_dir)
 
     @app.get("/api/plan/md")
     async def plan_markdown() -> FileResponse:
-        return planview.markdown_response(session.session_dir)
+        return plan_view.markdown_response(session.session_dir)
 
     @app.get("/api/plan/pdf")
     async def plan_pdf() -> FileResponse:
-        return await planview.pdf_response(session.session_dir)
+        return await plan_view.pdf_response(session.session_dir)
 
     @app.get("/plan.md")
     async def plan_md() -> FileResponse:

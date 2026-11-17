@@ -1,7 +1,7 @@
 """What an interview starts from for one client: the questionnaire as it will be asked.
 
 The client's seed questionnaire, plus the app's core questions (phases 1-4, `core/questions.yaml`), plus the
-pre-plan's seed questions as a theme, plus the questions of the pace in force (`core/horizons.yaml`), and the
+pre-plan's seed questions as a theme, plus the questions of the pace in force (`research/horizons.yaml`), and the
 background the model reads (client sheet, interviewer notes, profile cards, pre-plan). `load_client` assembles
 it into the `ClientConfig` a session runs on.
 """

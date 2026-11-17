@@ -167,16 +167,16 @@ def plan_doc(*use_cases, context="Brioche & Four distribue des fours Fornaxa.", 
 def _no_ambassador_file_in_the_repo(monkeypatch):
     """Finalizing a session records the potential ambassadors in its client folder: never in the
     repo's fixtures or example client (tests that check the file work on a copy under tmp_path)."""
-    from pacenote.people import pilots as ambassadors
+    from pacenote.people import pilots
 
-    real = ambassadors.record
+    real = pilots.record
 
     def guarded(client_path, state, session=""):
         if Path(client_path).resolve().is_relative_to(ROOT):
-            return ambassadors.load(client_path)
+            return pilots.load(client_path)
         return real(client_path, state, session)
 
-    monkeypatch.setattr(ambassadors, "record", guarded)
+    monkeypatch.setattr(pilots, "record", guarded)
 
 
 @pytest.fixture(autouse=True)
@@ -190,7 +190,7 @@ def _isolated_listen_helper(tmp_path, monkeypatch):
 @pytest.fixture(autouse=True)
 def _testclient_host(monkeypatch):
     """Starlette's TestClient calls the app as http://testserver: let the same-origin guard
-    (web_guard.py) accept that name in tests, like PACENOTE_ALLOWED_HOSTS would for a LAN name."""
+    (web/guard.py) accept that name in tests, like PACENOTE_ALLOWED_HOSTS would for a LAN name."""
     monkeypatch.setenv("PACENOTE_ALLOWED_HOSTS", "testserver")
 
 

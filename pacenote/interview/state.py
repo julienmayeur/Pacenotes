@@ -62,7 +62,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-from pacenote.people import pilots as ambassadors
+from pacenote.people import pilots
 from pacenote.shared import fsutil, i18n
 from pacenote.interview import lens
 from pacenote.people import personas
@@ -394,7 +394,7 @@ class SessionState(BaseModel):
     ask_to: dict[str, dict] = Field(default_factory=dict)
     # what the interviewee could not answer, with who would know (personas.apply_to_check)
     to_check: list[dict] = Field(default_factory=list)
-    # ambassadors.py: question id -> the person the screen suggested an indirect people question about,
+    # pilots.py: question id -> the person the screen suggested an indirect people question about,
     # recorded when the focus leaves that question, so it is suggested once
     ambassador_prompted: dict[str, str] = Field(default_factory=dict)
     # the running read of the interviewee (contract.IntervieweeRead) and the indirect people questions
@@ -1068,10 +1068,10 @@ class SessionState(BaseModel):
                     PassageLog(sync=sync_no, start=p.start, speaker=p.speaker, lang=p.lang, text=p.text.strip())
                 )
 
-        # 6b. the interviewee read and the people questions (ambassadors.py)
-        ambassadors.apply_read(self, result.interviewee_read, read, ok)
-        ambassadors.apply_probes(self, result.ambassador_probes, read, ok, reject)
-        ambassadors.apply_sponsor(self, result.sponsor_probe, read, ok, reject)
+        # 6b. the interviewee read and the people questions (pilots.py)
+        pilots.apply_read(self, result.interviewee_read, read, ok)
+        pilots.apply_probes(self, result.ambassador_probes, read, ok, reject)
+        pilots.apply_sponsor(self, result.sponsor_probe, read, ok, reject)
         # 6c. the executive lens: talking points and metric questions per workflow (lens.py)
         lens.apply_framings(self, result.value_framings, read, ok, reject)
         lens.apply_metric_questions(self, result.metric_questions, read, ok, reject)
@@ -1245,8 +1245,8 @@ class SessionState(BaseModel):
         old = self.focus_id
         if (left := self.get(old)) is not None:
             left.thread_at = time.time()  # joins the thread, at the bottom
-            if (suggested := ambassadors.prompt_for(self, old)) is not None:
-                ambassadors.mark_shown(self, old, left.use_case, suggested)
+            if (suggested := pilots.prompt_for(self, old)) is not None:
+                pilots.mark_shown(self, old, left.use_case, suggested)
             lens.mark_shown(self, old)
         if self.phase is None:
             self.phase = left.phase if left is not None else self.current_phase

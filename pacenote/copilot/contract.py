@@ -253,7 +253,7 @@ ProbeTiming = Literal["now", "later", "done"]
 
 class IntervieweeRead(_Strict):
     """A light running read of the person interviewed (whatever their persona), only to phrase the people
-    questions well (ambassadors.py). Interviewer-side, kept in the session; never in the plan. Only
+    questions well (pilots.py). Interviewer-side, kept in the session; never in the plan. Only
     what the conversation shows, in plain words; "" (or unknown / building) when nothing shows yet."""
 
     role: str  # their position and what they answer for, as heard (founder CEO, CIO who inherited the ERP)
@@ -278,7 +278,7 @@ class AmbassadorProbe(_Strict):
 
 
 class SponsorProbe(_Strict):
-    """The leader in the meeting sponsors the first wave and leads by example (pilots.py). An indirect
+    """The leader in the meeting sponsors the first wave and leads by example (sponsor.py). An indirect
     question finds out what they would do themself (try it first on a report or a decision of their own and
     show the team), phrased for them; never "would you be the ambassador" or the sponsor."""
 
@@ -688,7 +688,7 @@ class AdoptionPlan(_Strict):
     prove it on the lighthouse use case; their measured results convince most of the team; once most
     of the company works this way, everyone follows. Nothing is designed around converting the
     reluctant. Pilots come only from the interview (none, a few, or a whole team); the leader in the meeting
-    always sponsors the first wave, leading by example (pilots.py)."""
+    always sponsors the first wave, leading by example (sponsor.py)."""
 
     lighthouse: str  # id of the opportunity to start with (an h1 one)
     pilots: list[Pilot]  # 0..N people or groups, as heard in the interview; [] when nobody was named

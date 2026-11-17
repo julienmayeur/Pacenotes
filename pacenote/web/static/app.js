@@ -336,7 +336,7 @@ function renderAsk(cur, changed) {
 
 /** Under the focal follow-up, quiet, tied to the current workflow: a talking point to say about its manual
  *  work (lens.py), then the questions also worth asking: its missing baseline or success metric (lens.py)
- *  and the indirect people question (ambassadors.py). Only what to say and the workflow's name; why stays
+ *  and the indirect people question (pilots.py). Only what to say and the workflow's name; why stays
  *  in the console. */
 function renderAmbassadorAsk(cur) {
   const live = cur && S.mode === "interview";

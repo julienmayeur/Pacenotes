@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from pacenote.people import pilots as ambassadors
+from pacenote.people import pilots
 from pacenote.shared import i18n
 from pacenote.transcription.capture import ReplaySource
 from pacenote.copilot.contract import FastResult, SyncResult, parse_sync_result
@@ -74,11 +74,11 @@ def test_a_probe_waits_for_the_walkthrough_and_the_rapport_then_shows_once_and_c
     rep = st.apply_sync_result(s1)
     assert st.interviewee_read["ai_stance"] == "wary" and st.interviewee_read["rapport"] == "building"
     assert st.ambassador_probes["bakery-orders"]["timing"] == "later"
-    assert ambassadors.prompt_for(st) is None  # held for later, workflow not walked through, no rapport
+    assert pilots.prompt_for(st) is None  # held for later, workflow not walked through, no rapport
     assert any(e.kind == "probe" for e in rep.applied)
 
     rep = st.apply_sync_result(s2)
-    shown = ambassadors.prompt_for(st)
+    shown = pilots.prompt_for(st)
     assert shown == {"person": "Claire", "use_case": st.get_use_case("bakery-orders").title("fr"),
                      "question": "Quand Excel ou Sage coince à l'ADV, c'est vers Claire que les autres se tournent ?",
                      "reason": REASON, "source": "model"}
@@ -94,8 +94,8 @@ def test_a_probe_waits_for_the_walkthrough_and_the_rapport_then_shows_once_and_c
     assert st.ambassador_probes["bakery-orders"]["timing"] == "done"
     assert st.interviewee_read["ai_stance"] == "curious" and st.interviewee_read["rapport"] == "established"
     st.focus_id = "orders-walkthrough"
-    assert ambassadors.prompt_for(st) is None  # closed: no template either
-    assert ambassadors.probes_view(st) == []
+    assert pilots.prompt_for(st) is None  # closed: no template either
+    assert pilots.probes_view(st) == []
 
 
 def test_the_interview_view_shows_the_question_and_keeps_the_reason_for_the_console(tmp_path):
@@ -127,7 +127,7 @@ def test_without_a_model_probe_an_indirect_template_in_the_sector_tone(posture, 
     st = _state(posture)
     _walked(st)
     st.focus_id = "orders-walkthrough"
-    got = ambassadors.prompt_for(st)
+    got = pilots.prompt_for(st)
     assert got["question"] == expected and got["source"] == "template" and got["reason"] == ""
 
 
@@ -135,9 +135,9 @@ def test_a_laggard_sector_waits_for_an_established_rapport():
     st = _state("explorer")
     _walked(st)
     st.focus_id = "orders-walkthrough"
-    assert ambassadors.prompt_for(st) is None
+    assert pilots.prompt_for(st) is None
     st.apply_sync_result(result(interviewee_read=_read(rapport="established")))
-    assert ambassadors.prompt_for(st)["question"].startswith("Quand Excel ou le logiciel coince")
+    assert pilots.prompt_for(st)["question"].startswith("Quand Excel ou le logiciel coince")
     st.apply_sync_result(result(interviewee_read=_read(rapport="building")))
     assert st.interviewee_read["rapport"] == "established"  # rapport only grows
 
@@ -146,9 +146,9 @@ def test_nothing_shows_before_the_workflow_is_walked_through():
     st = _state("urgent")
     st.apply_sync_result(result(ambassador_probes=[_probe()], interviewee_read=_read(rapport="established")))
     st.focus_id = "orders-walkthrough"
-    assert ambassadors.prompt_for(st) is None  # no workflow slot filled yet
+    assert pilots.prompt_for(st) is None  # no workflow slot filled yet
     st.apply_sync_result(result(slots=[fill("bakery-orders", "trigger", "emails des boulangeries")]))
-    assert ambassadors.prompt_for(st)["source"] == "model"
+    assert pilots.prompt_for(st)["source"] == "model"
 
 
 def test_later_holds_back_the_template_too_and_a_probe_is_shown_under_one_question_only():
@@ -156,11 +156,11 @@ def test_later_holds_back_the_template_too_and_a_probe_is_shown_under_one_questi
     _walked(st)
     st.apply_sync_result(result(ambassador_probes=[_probe(timing="later")]))
     st.focus_id = "orders-walkthrough"
-    assert ambassadors.prompt_for(st) is None
+    assert pilots.prompt_for(st) is None
     st.apply_sync_result(result(ambassador_probes=[_probe(timing="now")]))
-    assert ambassadors.prompt_for(st)["source"] == "model"
+    assert pilots.prompt_for(st)["source"] == "model"
     st.advance()
-    assert ambassadors.prompt_for(st, "orders-walkthrough")["person"] == "Claire"  # same question: still there
+    assert pilots.prompt_for(st, "orders-walkthrough")["person"] == "Claire"  # same question: still there
     rep = st.apply_sync_result(result(ambassador_probes=[_probe(question="Et Claire, elle range comment ses fichiers ?")]))
     assert [e.detail for e in rep.rejected if e.kind == "probe"] == ["already asked"]
 
@@ -187,7 +187,7 @@ def test_a_stale_read_is_ignored():
     "Would Claire like an AI assistant?", "Un outil qui automatise ça plairait à Claire ?", "Who is your champion?",
 ])
 def test_people_question_wording_never_judges_or_names_the_purpose(text):
-    assert ambassadors.probe_problem(text)
+    assert pilots.probe_problem(text)
 
 
 @pytest.mark.parametrize("text", [
@@ -195,16 +195,16 @@ def test_people_question_wording_never_judges_or_names_the_purpose(text):
     "Who brings the Excel tricks on the order desk?", "Qu'est-ce que Claire ferait d'une heure de plus par jour ?",
 ])
 def test_indirect_questions_pass(text):
-    assert ambassadors.probe_problem(text) == ""
+    assert pilots.probe_problem(text) == ""
 
 
 def test_the_templates_exist_in_english_and_french_and_follow_the_rules():
     for lang in ("en", "fr"):
         tr = i18n.Translator(lang)
-        for tone in ambassadors.TONES:
+        for tone in pilots.TONES:
             text = tr(f"focus.probe.{tone}", person="Claire")
             assert "Claire" in text and text.endswith("?") and "{{" not in text
-            assert ambassadors.probe_problem(text) == "" and jargon(text) == []
+            assert pilots.probe_problem(text) == "" and jargon(text) == []
         assert "Claire" in tr("console.probeTemplateWhy", person="Claire")
         assert tr("console.probes") and tr("console.readLine", tone="a", approach="b")
 

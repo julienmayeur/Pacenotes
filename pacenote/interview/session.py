@@ -21,7 +21,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
-from pacenote.people import pilots as ambassadors
+from pacenote.people import pilots
 from pacenote.shared import fsutil, i18n
 from pacenote.interview import lens
 from pacenote.people import personas
@@ -816,10 +816,10 @@ class Session:
         return files
 
     def record_ambassadors(self) -> None:
-        """The potential ambassadors this interview surfaced go to clients/<slug>/ambassadors.json
+        """The potential pilots this interview surfaced go to clients/<slug>/ambassadors.json
         (local, git-ignored; edited in the admin, where a hand edit wins)."""
         try:
-            ambassadors.record(self.client.dir, self.state, self.session_dir.name)
+            pilots.record(self.client.dir, self.state, self.session_dir.name)
         except Exception:  # a label file must never block the plan
             log.exception("could not record the potential ambassadors")
 
@@ -929,9 +929,9 @@ class Session:
                        "use_case": ({"id": uc.id, "title": uc.title(shown), "missing": cur.missing_slots()}
                                     if (uc := st.get_use_case(cur.use_case)) else None),
                        "thread": thread(cur),
-                       # the indirect people question tied to this workflow (ambassadors.prompt_for): its
+                       # the indirect people question tied to this workflow (pilots.prompt_for): its
                        # reason (the ambassador angle) is for the interviewer, shown only in the console
-                       "ambassador": ambassadors.prompt_for(st, lang=shown),
+                       "ambassador": pilots.prompt_for(st, lang=shown),
                        # the executive lens (lens.py): a talking point to say about this workflow's
                        # manual work, and the question for its missing baseline or success metric
                        "framing": lens.framing_for(st, lang=shown),
@@ -980,9 +980,9 @@ class Session:
             "next": upcoming,
             "phases": self.phases_view(shown),
             "recipes": self.recipes_view(shown),  # console only: "Possible recipes"
-            "ambassadors": ambassadors.candidates(st),  # console only: "Potential ambassadors"
-            "probes": ambassadors.probes_view(st, shown),  # console only: the people questions and their reasons
-            "read": ambassadors.read_view(st),  # console only: the interviewee's tone and how to ask
+            "ambassadors": pilots.candidates(st),  # console only: "Potential ambassadors"
+            "probes": pilots.probes_view(st, shown),  # console only: the people questions and their reasons
+            "read": pilots.read_view(st),  # console only: the interviewee's tone and how to ask
             "framings": lens.framings_view(st, shown),  # console only: the talking points and why now
             "to_check": personas.view(st, shown),  # console: what to check with whom
             # who is in the meeting (consent screen, header chip, console): role, persona, prep note

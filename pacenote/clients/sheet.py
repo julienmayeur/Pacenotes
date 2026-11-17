@@ -10,9 +10,9 @@ clients/<slug>/
                        provenance (agent or manual), all filled by "Auto-fill" (pacenote/autofill.py);
                        who we meet (name, role, notes, persona: personas.py), the interviewer's notes,
                        whether the pre-plan feeds the interview
-  people/<contact>.json  the interviewee profile cards (pacenote/people.py), regenerated, not in git
+  people/<contact>.json  the interviewee profile cards (pacenote/people/profiles.py), regenerated, not in git
   research.md          research with sources            } written by "Lancer la recherche"
-  preplan.md           the pre-plan (editable)          } (pacenote/research.py); previous
+  preplan.md           the pre-plan (editable)          } (pacenote/research/desk.py); previous
   preplan.json         use cases + seed questions       } versions go to history/<timestamp>/
   history/<timestamp>/ previous research / pre-plan versions
 

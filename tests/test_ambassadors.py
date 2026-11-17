@@ -13,7 +13,7 @@ import subprocess
 import pytest
 from fastapi.testclient import TestClient
 
-from pacenote.people import pilots as ambassadors
+from pacenote.people import pilots
 from pacenote.web.admin import create_admin_app
 from pacenote.transcription.capture import ReplaySource
 from pacenote.interview.preparation import load_core_themes
@@ -53,7 +53,7 @@ def _focus(st: SessionState, qid: str) -> None:
 def test_a_use_case_maps_to_the_person_its_actors_slot_names():
     st = _state()
     _heard(st)
-    links = ambassadors.links(st)
+    links = pilots.links(st)
     assert links == [{"person": "Claire", "role": "assistante ADV", "use_case": "bakery-orders",
                       "title": st.get_use_case("bakery-orders").title("fr"), "quote": "c'est Claire qui saisit"}]
 
@@ -62,24 +62,24 @@ def test_a_role_or_an_answer_also_maps_and_a_short_actors_value_is_a_person_itse
     st = _state()
     st.apply_sync_result(result(maps=maps(org=[org(rid="adv", person="", role="assistante ADV", evidence="l'ADV")]),
                                 slots=[fill("bakery-orders", "actors", "l'assistante ADV saisit", "l'assistante ADV")]))
-    assert [x["person"] for x in ambassadors.links(st)] == ["assistante ADV"]
+    assert [x["person"] for x in pilots.links(st)] == ["assistante ADV"]
     st2 = _state()
     st2.apply_sync_result(result(maps=maps(org=[org(rid="marc", person="Marc", evidence="Marc au dépôt")])))
     st2.get("stock-walkthrough").answer = "Marc regarde le stock dans Excel."
-    assert [(x["person"], x["use_case"], x["quote"]) for x in ambassadors.links(st2)] == [
+    assert [(x["person"], x["use_case"], x["quote"]) for x in pilots.links(st2)] == [
         ("Marc", "stock-requests", "Marc au dépôt")]
     st3 = _state()
     st3.apply_sync_result(result(slots=[fill("bakery-orders", "actors", "le magasinier", "le magasinier")]))
-    assert [x["person"] for x in ambassadors.links(st3)] == ["le magasinier"]
+    assert [x["person"] for x in pilots.links(st3)] == ["le magasinier"]
     st4 = _state()  # a sentence is not a person
     st4.apply_sync_result(result(slots=[fill("bakery-orders", "actors", "Claire saisit, Marc valide ensuite")]))
-    assert ambassadors.links(st4) == []
+    assert pilots.links(st4) == []
 
 
 def test_names_match_whole_words_without_accents():
-    assert ambassadors._mentions("Hélène", "c'est helene qui fait")
-    assert not ambassadors._mentions("Ann", "Annie fait les commandes")
-    assert not ambassadors._mentions("Al", "Al fait")  # too short to be trusted
+    assert pilots._mentions("Hélène", "c'est helene qui fait")
+    assert not pilots._mentions("Ann", "Annie fait les commandes")
+    assert not pilots._mentions("Al", "Al fait")  # too short to be trusted
 
 
 # --- the question on screen ----------------------------------------------------------------------------
@@ -89,11 +89,11 @@ def test_the_screen_suggests_asking_about_the_person_on_the_use_case_question():
     st = _state()
     _heard(st)
     _focus(st, "stock-walkthrough")
-    assert ambassadors.prompt_for(st) is None  # another use case
+    assert pilots.prompt_for(st) is None  # another use case
     _focus(st, "capacity-limit")
-    assert ambassadors.prompt_for(st) is None  # no use case
+    assert pilots.prompt_for(st) is None  # no use case
     _focus(st, "orders-walkthrough")
-    assert ambassadors.prompt_for(st) == {  # no model probe yet: the indirect template, pragmatic tone
+    assert pilots.prompt_for(st) == {  # no model probe yet: the indirect template, pragmatic tone
         "person": "Claire", "use_case": st.get_use_case("bakery-orders").title("fr"),
         "question": "Quand l'équipe adopte une astuce Excel ou un nouvel outil, ça vient plutôt de Claire, "
                     "ou de quelqu'un d'autre ?", "reason": "", "source": "template"}
@@ -104,12 +104,12 @@ def test_the_suggestion_is_made_once_per_person():
     _heard(st)
     st.apply_sync_result(result(slots=[fill("weekly-reporting", "actors", "Claire", "Claire fait le reporting")]))
     _focus(st, "orders-walkthrough")
-    assert ambassadors.prompt_for(st)["person"] == "Claire"
+    assert pilots.prompt_for(st)["person"] == "Claire"
     st.advance()  # the focus leaves the question: recorded
     assert st.ambassador_prompted == {"orders-walkthrough": "Claire"}
     _focus(st, "data-reporting")
-    assert ambassadors.prompt_for(st) is None  # Claire was already suggested
-    assert ambassadors.prompt_for(st, "orders-walkthrough")["person"] == "Claire"  # still the same there
+    assert pilots.prompt_for(st) is None  # Claire was already suggested
+    assert pilots.prompt_for(st, "orders-walkthrough")["person"] == "Claire"  # still the same there
 
 
 def test_the_interview_view_carries_the_suggestion_and_the_console_list(tmp_path):
@@ -128,13 +128,13 @@ def test_the_interview_view_carries_the_suggestion_and_the_console_list(tmp_path
 def test_the_ceo_words_about_a_person_win_over_the_use_case_link():
     st = _state()
     _heard(st)
-    assert ambassadors.candidates(st)[0]["quote"] == "c'est Claire qui saisit"
-    assert ambassadors.for_use_case(st, "bakery-orders")["quote"] == "c'est Claire qui saisit"
+    assert pilots.candidates(st)[0]["quote"] == "c'est Claire qui saisit"
+    assert pilots.for_use_case(st, "bakery-orders")["quote"] == "c'est Claire qui saisit"
     _heard(st, signal="les autres l'écoutent quand elle dit que ça marche")
-    cands = ambassadors.candidates(st)
+    cands = pilots.candidates(st)
     assert len(cands) == 1 and cands[0]["quote"] == "les autres l'écoutent quand elle dit que ça marche"
-    assert ambassadors.for_use_case(st, "bakery-orders")["quote"].startswith("les autres l'écoutent")
-    assert ambassadors.for_use_case(st, "stock-requests") is None
+    assert pilots.for_use_case(st, "bakery-orders")["quote"].startswith("les autres l'écoutent")
+    assert pilots.for_use_case(st, "stock-requests") is None
 
 
 def test_prompts_ask_for_the_adoption_signal_and_show_the_people_heard():
@@ -161,33 +161,33 @@ def test_the_core_question_asks_who_tries_new_tools_first_and_who_others_listen_
 
 def test_record_merges_and_never_overwrites_a_hand_edit_or_brings_back_a_removed_person(tmp_path):
     st = _state()
-    assert ambassadors.record(tmp_path, st)["entries"] == [] and not (tmp_path / "ambassadors.json").exists()
+    assert pilots.record(tmp_path, st)["entries"] == [] and not (tmp_path / "ambassadors.json").exists()
     _heard(st)
-    data = ambassadors.record(tmp_path, st, "s1")
+    data = pilots.record(tmp_path, st, "s1")
     assert [(e["id"], e["by"], e["label"], e["session"]) for e in data["entries"]] == [("claire", "agent", "potential", "s1")]
-    edited = ambassadors.save_edit(tmp_path, [{**data["entries"][0], "quote": "volontaire pour tester"}], [])
+    edited = pilots.save_edit(tmp_path, [{**data["entries"][0], "quote": "volontaire pour tester"}], [])
     assert edited["entries"][0]["by"] == "manual"
     _heard(st, signal="elle essaie tout")
-    again = ambassadors.record(tmp_path, st, "s2")
+    again = pilots.record(tmp_path, st, "s2")
     assert again["entries"][0]["quote"] == "volontaire pour tester"  # the hand edit wins
-    ambassadors.save_edit(tmp_path, [], ["claire"])
-    assert ambassadors.record(tmp_path, st, "s3") == {"entries": [], "removed": ["claire"]}
+    pilots.save_edit(tmp_path, [], ["claire"])
+    assert pilots.record(tmp_path, st, "s3") == {"entries": [], "removed": ["claire"]}
 
 
 def test_save_edit_rules(tmp_path):
     st = _state()
     st.apply_sync_result(result(maps=maps(org=[org(rid="claire", person="Claire", adoption_signal="essaie tout"),
                                                org(rid="marc", person="Marc", adoption_signal="toujours partant")])))
-    data = ambassadors.record(tmp_path, st)
+    data = pilots.record(tmp_path, st)
     assert {e["id"] for e in data["entries"]} == {"claire", "marc"}
     claire = next(e for e in data["entries"] if e["id"] == "claire")
-    out = ambassadors.save_edit(tmp_path, [claire, {"id": "", "person": "Sophie", "role": "compta", "quote": "motivée"}], [])
+    out = pilots.save_edit(tmp_path, [claire, {"id": "", "person": "Sophie", "role": "compta", "quote": "motivée"}], [])
     assert [(e["id"], e["by"]) for e in out["entries"]] == [("claire", "agent"), ("sophie", "manual")]
     assert out["removed"] == ["marc"]  # an agent entry dropped from the list is remembered
-    cleared = ambassadors.save_edit(tmp_path, [{**out["entries"][0], "person": "  "}, out["entries"][1]], [])
+    cleared = pilots.save_edit(tmp_path, [{**out["entries"][0], "person": "  "}, out["entries"][1]], [])
     assert [e["id"] for e in cleared["entries"]] == ["sophie"] and "claire" not in cleared["removed"]
     with pytest.raises(ValueError):
-        ambassadors.save_edit(tmp_path, [{"person": "Léa"}, {"person": "Lea"}], [])
+        pilots.save_edit(tmp_path, [{"person": "Léa"}, {"person": "Lea"}], [])
     assert json.loads((tmp_path / "ambassadors.json").read_text())["entries"][0]["person"] == "Sophie"
 
 

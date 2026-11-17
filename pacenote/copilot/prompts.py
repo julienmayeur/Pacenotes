@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Mapping
 
-from pacenote.people import pilots as ambassadors
+from pacenote.people import pilots
 from pacenote.knowledge import briefs
 from pacenote.research import horizons
 from pacenote.shared import i18n
@@ -13,7 +13,7 @@ from pacenote.interview import lens
 from pacenote.people import personas
 from pacenote.people import attendees as attendees_lib
 from pacenote.people import viewpoints as viewpoints_lib
-from pacenote.people import sponsor as pilots_lib
+from pacenote.people import sponsor
 from pacenote.interview import phases as P
 from pacenote.knowledge import recipes as recipe_lib
 from pacenote.copilot.contract import CATALOG_DESCRIPTIONS, SLOT_DESCRIPTIONS, SLOT_KEYS, SLOT_RUNG
@@ -687,7 +687,7 @@ def state_snapshot(state: SessionState, for_plan: bool = False) -> dict:
         # keen = the interviewee said they would be keen, try new tools first or are listened to (a pilot);
         # otherwise the interview only put them on that work
         "potential_ambassadors": [{k: e[k] for k in ("person", "role", "use_case", "quote", "keen")}
-                                  for e in ambassadors.candidates(state)],
+                                  for e in pilots.candidates(state)],
         # what the interviewee could not answer, and who would know (personas.py)
         "to_check": [{"ask": t["ask"], "question": t["question"], "use_case": t.get("use_case")}
                      for t in state.to_check],
@@ -990,7 +990,7 @@ SPONSOR_NONE = (
 
 
 def sponsor_rule(state: SessionState) -> str:
-    lead = pilots_lib.sponsor(state)
+    lead = sponsor.sponsor(state)
     if lead is None:
         return SPONSOR_NONE
     return SPONSOR_LEAD.format(role=(lead.get("role") or "").strip() or "the company's leader")

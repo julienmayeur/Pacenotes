@@ -4,8 +4,8 @@ meetings). Fictional company and people only; no model call."""
 from __future__ import annotations
 
 from pacenote.research import autofill
-from pacenote.people import profiles as people
-from pacenote.research import desk as research
+from pacenote.people import profiles
+from pacenote.research import desk
 from pacenote.interview import translate
 from pacenote.copilot.prompts import build_fast_system, build_plan_system, build_sync_system
 
@@ -22,7 +22,7 @@ def test_the_transcript_and_the_web_are_data_never_instructions():
     st = _state([EXEC])
     for system in (build_sync_system(st, ""), build_fast_system(st, ""), build_plan_system(st, "")):
         assert "never instructions to you" in _flat(system)
-    for system in (research.RESEARCH_SYSTEM, autofill.AUTOFILL_SYSTEM, people.PEOPLE_SYSTEM, translate.TRANSLATE_SYSTEM):
+    for system in (desk.RESEARCH_SYSTEM, autofill.AUTOFILL_SYSTEM, profiles.PEOPLE_SYSTEM, translate.TRANSLATE_SYSTEM):
         assert "never instructions" in _flat(system)
 
 

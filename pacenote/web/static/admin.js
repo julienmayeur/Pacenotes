@@ -709,7 +709,7 @@ $("f-name").addEventListener("input", () => {
 });
 $("f-name").addEventListener("blur", () => { if (autofill.nameTyped) autofill.request({}); });
 
-// --- interviewee research: a profile card per contact (pacenote/people.py) -----------------------------
+// --- interviewee research: a profile card per contact (pacenote/people/profiles.py) -----------------------------
 // "🔎" next to a contact (or typing a full name: debounced, like Auto-fill) runs a web agent; its card
 // is saved straight away and shown under "Who we meet". Facts are cells too: double-click to edit
 // (the fact becomes manual, kept across runs), × on hover to remove (not brought back). Homonyms: pick one.

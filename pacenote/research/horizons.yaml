@@ -5,7 +5,7 @@
 #   - pragmatic: both, important;
 #   - urgent (competitors already report results): both, must-have, competitors first.
 # Without a posture, none of them is asked. Never asked to a hands-on operator (personas.py): strategy
-# belongs to the executive. Same wording rules as core/questions.yaml: a story on a
+# belongs to the executive. Same wording rules as interview/core/questions.yaml: a story on a
 # real case, no AI vocabulary (tests/test_questions.py checks this file too).
 
 postures:

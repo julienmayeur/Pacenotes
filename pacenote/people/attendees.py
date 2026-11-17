@@ -14,7 +14,7 @@ needs no speaker labels.
 
 The lead. When an executive or a function leader is in the meeting, the most senior one is the lead: the
 seed questions take that persona (state.persona), and the plan names them as the sponsor who leads by
-example (pilots.py). An operator alone in the meeting is never the sponsor.
+example (sponsor.py). An operator alone in the meeting is never the sponsor.
 Duck-typed on the session state (no import cycle).
 """
 

@@ -29,10 +29,10 @@ from pacenote.clients.sheet import (
     set_next_client,
     slug_from_name,
 )
-from pacenote.people import pilots as ambassadors
+from pacenote.people import pilots
 from pacenote.shared import fsutil, i18n
 from pacenote.people import personas
-from pacenote.plan import view as planview
+from pacenote.plan import view as plan_view
 from pacenote.research import horizons as horizons_lib
 from pacenote.plan import metrics as metrics_lib
 from pacenote.research.autofill import (DEFAULT_AUTOFILL_MODEL, FIELDS as AUTOFILL_FIELDS, RELATIONS, AutofillManager, dead_links,
@@ -127,8 +127,8 @@ def admin_router(clients_dir: Path, manager: ResearchManager, sessions_dir: Path
         if sessions_dir is None:
             raise HTTPException(status_code=404, detail="no sessions folder")
         try:
-            return planview.session_path(sessions_dir, slug, session_id)
-        except planview.PlanNotFound as exc:
+            return plan_view.session_path(sessions_dir, slug, session_id)
+        except plan_view.PlanNotFound as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     def cdir(slug: str) -> Path:
@@ -190,7 +190,7 @@ def admin_router(clients_dir: Path, manager: ResearchManager, sessions_dir: Path
             "seed_questions": preplan.get("seed_questions", []),
             "sources": preplan.get("sources", []),
             "prestudy": horizons_lib.prestudy_view(preplan, info.posture_override),  # operator-only: never on a client-facing page
-            "ambassadors": ambassadors.load(d),
+            "ambassadors": pilots.load(d),
             # per contact, in the sheet's order: the persona in force, why, and the inferred one (personas.py)
             "personas": [personas.for_contact(c, info, preplan) for c in info.contacts],
             "persona_options": list(personas.PERSONAS),
@@ -203,24 +203,24 @@ def admin_router(clients_dir: Path, manager: ResearchManager, sessions_dir: Path
     @r.get("/admin/api/clients/{slug}/sessions")
     async def sessions(slug: str) -> dict:
         cdir(slug)
-        return {"sessions": planview.list_sessions(sessions_dir, slug) if sessions_dir is not None else []}
+        return {"sessions": plan_view.list_sessions(sessions_dir, slug) if sessions_dir is not None else []}
 
     @r.get("/admin/plan/{slug}/{session_id}", response_class=HTMLResponse)
     async def plan_page(slug: str, session_id: str) -> HTMLResponse:
         sdir(slug, session_id)
-        return planview.page_response()
+        return plan_view.page_response()
 
     @r.get("/admin/api/plan/{slug}/{session_id}")
     async def plan_data(slug: str, session_id: str) -> dict:
-        return planview.payload_response(sdir(slug, session_id))
+        return plan_view.payload_response(sdir(slug, session_id))
 
     @r.get("/admin/api/plan/{slug}/{session_id}/md")
     async def plan_markdown(slug: str, session_id: str):
-        return planview.markdown_response(sdir(slug, session_id))
+        return plan_view.markdown_response(sdir(slug, session_id))
 
     @r.get("/admin/api/plan/{slug}/{session_id}/pdf")
     async def plan_pdf(slug: str, session_id: str):
-        return await planview.pdf_response(sdir(slug, session_id))
+        return await plan_view.pdf_response(sdir(slug, session_id))
 
     @r.put("/admin/api/clients/{slug}")
     async def update(slug: str, info: ClientInfo) -> dict:
@@ -243,12 +243,12 @@ def admin_router(clients_dir: Path, manager: ResearchManager, sessions_dir: Path
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return await detail(slug)
 
-    # --- potential ambassadors (pacenote/ambassadors.py): clients/<slug>/ambassadors.json -------------
+    # --- potential pilots (pacenote/people/pilots.py): clients/<slug>/ambassadors.json -------------
     @r.put("/admin/api/clients/{slug}/ambassadors")
     async def ambassadors_edit(slug: str, body: AmbassadorsEdit) -> dict:
         d = cdir(slug)
         try:
-            return ambassadors.save_edit(d, body.entries, body.removed)
+            return pilots.save_edit(d, body.entries, body.removed)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -308,7 +308,7 @@ def admin_router(clients_dir: Path, manager: ResearchManager, sessions_dir: Path
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return await detail(slug) | {"written": written}
 
-    # --- interviewee research: a profile card per contact (pacenote/people.py) ----------------
+    # --- interviewee research: a profile card per contact (pacenote/people/profiles.py) ----------------
     @r.post("/admin/api/clients/{slug}/people")
     async def person_start(slug: str, body: PersonBody) -> dict:
         cdir(slug)

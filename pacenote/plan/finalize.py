@@ -1,5 +1,5 @@
 """Plan output: the integration proposal (structured PlanDoc rendered to Markdown), interview log,
-plan.md + plan.json (shown and exported to PDF by the app, see planview.py), Wispr Flow import."""
+plan.md + plan.json (shown and exported to PDF by the app, see plan/view.py), Wispr Flow import."""
 
 from __future__ import annotations
 
@@ -12,12 +12,12 @@ import markdown as md_lib
 from markdown.extensions import Extension
 from markdown.treeprocessors import Treeprocessor
 
-from pacenote.people import pilots as ambassadors
+from pacenote.people import pilots as pilots_lib
 from pacenote.knowledge import briefs
 from pacenote.shared import fsutil
 from pacenote.people import personas
 from pacenote.people import attendees as attendees_lib
-from pacenote.people import sponsor as pilots_lib
+from pacenote.people import sponsor as sponsor_lib
 from pacenote.knowledge import recipes as recipe_lib
 from pacenote.people import viewpoints as viewpoints_lib
 from pacenote.copilot.contract import SLOT_KEYS, Fact, Measure, Pilot, PlanDoc, PlanUseCase, Recipe
@@ -246,21 +246,21 @@ def apply_horizons(doc: PlanDoc, state: SessionState | None = None, library: dic
 
 
 def adoption_people(a, state: SessionState | None, lighthouse: str) -> dict:
-    """Who carries the first wave (pilots.py): the pilots the model named, people or groups (never one
-    described with a label), else the ones the interview surfaced (ambassadors.pilots_for_plan); none,
+    """Who carries the first wave (sponsor.py): the pilots the model named, people or groups (never one
+    described with a label), else the ones the interview surfaced (pilots.pilots_for_plan); none,
     one or many. The sponsor is always the leader in the meeting (an executive, else a function leader),
     named by role, alongside the pilots, with what they do themself (sponsor_plan, from the interview).
     With no leader in the meeting (operators only), no sponsor: the plan says to confirm it with the
     leadership."""
     pilots = [p.model_copy(update={"person": _one_line(p.person), "evidence": _one_line(p.evidence),
-                                   "group": bool(p.group) or ambassadors.is_group(p.person)})
+                                   "group": bool(p.group) or pilots_lib.is_group(p.person)})
               for p in a.pilots if p.person.strip() and not _PEOPLE_LABELS.search(f"{p.person} {p.evidence}")]
     if not pilots and state is not None:
-        pilots = [Pilot(**p) for p in ambassadors.pilots_for_plan(state, lighthouse)
+        pilots = [Pilot(**p) for p in pilots_lib.pilots_for_plan(state, lighthouse)
                   if not _PEOPLE_LABELS.search(p["evidence"])]
     seen, unique = set(), []
     for p in pilots:
-        if (k := ambassadors.person_id(p.person)) and k not in seen:
+        if (k := pilots_lib.person_id(p.person)) and k not in seen:
             seen.add(k)
             unique.append(p)
     out: dict = {"pilots": unique, "to_address": points_to_address(a.to_address, state)}
@@ -268,7 +268,7 @@ def adoption_people(a, state: SessionState | None, lighthouse: str) -> dict:
         out |= {"question": "", "ask": ""}
     if state is None:
         return out
-    sponsor = pilots_lib.sponsor_label(state, state.tr())
+    sponsor = sponsor_lib.sponsor_label(state, state.tr())
     out |= {"sponsor": sponsor, "sponsor_plan": wave_text(a.sponsor_plan) if sponsor else ""}
     if not unique and sponsor:
         out["ask"] = a.ask.strip() or sponsor  # who to ask who else would go first: the sponsor, by default
@@ -712,7 +712,7 @@ def render_plan_md(doc: PlanDoc, state: SessionState) -> str:
         who = tr("plan.adoption.group", group=p.person.strip()) if p.group else p.person.strip()
         return who + (f" — « {quote} »" if quote else f" _({tr('plan.toConfirm')})_")
 
-    # the leader in the meeting sponsors the first wave, always, alongside the pilots (pilots.py)
+    # the leader in the meeting sponsors the first wave, always, alongside the pilots (sponsor.py)
     sponsor = a.sponsor.strip()
     out += [field("sponsor", tr("plan.adoption.sponsorLine", sponsor=sponsor, plan=wave_text(
         a.sponsor_plan) or tr("plan.adoption.default.sponsorPlan")) if sponsor else tr("plan.adoption.sponsorTbc")), ""]
@@ -871,7 +871,7 @@ def md_to_html(text: str) -> str:
 
 def write_plan_files(session_dir: Path, plan_md: str, state: SessionState, doc: PlanDoc | None = None) -> dict[str, str]:
     """plan.md (and plan.json, the structured proposal) are the plan: the app shows plan.md in its
-    Plan view and exports it to PDF on demand (planview.py). No plan.html is written."""
+    Plan view and exports it to PDF on demand (plan/view.py). No plan.html is written."""
     md_path = session_dir / "plan.md"
     fsutil.atomic_write_text(md_path, plan_md)
     files = {"md": str(md_path)}

@@ -1,7 +1,7 @@
-"""Potential pilots (internally "ambassadors"): people inside the client company who could carry the
+"""Potential pilots: people inside the client company who could carry the
 first use case. Nobody knows in advance how many: none, a few, or a whole team keen to try. They come
 only from what the interviewees say, as named people or as a group ("the whole sales team is up for it"),
-never with invented names. The leader in the meeting always sponsors the first wave (pilots.py): an
+never with invented names. The leader in the meeting always sponsors the first wave (sponsor.py): an
 indirect sponsor question finds out what they would do themself, by trying it first on their own work.
 
 A pilot spreads through a respected colleague, not through the consultant or the management. During the
@@ -11,15 +11,19 @@ live sync keeps a light read of the interviewee (role, stance on new tools, worr
 team, sensitivities, tone, rapport) and writes, per workflow, an indirect people question phrased
 for that person ("when the team picks up a new Excel trick, does it come from Claire?"), never
 head-on, never as an assessment, softer in a sector that has not taken the turn. The interview
-screen shows it under the follow-up once the workflow was walked through (the reason, the
-ambassador angle, stays in the interviewer console). The interviewee's answer, and what they say when asked who tries new tools first and who the others listen to (a
-signal-carriers core question), land in the org map's `adoption_signal`, quoted.
+screen shows it under the follow-up once the workflow was walked through (the reason, the pilot
+angle, stays in the interviewer console). The interviewee's answer, and what they say when asked who
+tries new tools first and who the others listen to (a signal-carriers core question), land in the org
+map's `adoption_signal`, quoted.
 
 Only a light label is kept per person: name or role, the use case, the supporting quote. It is
 stored locally in clients/<slug>/ambassadors.json (clients/ is git-ignored, never committed) and
 is editable in the admin, with the same rules as the client sheet and the profile cards: the
 engine fills, a hand edit wins (the entry becomes manual and is never overwritten), and an entry
 the interviewer removed never comes back.
+
+The file name and the JSON fields (`ambassadors.json`, `ambassador_*`) keep the name the app used before,
+so saved clients and sessions load unchanged.
 """
 
 from __future__ import annotations
@@ -34,7 +38,7 @@ from pathlib import Path
 
 from pacenote.shared import fsutil
 from pacenote.interview import phases as P
-from pacenote.people import sponsor as pilots_lib
+from pacenote.people import sponsor
 
 FILE = "ambassadors.json"
 MAX_LEN = 300
@@ -164,7 +168,7 @@ def keen(state) -> list[dict]:
 def sponsor_needed(state) -> bool:
     """A leader is in the meeting (pilots.can_sponsor): they sponsor the first wave whatever the pilots,
     and what they would do themself is still to find out (the sponsor question is not closed)."""
-    return pilots_lib.can_sponsor(state) and state.sponsor_probe.get("timing") != "done"
+    return sponsor.can_sponsor(state) and state.sponsor_probe.get("timing") != "done"
 
 
 FIRST_TO_TRY = "core-first-to-try"  # the core question: who tried the last new software first
@@ -177,7 +181,7 @@ def _sponsor_template_ready(state, q) -> bool:
 
 
 def _sponsor_person(state) -> str:
-    lead = pilots_lib.sponsor(state)
+    lead = sponsor.sponsor(state)
     return ((lead or {}).get("role") or (lead or {}).get("name") or "").strip()
 
 
@@ -339,7 +343,7 @@ def apply_sponsor(state, p, read: int, ok, reject) -> None:
     if old.get("read", 0) > read:
         reject("stale", "sponsor", f"read at line {read}, kept the sponsor question read at line {old['read']}")
         return
-    if not pilots_lib.can_sponsor(state):
+    if not sponsor.can_sponsor(state):
         reject("sponsor", None, "no leader in the meeting: no sponsor question")
         return
     if p.timing == "done":

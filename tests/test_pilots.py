@@ -14,8 +14,8 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
-from pacenote.people import pilots as ambassadors
-from pacenote.people import sponsor as pilots
+from pacenote.people import pilots as pilots_lib
+from pacenote.people import sponsor as sponsor_lib
 from pacenote.web.admin import create_admin_app
 from pacenote.copilot.contract import SponsorProbe, parse_plan_doc
 from pacenote.plan.finalize import apply_horizons, render_plan_md
@@ -88,7 +88,7 @@ def test_no_count_is_guessed_in_advance():
         assert leak not in md, leak
     assert "Expected pilots" not in build_sync_system(st, "", "") and "expected_pilots" not in state_snapshot(st)
     assert "expected number" not in build_plan_system(st, "")
-    assert not hasattr(pilots, "expected") and not hasattr(pilots, "hint_line")
+    assert not hasattr(sponsor_lib, "expected") and not hasattr(sponsor_lib, "hint_line")
 
 
 def test_the_model_pilots_win_and_labels_are_dropped_and_the_sponsor_stays():
@@ -113,7 +113,7 @@ def test_a_group_described_as_keen_is_recorded_as_a_group_without_invented_names
                                                  adoption={"lighthouse": "orders"})), st2)
     assert [(p.person, p.group) for p in doc.adoption.pilots] == [("the whole sales team", True)]
     assert "**Pilots**: the whole sales team (as a group) — « they all want to try it »" in render_plan_md(doc, st2)
-    assert ambassadors.is_group("toute l'équipe ventes") and not ambassadors.is_group("chef d'équipe")
+    assert pilots_lib.is_group("toute l'équipe ventes") and not pilots_lib.is_group("chef d'équipe")
 
 
 @pytest.mark.parametrize("lang, sponsor, wave", [
@@ -140,9 +140,9 @@ def test_the_model_sponsor_plan_is_kept_and_a_function_leader_can_sponsor_too():
 
 def test_the_most_senior_leader_in_the_meeting_sponsors():
     st = _state((CLERK, CFO, BOSS))
-    assert pilots.sponsor(st)["role"] == "PDG" and st.persona == "executive"
+    assert sponsor_lib.sponsor(st)["role"] == "PDG" and st.persona == "executive"
     assert "**Sponsor** : PDG, qui montre l'exemple" in _adoption(_plan(st))
-    assert pilots.sponsor(_state((CLERK, CFO)))["role"] == "DAF"
+    assert sponsor_lib.sponsor(_state((CLERK, CFO)))["role"] == "DAF"
 
 
 def test_an_operator_alone_is_never_the_sponsor_it_is_to_be_confirmed_with_the_leadership():
@@ -192,12 +192,12 @@ def test_the_sponsor_question_shows_once_and_stays_when_a_pilot_is_named():
     st = _state((CLERK, BOSS))
     q1, q2 = "orders-walkthrough", "stock-walkthrough"
     st.apply_sync_result(result(sponsor_probe=_probe("Dans votre propre semaine, qu'est-ce qui vous prend du temps ?")))
-    s = ambassadors.prompt_for(st, q1)
+    s = pilots_lib.prompt_for(st, q1)
     assert s["kind"] == "sponsor" and s["person"] == "PDG" and s["use_case"] == "" and s["source"] == "model"
     _keen(st, ("Claire", "assistante ADV", "elle essaie toujours en premier"))
-    assert ambassadors.prompt_for(st, q1)["kind"] == "sponsor"  # pilots or not, the boss is involved
-    ambassadors.mark_shown(st, q1, st.get(q1).use_case, s)
-    assert ambassadors.prompt_for(st, q2) is None  # once
+    assert pilots_lib.prompt_for(st, q1)["kind"] == "sponsor"  # pilots or not, the boss is involved
+    pilots_lib.mark_shown(st, q1, st.get(q1).use_case, s)
+    assert pilots_lib.prompt_for(st, q2) is None  # once
     st.apply_sync_result(result(sponsor_probe=_probe("Une autre formulation ?")))  # never reworded once asked
     assert st.sponsor_probe["question"].startswith("Dans votre propre semaine")
 
@@ -205,9 +205,9 @@ def test_the_sponsor_question_shows_once_and_stays_when_a_pilot_is_named():
 def test_later_and_done_hold_it_back():
     st = _state()
     st.apply_sync_result(result(sponsor_probe=_probe("Ça part souvent de vous ?", timing="later")))
-    assert ambassadors.prompt_for(st, "orders-walkthrough") is None
+    assert pilots_lib.prompt_for(st, "orders-walkthrough") is None
     st.apply_sync_result(result(sponsor_probe=_probe("", timing="done")))
-    assert st.sponsor_probe["timing"] == "done" and ambassadors.prompt_for(st, "orders-walkthrough") is None
+    assert st.sponsor_probe["timing"] == "done" and pilots_lib.prompt_for(st, "orders-walkthrough") is None
 
 
 @pytest.mark.parametrize("posture", ["explorer", "pragmatic", "urgent"])
@@ -217,8 +217,8 @@ def test_without_a_model_the_template_waits_for_the_deep_dives(posture):
     st.interviewee_read = {"rapport": "established"}
     early = st.get("capacity-limit")
     early.phase = "signal-flow"  # this fixture only has deep dives: one question moved earlier for the check
-    assert ambassadors.prompt_for(st, early.id) is None  # before the deep dives
-    s = ambassadors.prompt_for(st, "orders-walkthrough")
+    assert pilots_lib.prompt_for(st, early.id) is None  # before the deep dives
+    s = pilots_lib.prompt_for(st, "orders-walkthrough")
     assert s["kind"] == "sponsor" and s["source"] == "template"
     assert s["question"] == load_locale("fr")["focus"]["sponsorProbe"][posture]
 
@@ -226,13 +226,13 @@ def test_without_a_model_the_template_waits_for_the_deep_dives(posture):
 @pytest.mark.parametrize("lang", ["en", "fr"])
 def test_the_template_sponsor_questions_follow_the_wording_rules(lang):
     for text in load_locale(lang)["focus"]["sponsorProbe"].values():
-        assert ambassadors.probe_problem(text) == "", text
+        assert pilots_lib.probe_problem(text) == "", text
 
 
 def test_the_console_lists_the_sponsor_question_with_its_reason():
     st = _state()
     st.apply_sync_result(result(sponsor_probe=_probe("Ça part souvent de vous ?", reason="ce qu'il ferait")))
-    view = ambassadors.probes_view(st)
+    view = pilots_lib.probes_view(st)
     assert view[-1] == {"use_case": "", "kind": "sponsor", "person": "PDG", "question": "Ça part souvent de vous ?",
                         "reason": "ce qu'il ferait", "timing": "now", "asked": False}
 
@@ -295,7 +295,7 @@ def test_an_old_session_state_with_a_pilots_hint_still_loads(tmp_path):
     raw.pop("attendees")
     (tmp_path / "state.json").write_text(json.dumps(raw), encoding="utf-8")
     old = SessionState.load(tmp_path / "state.json")
-    assert old.persona == "executive" and pilots.sponsor(old)["role"] == "PDG"  # its one interviewee attends
+    assert old.persona == "executive" and sponsor_lib.sponsor(old)["role"] == "PDG"  # its one interviewee attends
 
 
 @pytest.mark.parametrize("lang", ["en", "fr"])
