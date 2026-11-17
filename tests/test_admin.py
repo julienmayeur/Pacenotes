@@ -10,19 +10,19 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
-from pacenote.admin import create_admin_app
-from pacenote.capture import ReplaySource
+from pacenote.web.admin import create_admin_app
+from pacenote.transcription.capture import ReplaySource
 from pacenote.cli import main
-from pacenote.clients import ClientError, get_next_client, resolve_client, slug_from_name
-from pacenote.preparation import load_core_themes, PREPLAN_THEME, TEMPLATE_CONTEXT, client_context
-from pacenote.llm import OfflineEngine
-from pacenote.prompts import build_fast_system, build_sync_system
-from pacenote.preparation import load_client
-from pacenote.research import ResearchManager
-from pacenote.web_agent import AgentJob, progress
-from pacenote.server import create_app
-from pacenote.session import Session, Settings
-from pacenote.state import SessionState
+from pacenote.clients.sheet import ClientError, get_next_client, resolve_client, slug_from_name
+from pacenote.interview.preparation import load_core_themes, PREPLAN_THEME, TEMPLATE_CONTEXT, client_context
+from pacenote.copilot.engines import OfflineEngine
+from pacenote.copilot.prompts import build_fast_system, build_sync_system
+from pacenote.interview.preparation import load_client
+from pacenote.research.desk import ResearchManager
+from pacenote.copilot.web_agent import AgentJob, progress
+from pacenote.web.server import create_app
+from pacenote.interview.session import Session, Settings
+from pacenote.interview.state import SessionState
 
 from .conftest import REAL_CLIENTS, SAMPLES
 
@@ -327,7 +327,7 @@ def test_research_progress_shows_writing_as_soon_as_it_starts():
 
 
 def test_markdown_list_right_after_a_paragraph_renders_as_a_list():
-    from pacenote.finalize import md_to_html
+    from pacenote.plan.finalize import md_to_html
 
     html = md_to_html("Quatre leviers :\n- les commandes ;\n- la garantie.\n\n| a | b |\n|---|---|\n| 1 | 2 |\n")
     assert "<ul>" in html and html.count("<li>") == 2 and "<table>" in html

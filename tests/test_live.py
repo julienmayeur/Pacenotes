@@ -9,12 +9,12 @@ import time
 
 import pytest
 
-from pacenote.capture import ReplaySource
-from pacenote.contract import FastResult, empty_maps
-from pacenote.llm import ClaudeCliEngine, ClaudeStreamSession, SyncFailed
-from pacenote.session import Session, Settings
-from pacenote.srt import load_srt
-from pacenote.transcript import Transcript
+from pacenote.transcription.capture import ReplaySource
+from pacenote.copilot.contract import FastResult, empty_maps
+from pacenote.copilot.engines import ClaudeCliEngine, ClaudeStreamSession, SyncFailed
+from pacenote.interview.session import Session, Settings
+from pacenote.transcription.srt import load_srt
+from pacenote.transcription.transcript import Transcript
 
 from .conftest import SAMPLES, edit, result, upd
 

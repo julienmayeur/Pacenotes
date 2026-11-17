@@ -15,24 +15,26 @@ import yaml
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from pacenote import capture, i18n, translate
-from pacenote.capture import ListenCapture, locales_map, preflight
+from pacenote.transcription import capture
+from pacenote.shared import i18n
+from pacenote.interview import translate
+from pacenote.transcription.capture import ListenCapture, locales_map, preflight
 from pacenote.cli import main
-from pacenote.finalize import assemble_plan
-from pacenote.llm import OfflineEngine, offline_plan
-from pacenote.prompts import (
+from pacenote.plan.finalize import assemble_plan
+from pacenote.copilot.engines import OfflineEngine, offline_plan
+from pacenote.copilot.prompts import (
     build_fast_system,
     build_fast_user,
     build_plan_system,
     build_sync_system,
     describe_streams,
 )
-from pacenote.headings import plan_headings
-from pacenote.questionnaire import load_questionnaire
-from pacenote.preparation import load_client
-from pacenote.server import create_app
-from pacenote.session import Session, Settings
-from pacenote.state import SessionState
+from pacenote.plan.headings import plan_headings
+from pacenote.interview.questionnaire import load_questionnaire
+from pacenote.interview.preparation import load_client
+from pacenote.web.server import create_app
+from pacenote.interview.session import Session, Settings
+from pacenote.interview.state import SessionState
 
 from .conftest import CLIENTS, REAL_CLIENTS, SAMPLES, edit, real_client, result, upd
 from .test_listen_capture import FAST, fake_listen, runs
@@ -65,7 +67,7 @@ def test_every_key_used_by_the_ui_exists():
     import re
 
     keys = set(i18n.flatten(i18n.catalog("en")))
-    static = Path(i18n.__file__).parent / "static"
+    static = Path(i18n.__file__).parent.parent / "web" / "static"
     html = "".join((static / f).read_text(encoding="utf-8") for f in ("index.html", "admin.html"))
     js = "".join((static / f).read_text(encoding="utf-8") for f in ("app.js", "i18n.js", "admin.js"))
     used = set(re.findall(r'data-i18n="([\w.]+)"', html))
@@ -247,8 +249,8 @@ def test_plan_and_log_use_the_interview_language(state):
 def test_offline_follow_up_is_localised():
     state = SessionState.from_questionnaire(real_client().questionnaire)  # has `expect`
     state.set_languages(interview="en")
-    from pacenote.llm import OfflineEngine as OE
-    from pacenote.transcript import Segment
+    from pacenote.copilot.engines import OfflineEngine as OE
+    from pacenote.transcription.transcript import Segment
 
     seg = Segment(1, "en", 0, 1, "If orders grew, our order desk would be swamped first.")
     res = OE().sync("", "", state=state, delta=[seg])
@@ -270,7 +272,7 @@ class TranslatingEngine(OfflineEngine):
     def translate(self, system, user, *, schema):
         self.calls.append((system, user))
         if self.fail:
-            from pacenote.llm import SyncFailed
+            from pacenote.copilot.engines import SyncFailed
             raise SyncFailed("Claude CLI timed out")
         items = json.loads(user.split("<items>", 1)[1].split("</items>", 1)[0])
         lang = user.split("(", 1)[1].split(")", 1)[0]  # "Translate into German (de)."
@@ -316,7 +318,7 @@ def test_engine_without_translate_keeps_the_fallback(state):
 
 def test_cli_engine_translates_through_claude_p(tmp_path, monkeypatch):
     """The translation call goes through the Claude Code CLI (subscription), never an API key."""
-    from pacenote.llm import ClaudeCliEngine
+    from pacenote.copilot.engines import ClaudeCliEngine
 
     seen = {}
     claude = tmp_path / "claude"
@@ -627,7 +629,7 @@ def test_browser_switches_language_instantly(tmp_path, client_cfg):
 def test_pages_have_no_hard_coded_strings_and_use_the_shared_helper(page):
     import re
 
-    static = Path(i18n.__file__).parent / "static"
+    static = Path(i18n.__file__).parent.parent / "web" / "static"
     html = (static / page).read_text(encoding="utf-8")
     assert '<script src="/static/i18n.js"></script>' in html and '<language-select ' in html and 'bind="ui"' in html
     body = re.sub(r"<!--.*?-->|<(script|style|title)[^>]*>.*?</\1>", "", html, flags=re.S)
@@ -637,7 +639,7 @@ def test_pages_have_no_hard_coded_strings_and_use_the_shared_helper(page):
 
 
 def test_admin_research_steps_carry_catalog_keys(tmp_path):
-    from pacenote.web_agent import AgentJob, progress
+    from pacenote.copilot.web_agent import AgentJob, progress
 
     job = AgentJob(slug="acme", started_at=time.time())
     job.lang = "en"
@@ -650,14 +652,14 @@ def test_admin_research_steps_carry_catalog_keys(tmp_path):
 
 
 def test_admin_clients_take_any_interview_language(tmp_path):
-    from pacenote.clients import create_client, load_info
+    from pacenote.clients.sheet import create_client, load_info
 
     info = create_client(tmp_path, "acme", "ACME GmbH", "de")
     assert info.language == "de"
     q = load_client(tmp_path, "acme").questionnaire
     assert q.language == "de" and q.speech_locales == ["de-DE", "en-US"]
     assert load_info(tmp_path, "acme").language == "de"
-    from pacenote.clients import ClientError
+    from pacenote.clients.sheet import ClientError
     with pytest.raises(ClientError):
         create_client(tmp_path, "bad", "Bad", "not a language")
     fr = create_client(tmp_path, "fournil", "Le Fournil", "fr")
@@ -665,7 +667,7 @@ def test_admin_clients_take_any_interview_language(tmp_path):
 
 
 def test_standalone_admin_app_serves_the_catalogs(tmp_path):
-    from pacenote.admin import create_admin_app
+    from pacenote.web.admin import create_admin_app
 
     with TestClient(create_admin_app(tmp_path)) as http:
         assert http.get("/admin").status_code == 200

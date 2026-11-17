@@ -4,11 +4,11 @@ gibberish, with a short English passage where it flips) through the session: ing
 import asyncio
 import json
 
-from pacenote.capture import ReplaySource
-from pacenote.contract import PLAN_SECTIONS
-from pacenote.llm import OfflineEngine
-from pacenote.headings import plan_headings
-from pacenote.session import Session, Settings
+from pacenote.transcription.capture import ReplaySource
+from pacenote.copilot.contract import PLAN_SECTIONS
+from pacenote.copilot.engines import OfflineEngine
+from pacenote.plan.headings import plan_headings
+from pacenote.interview.session import Session, Settings
 
 from .conftest import SAMPLES, edit, result, upd
 
@@ -171,7 +171,7 @@ def test_replay_with_offline_engine(tmp_path, client_cfg):
 
 
 def test_sync_failure_keeps_delta_for_next_round(tmp_path, client_cfg):
-    from pacenote.llm import SyncFailed
+    from pacenote.copilot.engines import SyncFailed
 
     class Flaky(ScriptedEngine):
         def __init__(self):

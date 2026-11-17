@@ -14,14 +14,15 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
-from pacenote import ambassadors, pilots
-from pacenote.admin import create_admin_app
-from pacenote.contract import SponsorProbe, parse_plan_doc
-from pacenote.finalize import apply_horizons, render_plan_md
-from pacenote.i18n import catalog as load_locale
-from pacenote.prompts import build_plan_system, build_sync_system, state_snapshot
-from pacenote.preparation import load_client
-from pacenote.state import SessionState
+from pacenote.people import pilots as ambassadors
+from pacenote.people import sponsor as pilots
+from pacenote.web.admin import create_admin_app
+from pacenote.copilot.contract import SponsorProbe, parse_plan_doc
+from pacenote.plan.finalize import apply_horizons, render_plan_md
+from pacenote.shared.i18n import catalog as load_locale
+from pacenote.copilot.prompts import build_plan_system, build_sync_system, state_snapshot
+from pacenote.interview.preparation import load_client
+from pacenote.interview.state import SessionState
 
 from .conftest import CLIENTS, REAL_CLIENTS, plan_doc, plan_use_case, result, fill
 from .test_admin import RESULT
@@ -262,8 +263,8 @@ def test_the_plan_prompt_names_every_pilot_or_group_and_the_leader_as_sponsor():
 
 
 def test_the_research_no_longer_asks_for_a_workforce_signal():
-    from pacenote import horizons
-    from pacenote.research import RESEARCH_SYSTEM, ResearchOutput
+    from pacenote.research import horizons
+    from pacenote.research.desk import RESEARCH_SYSTEM, ResearchOutput
 
     system = " ".join(RESEARCH_SYSTEM.format(lang_name="French", horizons=horizons.HORIZON_GUIDE).split())
     assert "workforce" not in system.lower() and "âge" not in system

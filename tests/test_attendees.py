@@ -9,16 +9,16 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from pacenote import attendees
-from pacenote.capture import ReplaySource
-from pacenote.contract import AskTo
-from pacenote.finalize import render_plan_md
-from pacenote.llm import OfflineEngine, offline_plan_doc
-from pacenote.prompts import build_fast_system, build_plan_system, build_sync_system, state_snapshot
-from pacenote.preparation import load_client
-from pacenote.server import create_app
-from pacenote.session import Session
-from pacenote.state import SessionState
+from pacenote.people import attendees
+from pacenote.transcription.capture import ReplaySource
+from pacenote.copilot.contract import AskTo
+from pacenote.plan.finalize import render_plan_md
+from pacenote.copilot.engines import OfflineEngine, offline_plan_doc
+from pacenote.copilot.prompts import build_fast_system, build_plan_system, build_sync_system, state_snapshot
+from pacenote.interview.preparation import load_client
+from pacenote.web.server import create_app
+from pacenote.interview.session import Session
+from pacenote.interview.state import SessionState
 
 from .conftest import CLIENTS, result, upd
 from .test_personas import QUIET, _client
@@ -146,7 +146,7 @@ def test_the_plan_lists_attendees_by_role_never_by_name():
 
 @pytest.mark.parametrize("lang", ["en", "fr"])
 def test_every_attendee_string_exists_in_both_languages(lang):
-    from pacenote.i18n import catalog
+    from pacenote.shared.i18n import catalog
 
     loc, other = catalog(lang), catalog("fr" if lang == "en" else "en")
     assert set(loc["attendees"]["prep"]) == set(other["attendees"]["prep"])

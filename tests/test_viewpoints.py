@@ -12,12 +12,12 @@ import json
 
 import pytest
 
-from pacenote import viewpoints
-from pacenote.contract import Viewpoint, parse_plan_doc, parse_sync_result
-from pacenote.finalize import render_plan_md
-from pacenote.llm import offline_plan_doc
-from pacenote.prompts import build_fast_system, build_plan_system, build_sync_system, state_snapshot
-from pacenote.state import SessionState
+from pacenote.people import viewpoints
+from pacenote.copilot.contract import Viewpoint, parse_plan_doc, parse_sync_result
+from pacenote.plan.finalize import render_plan_md
+from pacenote.copilot.engines import offline_plan_doc
+from pacenote.copilot.prompts import build_fast_system, build_plan_system, build_sync_system, state_snapshot
+from pacenote.interview.state import SessionState
 
 from .conftest import plan_doc, plan_use_case, result
 from .test_attendees import CLERK, EXEC, HEAD, _session, _state
@@ -170,7 +170,7 @@ def test_a_written_point_that_names_or_labels_someone_is_dropped():
         "lighthouse": "bakery-orders", "to_address": [
             "la fiabilité de l'extraction sur les bons manuscrits", "rassurer Paul sur le contact client",
             "les commerciaux réticents", "qui garde la validation finale"]}))
-    from pacenote.finalize import apply_horizons
+    from pacenote.plan.finalize import apply_horizons
 
     md = render_plan_md(apply_horizons(doc, st), st)
     assert "la fiabilité de l'extraction sur les bons manuscrits" in md and "qui garde la validation finale" in md
@@ -262,7 +262,7 @@ def test_a_session_saved_with_stances_and_an_old_sync_reply_still_load(tmp_path)
 
 @pytest.mark.parametrize("lang", ["en", "fr"])
 def test_every_viewpoint_string_exists_in_both_languages(lang):
-    from pacenote.i18n import catalog
+    from pacenote.shared.i18n import catalog
 
     loc = catalog(lang)
     assert set(loc["viewpoints"]["kind"]) == set(viewpoints.KINDS)

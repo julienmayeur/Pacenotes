@@ -12,16 +12,16 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
-from pacenote import phases as P
-from pacenote.preparation import load_core_themes, merge_core
-from pacenote.contract import FastResult, MapsUpdate, empty_maps, parse_sync_result
-from pacenote.llm import OfflineEngine
-from pacenote.capture import ReplaySource
-from pacenote.questionnaire import load_questionnaire
-from pacenote.preparation import load_client
-from pacenote.server import create_app
-from pacenote.session import Session, Settings
-from pacenote.state import SessionState
+from pacenote.interview import phases as P
+from pacenote.interview.preparation import load_core_themes, merge_core
+from pacenote.copilot.contract import FastResult, MapsUpdate, empty_maps, parse_sync_result
+from pacenote.copilot.engines import OfflineEngine
+from pacenote.transcription.capture import ReplaySource
+from pacenote.interview.questionnaire import load_questionnaire
+from pacenote.interview.preparation import load_client
+from pacenote.web.server import create_app
+from pacenote.interview.session import Session, Settings
+from pacenote.interview.state import SessionState
 
 from .conftest import ROOT, SAMPLES, edit, real_client, result, upd
 from .test_questions import _texts, jargon
@@ -186,7 +186,7 @@ def test_skip_phase_key_moves_to_the_next_phase(tmp_path):
     assert session.state.phases_skipped == ["wealth"]
     log = (tmp_path / "s" / "sync_log.jsonl").read_text()
     assert "interviewer skipped to the next phase" in log
-    js = (ROOT / "pacenote" / "static" / "app.js").read_text()
+    js = (ROOT / "pacenote" / "web" / "static" / "app.js").read_text()
     assert 'k === "p"' in js and "/api/next-phase" in js
 
 
@@ -293,7 +293,7 @@ def test_map_gaps_aim_the_phase_and_follow_the_facts():
 
 
 def test_prompts_carry_the_phase_and_the_maps():
-    from pacenote.prompts import build_fast_system, build_fast_user, build_sync_system, build_sync_user
+    from pacenote.copilot.prompts import build_fast_system, build_fast_user, build_sync_system, build_sync_user
 
     st = phased()
     st.apply_fast_result(fast(org=[org()]))

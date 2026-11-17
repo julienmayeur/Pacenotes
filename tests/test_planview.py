@@ -15,13 +15,14 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from pacenote import i18n, planview
-from pacenote.admin import create_admin_app
-from pacenote.capture import ReplaySource
-from pacenote.llm import OfflineEngine
-from pacenote.preparation import load_client
-from pacenote.server import STATIC_DIR, create_app
-from pacenote.session import Session, Settings
+from pacenote.shared import i18n
+from pacenote.plan import view as planview
+from pacenote.web.admin import create_admin_app
+from pacenote.transcription.capture import ReplaySource
+from pacenote.copilot.engines import OfflineEngine
+from pacenote.interview.preparation import load_client
+from pacenote.web.server import STATIC_DIR, create_app
+from pacenote.interview.session import Session, Settings
 
 from .conftest import CLIENTS, fill, result
 

@@ -1,4 +1,4 @@
-from pacenote.srt import SrtTailer, format_clock, format_timestamp, parse_srt, parse_timestamp
+from pacenote.transcription.srt import SrtTailer, format_clock, format_timestamp, parse_srt, parse_timestamp
 
 SAMPLE = """1
 00:00:01,200 --> 00:00:04,500

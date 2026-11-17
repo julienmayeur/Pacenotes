@@ -12,12 +12,12 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from pacenote import session as session_mod
-from pacenote.admin import create_admin_app
-from pacenote.capture import ReplaySource
-from pacenote.clients import ClientInfo, save_info
-from pacenote.server import create_app
-from pacenote.session import Session, Settings
+from pacenote.interview import session as session_mod
+from pacenote.web.admin import create_admin_app
+from pacenote.transcription.capture import ReplaySource
+from pacenote.clients.sheet import ClientInfo, save_info
+from pacenote.web.server import create_app
+from pacenote.interview.session import Session, Settings
 
 from .conftest import REAL_CLIENTS, result
 
@@ -150,7 +150,7 @@ def test_finalize_failure_is_shown_and_can_be_retried(tmp_path, client_cfg, monk
 
 
 def test_atomic_write_keeps_the_old_file_when_the_write_fails(tmp_path, monkeypatch):
-    from pacenote import fsutil
+    from pacenote.shared import fsutil
 
     path = tmp_path / "plan.md"
     fsutil.atomic_write_text(path, "v1")
@@ -170,7 +170,7 @@ def test_atomic_write_keeps_the_old_file_when_the_write_fails(tmp_path, monkeypa
 
 @pytest.mark.parametrize("call", ["persist", "wispr", "plan"])
 def test_session_files_are_written_atomically(tmp_path, client_cfg, monkeypatch, call):
-    from pacenote import fsutil
+    from pacenote.shared import fsutil
 
     session = _live(tmp_path, client_cfg, _Plan())
     written = []
@@ -192,8 +192,8 @@ def test_session_files_are_written_atomically(tmp_path, client_cfg, monkeypatch,
 
 
 def test_research_admin_and_client_sheet_writes_are_atomic(tmp_path, monkeypatch):
-    from pacenote import fsutil
-    from pacenote.research import ResearchOutput, write_outputs
+    from pacenote.shared import fsutil
+    from pacenote.research.desk import ResearchOutput, write_outputs
 
     from .test_admin import RESULT
 
@@ -222,7 +222,7 @@ def test_research_admin_and_client_sheet_writes_are_atomic(tmp_path, monkeypatch
 
 
 def test_translation_cache_keeps_entries_saved_meanwhile(tmp_path, state):
-    from pacenote import translate
+    from pacenote.interview import translate
 
     path = tmp_path / ".translations" / "cache.json"
 
@@ -244,7 +244,7 @@ def test_translation_cache_keeps_entries_saved_meanwhile(tmp_path, state):
 
 
 def test_people_rerun_keeps_an_edit_made_while_it_ran(tmp_path):
-    from pacenote.people import PeopleManager, load_profile, save_profile_edit
+    from pacenote.people.profiles import PeopleManager, load_profile, save_profile_edit
 
     from .test_people import fake_claude, sheet
 
@@ -273,7 +273,7 @@ def test_people_rerun_keeps_an_edit_made_while_it_ran(tmp_path):
 
 
 def test_claude_engine_removes_its_empty_workdir_on_close():
-    from pacenote.llm import ClaudeCliEngine
+    from pacenote.copilot.engines import ClaudeCliEngine
 
     engine = ClaudeCliEngine()
     workdir = Path(engine._workdir)
@@ -286,7 +286,7 @@ def test_claude_engine_removes_its_empty_workdir_on_close():
 
 
 def test_claude_stream_drains_stderr_while_reading_stdout(tmp_path):
-    from pacenote.web_agent import AgentJob, run_claude_stream
+    from pacenote.copilot.web_agent import AgentJob, run_claude_stream
 
     script = tmp_path / "chatty-claude"
     script.write_text(f"""#!{sys.executable}
@@ -303,7 +303,7 @@ print(json.dumps({{"type": "result", "subtype": "success", "structured_output": 
 
 
 def test_interview_app_passes_claude_bin_to_the_admin_agents(tmp_path, client_cfg, monkeypatch):
-    from pacenote import server
+    from pacenote.web import server
 
     seen = {}
     for name in ("ResearchManager", "AutofillManager", "PeopleManager"):
@@ -338,7 +338,7 @@ def _http_server(routes, hits):
 
 
 def test_dead_links_never_fetches_private_or_local_addresses(monkeypatch):
-    from pacenote import autofill
+    from pacenote.research import autofill
 
     hits = []
     srv, base = _http_server({"/gone": (404, None)}, hits)
@@ -352,7 +352,7 @@ def test_dead_links_never_fetches_private_or_local_addresses(monkeypatch):
 
 
 def test_dead_links_does_not_follow_a_redirect_to_a_private_address(monkeypatch):
-    from pacenote import autofill
+    from pacenote.research import autofill
 
     inner_hits, outer_hits = [], []
     inner, inner_base = _http_server({}, inner_hits)

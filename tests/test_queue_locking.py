@@ -1,7 +1,7 @@
 """Rules for applying a sync result: answered questions are locked, status only moves forward,
 queue edits only touch not-yet-answered questions."""
 
-from pacenote.state import MAX_ADDS_PER_SYNC, NEXT_COUNT
+from pacenote.interview.state import MAX_ADDS_PER_SYNC, NEXT_COUNT
 
 from .conftest import edit, result, upd
 

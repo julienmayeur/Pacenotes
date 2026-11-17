@@ -13,13 +13,13 @@ import shutil
 import pytest
 import yaml
 
-from pacenote.admin import create_admin_app
-from pacenote.capture import ReplaySource
-from pacenote.contract import parse_plan_doc
-from pacenote.llm import OfflineEngine
-from pacenote.preparation import load_client
-from pacenote.server import create_app
-from pacenote.session import Session, Settings
+from pacenote.web.admin import create_admin_app
+from pacenote.transcription.capture import ReplaySource
+from pacenote.copilot.contract import parse_plan_doc
+from pacenote.copilot.engines import OfflineEngine
+from pacenote.interview.preparation import load_client
+from pacenote.web.server import create_app
+from pacenote.interview.session import Session, Settings
 
 from .conftest import CLIENTS, REAL_CLIENTS, fill, plan_doc, plan_use_case, result
 from .test_admin import RESULT

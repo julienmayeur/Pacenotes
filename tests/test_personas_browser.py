@@ -11,12 +11,12 @@ import asyncio
 import pytest
 import yaml
 
-from pacenote.admin import create_admin_app
-from pacenote.capture import ReplaySource
-from pacenote.llm import OfflineEngine
-from pacenote.preparation import load_client
-from pacenote.server import create_app
-from pacenote.session import Session
+from pacenote.web.admin import create_admin_app
+from pacenote.transcription.capture import ReplaySource
+from pacenote.copilot.engines import OfflineEngine
+from pacenote.interview.preparation import load_client
+from pacenote.web.server import create_app
+from pacenote.interview.session import Session
 
 from .conftest import CLIENTS, fill, result, upd
 from .test_horizons_browser import ADMIN_PORT, APP_PORT, PLAN_SCRIPT, QUIET, run_node, serve

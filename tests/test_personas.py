@@ -12,17 +12,18 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
-from pacenote import lens, personas
-from pacenote.admin import create_admin_app
-from pacenote.capture import ReplaySource
-from pacenote.clients import ClientInfo, Contact
-from pacenote.finalize import render_plan_md
-from pacenote.llm import OfflineEngine, offline_plan_doc
-from pacenote.prompts import build_fast_system, build_plan_system, build_sync_system, lens_guide, state_snapshot
-from pacenote.preparation import load_client
-from pacenote.research import RESEARCH_SYSTEM, ResearchOutput, build_research_prompt, write_outputs
-from pacenote.session import Session, Settings
-from pacenote.state import SessionState
+from pacenote.interview import lens
+from pacenote.people import personas
+from pacenote.web.admin import create_admin_app
+from pacenote.transcription.capture import ReplaySource
+from pacenote.clients.sheet import ClientInfo, Contact
+from pacenote.plan.finalize import render_plan_md
+from pacenote.copilot.engines import OfflineEngine, offline_plan_doc
+from pacenote.copilot.prompts import build_fast_system, build_plan_system, build_sync_system, lens_guide, state_snapshot
+from pacenote.interview.preparation import load_client
+from pacenote.research.desk import RESEARCH_SYSTEM, ResearchOutput, build_research_prompt, write_outputs
+from pacenote.interview.session import Session, Settings
+from pacenote.interview.state import SessionState
 
 from .conftest import CLIENTS, REAL_CLIENTS, fill, result
 from .test_admin import RESULT
@@ -161,7 +162,7 @@ def test_strategy_questions_are_not_asked_to_an_operator_and_their_theme_drops_o
 
 
 def test_a_skipped_by_persona_question_never_shows_in_the_plan_log(tmp_path):
-    from pacenote.finalize import interview_log_md
+    from pacenote.plan.finalize import interview_log_md
 
     cfg = _client(tmp_path, TEAM)
     d = tmp_path / "clients" / "brioche-four"
@@ -289,7 +290,7 @@ def test_no_to_check_section_when_everything_was_answered():
 
 
 def test_the_english_plan_and_the_speaker_labels():
-    from pacenote.finalize import interview_log_md
+    from pacenote.plan.finalize import interview_log_md
 
     st = _slots_state("operator", role="Order desk assistant")
     st.language = "en"

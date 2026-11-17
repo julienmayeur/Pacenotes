@@ -29,7 +29,8 @@ pacenote = "pacenote.cli:main"
 include = ["pacenote*"]
 
 [tool.setuptools.package-data]
-pacenote = ["static/*", "locales/*.json", "listen/*.swift", "core/*.yaml", "knowledge/*.md", "knowledge/recipes/*.yaml"]
+pacenote = ["web/static/*", "shared/locales/*.json", "transcription/listen/*.swift", "interview/core/*.yaml",
+            "research/*.yaml", "knowledge/data/*.md", "knowledge/data/recipes/*.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

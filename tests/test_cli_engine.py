@@ -9,11 +9,11 @@ import time
 
 import pytest
 
-from pacenote.capture import ReplaySource
+from pacenote.transcription.capture import ReplaySource
 from pacenote.cli import main
-from pacenote.contract import PlanDoc, SyncResult
-from pacenote.llm import ClaudeCliEngine, ClaudeCliNotFound, ClaudeEngine, SyncFailed, find_claude, make_engine
-from pacenote.session import Session, Settings
+from pacenote.copilot.contract import PlanDoc, SyncResult
+from pacenote.copilot.engines import ClaudeCliEngine, ClaudeCliNotFound, ClaudeEngine, SyncFailed, find_claude, make_engine
+from pacenote.interview.session import Session, Settings
 
 from .conftest import REAL_CLIENTS, SAMPLES, plan_doc, plan_use_case, result, upd
 from .test_contract import VALID

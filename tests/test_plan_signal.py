@@ -10,14 +10,14 @@ from datetime import date
 import pytest
 from fastapi.testclient import TestClient
 
-from pacenote import briefs
+from pacenote.knowledge import briefs
 from pacenote.cli import main
-from pacenote.contract import PlanDoc, empty_maps, parse_plan_doc
-from pacenote.finalize import assemble_plan, comm_map_mermaid, md_to_html, mermaid_svg, open_items, ranked, render_plan_md
-from pacenote.llm import offline_plan_doc
-from pacenote.planview import plan_payload, print_document
-from pacenote.prompts import build_plan_system, build_plan_user
-from pacenote.state import SessionState
+from pacenote.copilot.contract import PlanDoc, empty_maps, parse_plan_doc
+from pacenote.plan.finalize import assemble_plan, comm_map_mermaid, md_to_html, mermaid_svg, open_items, ranked, render_plan_md
+from pacenote.copilot.engines import offline_plan_doc
+from pacenote.plan.view import plan_payload, print_document
+from pacenote.copilot.prompts import build_plan_system, build_plan_user
+from pacenote.interview.state import SessionState
 
 from .conftest import plan_doc, plan_fact, plan_use_case, real_client
 from .test_phases import fast, flow, org
@@ -233,7 +233,7 @@ def test_capabilities_refresh_rewrites_the_brief_with_sources(tmp_path, monkeypa
 
 
 def test_plan_texts_shown_to_the_client_use_no_ai_jargon_in_questions():
-    from pacenote import i18n
+    from pacenote.shared import i18n
 
     for lang in i18n.available():
         cat = i18n.flatten(i18n.catalog(lang))

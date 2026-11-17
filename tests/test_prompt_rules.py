@@ -3,8 +3,11 @@ meetings). Fictional company and people only; no model call."""
 
 from __future__ import annotations
 
-from pacenote import autofill, people, research, translate
-from pacenote.prompts import build_fast_system, build_plan_system, build_sync_system
+from pacenote.research import autofill
+from pacenote.people import profiles as people
+from pacenote.research import desk as research
+from pacenote.interview import translate
+from pacenote.copilot.prompts import build_fast_system, build_plan_system, build_sync_system
 
 from .test_attendees import EXEC, _state
 

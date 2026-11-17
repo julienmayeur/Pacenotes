@@ -7,8 +7,8 @@ import shutil
 import pytest
 import yaml
 
-from pacenote import recipes as R
-from pacenote.contract import PATTERNS
+from pacenote.knowledge import recipes as R
+from pacenote.copilot.contract import PATTERNS
 
 from .test_questions import jargon
 

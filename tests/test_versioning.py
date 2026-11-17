@@ -8,13 +8,13 @@ import threading
 
 from fastapi.testclient import TestClient
 
-from pacenote.capture import ReplaySource
-from pacenote.contract import FastResult, empty_maps
-from pacenote.server import create_app
-from pacenote.session import Session, Settings
-from pacenote.state import SessionState
+from pacenote.transcription.capture import ReplaySource
+from pacenote.copilot.contract import FastResult, empty_maps
+from pacenote.web.server import create_app
+from pacenote.interview.session import Session, Settings
+from pacenote.interview.state import SessionState
 
-from pacenote.preparation import load_client
+from pacenote.interview.preparation import load_client
 
 from .conftest import CLIENTS, edit, fill, result, upd
 
@@ -170,7 +170,7 @@ def test_page_refresh_and_restart_show_the_same_reading_level(tmp_path, client_c
 
 
 def test_reading_level_text_exists_in_every_ui_language():
-    from pacenote import i18n
+    from pacenote.shared import i18n
 
     for lang in i18n.available():
         assert "42" in i18n.t("focus.readAt", lang, n=42)

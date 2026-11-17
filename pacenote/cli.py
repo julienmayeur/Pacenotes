@@ -11,18 +11,20 @@ import sys
 import webbrowser
 from pathlib import Path
 
-from . import briefs, i18n, speech
-from . import metrics as metrics_lib
-from . import recipes as recipe_lib
-from .capture import CaptureError, ListenCapture, ReplaySource, ensure_helper, locales_map, preflight
-from .autofill import DEFAULT_AUTOFILL_MODEL
-from .people import DEFAULT_PEOPLE_MODEL
-from .finalize import archive_plan, read_wispr
-from .llm import DEFAULT_FAST_MODEL, DEFAULT_MODEL, ENGINES, ClaudeCliEngine, ClaudeCliNotFound, SyncFailed, find_claude, make_engine
-from .clients import (ClientError, create_client, get_next_client, list_slugs, load_info, resolve_client,
+from pacenote.knowledge import briefs
+from pacenote.shared import i18n
+from pacenote.transcription import speech
+from pacenote.plan import metrics as metrics_lib
+from pacenote.knowledge import recipes as recipe_lib
+from pacenote.transcription.capture import CaptureError, ListenCapture, ReplaySource, ensure_helper, locales_map, preflight
+from pacenote.research.autofill import DEFAULT_AUTOFILL_MODEL
+from pacenote.people.profiles import DEFAULT_PEOPLE_MODEL
+from pacenote.plan.finalize import archive_plan, read_wispr
+from pacenote.copilot.engines import DEFAULT_FAST_MODEL, DEFAULT_MODEL, ENGINES, ClaudeCliEngine, ClaudeCliNotFound, SyncFailed, find_claude, make_engine
+from pacenote.clients.sheet import (ClientError, create_client, get_next_client, list_slugs, load_info, resolve_client,
                       set_next_client)
-from .preparation import load_client
-from .session import Session, Settings, new_session_dir, purge
+from pacenote.interview.preparation import load_client
+from pacenote.interview.session import Session, Settings, new_session_dir, purge
 
 ROOT = Path.cwd()
 
@@ -339,7 +341,7 @@ def check_speech(slug: str, locales: list[str] | None = None, helper_bin: str | 
 def _serve(session: Session, args, auto_start: bool) -> int:
     import uvicorn
 
-    from .server import create_app
+    from pacenote.web.server import create_app
 
     if session.on_plan_written is None:  # the plan is written from the UI: say where, absolute
         session.on_plan_written = lambda files: print(_plan_written(files), flush=True)
@@ -575,7 +577,7 @@ def cmd_next(args) -> int:
 def cmd_admin(args) -> int:
     import uvicorn
 
-    from .admin import create_admin_app
+    from pacenote.web.admin import create_admin_app
 
     app = create_admin_app(args.clients_dir, claude_bin=args.claude_bin, model=args.research_model,
                            sessions_dir=args.sessions_dir, autofill_model=args.autofill_model,

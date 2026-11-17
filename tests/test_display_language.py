@@ -17,16 +17,16 @@ from pathlib import Path
 import pytest
 import uvicorn
 
-from pacenote import i18n
-from pacenote.server import create_app
-from pacenote.session import Session
-from pacenote.state import SessionState
+from pacenote.shared import i18n
+from pacenote.web.server import create_app
+from pacenote.interview.session import Session
+from pacenote.interview.state import SessionState
 
 from .conftest import real_client
 from .test_i18n import TranslatingEngine, _node_playwright
 from .test_interview_layout import _session as layout_session
 
-STATIC = Path(i18n.__file__).parent / "static"
+STATIC = Path(i18n.__file__).parent.parent / "web" / "static"
 
 
 def test_no_second_language_elements_in_the_markup():

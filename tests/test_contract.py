@@ -6,8 +6,8 @@ import anthropic
 import httpx2
 import pytest
 
-from pacenote.contract import ContractError, SyncResult, empty_result, parse_sync_result
-from pacenote.llm import FALLBACK_BETA, ClaudeEngine, SyncFailed
+from pacenote.copilot.contract import ContractError, SyncResult, empty_result, parse_sync_result
+from pacenote.copilot.engines import FALLBACK_BETA, ClaudeEngine, SyncFailed
 
 from .conftest import edit, fill, upd
 

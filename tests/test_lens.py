@@ -13,15 +13,16 @@ from pathlib import Path
 
 import pytest
 
-from pacenote import i18n, lens
-from pacenote.capture import ReplaySource
-from pacenote.contract import FastResult, SyncResult, parse_plan_doc, parse_sync_result
-from pacenote.finalize import apply_horizons, render_plan_md, wave_text
-from pacenote.llm import OfflineEngine, offline_plan_doc
-from pacenote.prompts import build_plan_system, build_plan_user, build_sync_system, state_snapshot
-from pacenote.preparation import load_client
-from pacenote.session import Session, Settings
-from pacenote.state import SessionState
+from pacenote.shared import i18n
+from pacenote.interview import lens
+from pacenote.transcription.capture import ReplaySource
+from pacenote.copilot.contract import FastResult, SyncResult, parse_plan_doc, parse_sync_result
+from pacenote.plan.finalize import apply_horizons, render_plan_md, wave_text
+from pacenote.copilot.engines import OfflineEngine, offline_plan_doc
+from pacenote.copilot.prompts import build_plan_system, build_plan_user, build_sync_system, state_snapshot
+from pacenote.interview.preparation import load_client
+from pacenote.interview.session import Session, Settings
+from pacenote.interview.state import SessionState
 
 from .conftest import CLIENTS, fill, plan_doc, plan_fact, plan_use_case, result
 

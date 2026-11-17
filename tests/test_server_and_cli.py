@@ -1,11 +1,11 @@
 
 from fastapi.testclient import TestClient
 
-from pacenote.capture import ReplaySource
+from pacenote.transcription.capture import ReplaySource
 from pacenote.cli import main
-from pacenote.llm import OfflineEngine
-from pacenote.server import create_app
-from pacenote.session import Session, Settings, purge
+from pacenote.copilot.engines import OfflineEngine
+from pacenote.web.server import create_app
+from pacenote.interview.session import Session, Settings, purge
 
 from .conftest import SAMPLES
 
@@ -87,7 +87,7 @@ def test_purge(tmp_path):
 
 
 def test_new_client_scaffold_is_loadable(tmp_path):
-    from pacenote.preparation import load_client
+    from pacenote.interview.preparation import load_client
 
     assert main(["new-client", "acme", "--name", "ACME", "--clients-dir", str(tmp_path)]) == 0
     cfg = load_client(tmp_path, "acme")

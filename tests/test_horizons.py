@@ -10,17 +10,17 @@ import shutil
 import pytest
 import yaml
 
-from pacenote import horizons
-from pacenote.preparation import load_core_themes
-from pacenote.contract import parse_plan_doc
-from pacenote.finalize import apply_horizons, by_horizon, ranked, render_plan_md
-from pacenote.horizons import (checked_horizon, counted_signals, effective_posture, offline_horizon, posture_for,
+from pacenote.research import horizons
+from pacenote.interview.preparation import load_core_themes
+from pacenote.copilot.contract import parse_plan_doc
+from pacenote.plan.finalize import apply_horizons, by_horizon, ranked, render_plan_md
+from pacenote.research.horizons import (checked_horizon, counted_signals, effective_posture, offline_horizon, posture_for,
                                posture_theme, preplan_horizon, score_prestudy)
-from pacenote.llm import offline_plan_doc
-from pacenote.prompts import build_fast_system, build_plan_system, build_sync_system
-from pacenote.preparation import load_client
-from pacenote.research import ResearchOutput, write_outputs
-from pacenote.state import SessionState
+from pacenote.copilot.engines import offline_plan_doc
+from pacenote.copilot.prompts import build_fast_system, build_plan_system, build_sync_system
+from pacenote.interview.preparation import load_client
+from pacenote.research.desk import ResearchOutput, write_outputs
+from pacenote.interview.state import SessionState
 
 from .conftest import CLIENTS, REAL_CLIENTS, fill, plan_doc, plan_use_case, result
 from .test_admin import RESULT
@@ -108,7 +108,7 @@ def test_research_schema_asks_for_the_prestudy_and_a_horizon_per_use_case():
 
 
 def test_research_prompt_studies_the_sector_and_its_adoption_of_ai():
-    from pacenote.research import RESEARCH_SYSTEM
+    from pacenote.research.desk import RESEARCH_SYSTEM
 
     system = " ".join(RESEARCH_SYSTEM.format(lang_name="French", horizons=horizons.HORIZON_GUIDE).split())
     for phrase in ("official statistics", "Keep a signal only with its URL and its publication date",

@@ -19,9 +19,9 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
-from pacenote import i18n
-from pacenote.admin import create_admin_app
-from pacenote.autofill import (
+from pacenote.shared import i18n
+from pacenote.web.admin import create_admin_app
+from pacenote.research.autofill import (
     DEFAULT_AUTOFILL_MODEL,
     FIELDS,
     LOW_CONFIDENCE,
@@ -34,8 +34,8 @@ from pacenote.autofill import (
     merge_into_sheet,
     parse_output,
 )
-from pacenote.clients import ClientInfo, create_client, load_info, save_info
-from pacenote.preparation import client_context
+from pacenote.clients.sheet import ClientInfo, create_client, load_info, save_info
+from pacenote.interview.preparation import client_context
 
 from .conftest import REAL_CLIENTS
 
@@ -380,8 +380,8 @@ def test_candidates_then_the_chosen_one_fills_the_sheet(tmp_path):
 
 
 def test_a_schema_retry_is_not_shown_as_an_unreachable_source():
-    from pacenote.autofill import AutofillJob
-    from pacenote.web_agent import progress
+    from pacenote.research.autofill import AutofillJob
+    from pacenote.copilot.web_agent import progress
 
     job = AutofillJob(slug="x")
     progress(job, {"type": "user", "message": {"content": [{"type": "tool_result", "is_error": True,
@@ -582,7 +582,7 @@ def test_autofill_keys_exist_in_every_locale():
 def test_admin_js_shows_no_hard_coded_text():
     """Every visible string of the admin script goes through t(): no literal words between tags of
     its HTML templates, nor assigned to textContent."""
-    js = (Path(i18n.__file__).parent / "static" / "admin.js").read_text(encoding="utf-8")
+    js = (Path(i18n.__file__).parent.parent / "web" / "static" / "admin.js").read_text(encoding="utf-8")
     code = re.sub(r"^\s*//.*$", "", js, flags=re.M)
     templates = re.findall(r"`([^`]*)`", code)
     stripped = [re.sub(r"\$\{(?:[^{}]|\{[^{}]*\})*\}", "", x) for x in templates]

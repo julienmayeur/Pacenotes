@@ -13,16 +13,16 @@ import subprocess
 import pytest
 from fastapi.testclient import TestClient
 
-from pacenote import ambassadors
-from pacenote.admin import create_admin_app
-from pacenote.capture import ReplaySource
-from pacenote.preparation import load_core_themes
-from pacenote.contract import parse_plan_doc
-from pacenote.llm import OfflineEngine
-from pacenote.prompts import build_fast_system, build_sync_system, state_snapshot
-from pacenote.preparation import load_client
-from pacenote.session import Session, Settings
-from pacenote.state import SessionState
+from pacenote.people import pilots as ambassadors
+from pacenote.web.admin import create_admin_app
+from pacenote.transcription.capture import ReplaySource
+from pacenote.interview.preparation import load_core_themes
+from pacenote.copilot.contract import parse_plan_doc
+from pacenote.copilot.engines import OfflineEngine
+from pacenote.copilot.prompts import build_fast_system, build_sync_system, state_snapshot
+from pacenote.interview.preparation import load_client
+from pacenote.interview.session import Session, Settings
+from pacenote.interview.state import SessionState
 
 from .conftest import CLIENTS, REAL_CLIENTS, ROOT, fill, result
 from .test_admin import RESULT

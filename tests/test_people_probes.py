@@ -13,15 +13,16 @@ from pathlib import Path
 
 import pytest
 
-from pacenote import ambassadors, i18n
-from pacenote.capture import ReplaySource
-from pacenote.contract import FastResult, SyncResult, parse_sync_result
-from pacenote.llm import OfflineEngine
-from pacenote.prompts import (build_fast_system, build_plan_user, build_sync_system, build_sync_user,
+from pacenote.people import pilots as ambassadors
+from pacenote.shared import i18n
+from pacenote.transcription.capture import ReplaySource
+from pacenote.copilot.contract import FastResult, SyncResult, parse_sync_result
+from pacenote.copilot.engines import OfflineEngine
+from pacenote.copilot.prompts import (build_fast_system, build_plan_user, build_sync_system, build_sync_user,
                               people_guide, state_snapshot)
-from pacenote.preparation import load_client
-from pacenote.session import Session, Settings
-from pacenote.state import SessionState
+from pacenote.interview.preparation import load_client
+from pacenote.interview.session import Session, Settings
+from pacenote.interview.state import SessionState
 
 from .conftest import CLIENTS, fill, result
 from .test_phases import maps, org

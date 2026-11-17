@@ -10,12 +10,12 @@ import asyncio
 
 import pytest
 
-from pacenote.capture import ReplaySource
-from pacenote.contract import parse_plan_doc
-from pacenote.llm import OfflineEngine
-from pacenote.preparation import load_client
-from pacenote.server import create_app
-from pacenote.session import Session, Settings
+from pacenote.transcription.capture import ReplaySource
+from pacenote.copilot.contract import parse_plan_doc
+from pacenote.copilot.engines import OfflineEngine
+from pacenote.interview.preparation import load_client
+from pacenote.web.server import create_app
+from pacenote.interview.session import Session, Settings
 
 from .conftest import CLIENTS, fill, plan_doc, plan_fact, plan_use_case, result
 from .test_horizons_browser import APP_PORT, PLAN_SCRIPT, run_node, serve

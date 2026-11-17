@@ -14,10 +14,10 @@ from pathlib import Path
 
 import pytest
 
-from pacenote import capture
-from pacenote.capture import CaptureError, HelperUnavailable, ListenCapture, ensure_helper, explain, preflight
+from pacenote.transcription import capture
+from pacenote.transcription.capture import CaptureError, HelperUnavailable, ListenCapture, ensure_helper, explain, preflight
 from pacenote.cli import main
-from pacenote.session import Session, Settings
+from pacenote.interview.session import Session, Settings
 
 from .conftest import REAL_CLIENTS, result
 

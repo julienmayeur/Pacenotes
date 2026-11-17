@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from pacenote.contract import PLAN_SECTIONS, PlanDelta, SyncResult, empty_maps, empty_read
-from pacenote.preparation import load_client
-from pacenote.state import SessionState
+from pacenote.copilot.contract import PLAN_SECTIONS, PlanDelta, SyncResult, empty_maps, empty_read
+from pacenote.interview.preparation import load_client
+from pacenote.interview.state import SessionState
 
 from .srt_samples import write_samples
 
@@ -123,7 +123,7 @@ def plan_fact(value="", evidence="", status=None, question="", ask=""):
 
 def plan_use_case(uid="bakery-orders", title="Saisie des commandes", impact=4, feasibility=3, horizon="h1", **slots):
     """A contract-valid PlanUseCase dict: every slot "to confirm" unless given (slot=plan_fact(...))."""
-    from pacenote.contract import SLOT_KEYS
+    from pacenote.copilot.contract import SLOT_KEYS
 
     return {"id": uid, "title": title, "horizon": horizon, "pattern": "act_on_behalf",
             "human_decision": "Claire valide les commandes atypiques.",
@@ -167,7 +167,7 @@ def plan_doc(*use_cases, context="Brioche & Four distribue des fours Fornaxa.", 
 def _no_ambassador_file_in_the_repo(monkeypatch):
     """Finalizing a session records the potential ambassadors in its client folder: never in the
     repo's fixtures or example client (tests that check the file work on a copy under tmp_path)."""
-    from pacenote import ambassadors
+    from pacenote.people import pilots as ambassadors
 
     real = ambassadors.record
 
@@ -200,4 +200,4 @@ def _no_local_speech_backend_config(monkeypatch):
     tests select: they configure speech backends explicitly (test_speech_backends.py)."""
     for name in ("PACENOTE_WHISPER_BIN", "PACENOTE_WHISPER_MODEL", "PACENOTE_SPEECH_BACKEND"):
         monkeypatch.delenv(name, raising=False)
-    monkeypatch.setattr("pacenote.speech.WHISPER_NAMES", ("pacenote-test-no-such-whisper",))
+    monkeypatch.setattr("pacenote.transcription.speech.WHISPER_NAMES", ("pacenote-test-no-such-whisper",))

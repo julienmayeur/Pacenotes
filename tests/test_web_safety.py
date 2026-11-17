@@ -15,13 +15,13 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from pacenote import web_guard
-from pacenote.admin import create_admin_app
-from pacenote.capture import ListenCapture, ReplaySource
-from pacenote.finalize import md_to_html, safe_url
-from pacenote.llm import OfflineEngine
-from pacenote.server import create_app
-from pacenote.session import Session, Settings
+from pacenote.web import guard as web_guard
+from pacenote.web.admin import create_admin_app
+from pacenote.transcription.capture import ListenCapture, ReplaySource
+from pacenote.plan.finalize import md_to_html, safe_url
+from pacenote.copilot.engines import OfflineEngine
+from pacenote.web.server import create_app
+from pacenote.interview.session import Session, Settings
 
 from .conftest import REAL_CLIENTS, SAMPLES
 from .test_i18n import _node_playwright
@@ -158,7 +158,7 @@ def test_admin_links_from_agents_are_http_only(tmp_path):
     """admin.js puts agent-found URLs (sources, websites, LinkedIn) in href: only http(s) survive."""
     if not shutil.which("node"):
         pytest.skip("needs node")
-    from pacenote.server import STATIC_DIR
+    from pacenote.web.server import STATIC_DIR
 
     src = (STATIC_DIR / "admin.js").read_text(encoding="utf-8")
     helpers = "\n".join(ln for ln in src.splitlines() if ln.startswith(("const esc =", "const safeHref =")))

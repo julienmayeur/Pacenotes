@@ -7,12 +7,12 @@ import time
 
 from fastapi.testclient import TestClient
 
-from pacenote.capture import ListenCapture, ReplaySource
+from pacenote.transcription.capture import ListenCapture, ReplaySource
 from pacenote import cli
-from pacenote.contract import FastResult
-from pacenote.llm import OfflineEngine
-from pacenote.server import create_app
-from pacenote.session import Session, Settings
+from pacenote.copilot.contract import FastResult
+from pacenote.copilot.engines import OfflineEngine
+from pacenote.web.server import create_app
+from pacenote.interview.session import Session, Settings
 
 from .conftest import SAMPLES, result, upd
 from .test_listen_capture import FAST, fake_listen, runs

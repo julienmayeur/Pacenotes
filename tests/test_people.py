@@ -16,11 +16,11 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
-from pacenote import i18n
-from pacenote.admin import create_admin_app
-from pacenote.autofill import AutofillManager
-from pacenote.clients import ClientInfo, Contact, save_info
-from pacenote.people import (
+from pacenote.shared import i18n
+from pacenote.web.admin import create_admin_app
+from pacenote.research.autofill import AutofillManager
+from pacenote.clients.sheet import ClientInfo, Contact, save_info
+from pacenote.people.profiles import (
     CATEGORIES,
     DEFAULT_PEOPLE_MODEL,
     PeopleManager,
@@ -32,7 +32,7 @@ from pacenote.people import (
     privacy_filter,
     sensitive_reason,
 )
-from pacenote.preparation import load_client
+from pacenote.interview.preparation import load_client
 
 from .test_autofill import _node_playwright, _serve, calls, clients  # noqa: F401  (the clients fixture)
 
@@ -381,7 +381,7 @@ def test_person_keys_exist_in_every_locale_and_no_hard_coded_text():
     for code in i18n.available():
         raw = json.loads((Path(i18n.LOCALES_DIR) / f"{code}.json").read_text(encoding="utf-8"))
         assert not (en - set(i18n.flatten(raw))), code
-    js = (Path(i18n.__file__).parent / "static" / "admin.js").read_text(encoding="utf-8")
+    js = (Path(i18n.__file__).parent.parent / "web" / "static" / "admin.js").read_text(encoding="utf-8")
     assert "admin.person.privacy" in js and not re.search(r"title=\"[A-Za-z]{3,}", js)
 
 

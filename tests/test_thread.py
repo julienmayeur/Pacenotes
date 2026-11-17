@@ -8,14 +8,14 @@ import time
 
 from fastapi.testclient import TestClient
 
-from pacenote.capture import ReplaySource
-from pacenote.contract import FastResult, SyncResult
-from pacenote.llm import OfflineEngine
-from pacenote.prompts import build_fast_system, build_sync_system
-from pacenote.preparation import load_client
-from pacenote.server import create_app
-from pacenote.session import Session, Settings
-from pacenote.state import SessionState
+from pacenote.transcription.capture import ReplaySource
+from pacenote.copilot.contract import FastResult, SyncResult
+from pacenote.copilot.engines import OfflineEngine
+from pacenote.copilot.prompts import build_fast_system, build_sync_system
+from pacenote.interview.preparation import load_client
+from pacenote.web.server import create_app
+from pacenote.interview.session import Session, Settings
+from pacenote.interview.state import SessionState
 
 from .conftest import NOISY, REAL_CLIENTS, SAMPLES, edit, real_client, result, upd
 
@@ -318,8 +318,8 @@ def test_prompts_carry_the_ladder_vagueness_and_noise_rules():
 
 
 def test_strip_picks_the_spoken_language_on_the_noisy_sample():
-    from pacenote.srt import load_srt
-    from pacenote.transcript import Transcript
+    from pacenote.transcription.srt import load_srt
+    from pacenote.transcription.transcript import Transcript
 
     noisy = NOISY
     t = Transcript()
@@ -333,7 +333,7 @@ def test_strip_picks_the_spoken_language_on_the_noisy_sample():
 
 
 def test_missing_block_sits_right_under_the_question_before_the_captured_thread():
-    from pacenote.server import STATIC_DIR
+    from pacenote.web.server import STATIC_DIR
 
     html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
     # one panel: the thread of past questions, then the current card (inline controls, the theme header
