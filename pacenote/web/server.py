@@ -15,18 +15,18 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from pacenote.shared import i18n
-from pacenote.plan import view as plan_view
 from pacenote.web.admin import admin_router
 from pacenote.research.autofill import DEFAULT_AUTOFILL_MODEL, AutofillManager, dead_links
 from pacenote.people.profiles import DEFAULT_PEOPLE_MODEL, PeopleManager
 from pacenote.transcription.capture import CaptureError
 from pacenote.research.desk import DEFAULT_MODEL as RESEARCH_MODEL, ResearchManager
 from pacenote.interview.session import Session
+from pacenote.web import common
+from pacenote.web.common import STATIC_DIR
 from pacenote.web.guard import SameOriginGuard
 
 log = logging.getLogger(__name__)
 
-STATIC_DIR = Path(__file__).parent / "static"
 
 
 class WisprBody(BaseModel):
@@ -61,7 +61,7 @@ def create_app(session: Session, auto_start: bool = False, research: ResearchMan
     app = FastAPI(title="Pacenote", lifespan=lifespan, docs_url=None, redoc_url=None)
     app.add_middleware(SameOriginGuard, bind_host=bind_host)  # no other web page can drive it (web/guard.py)
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-    app.include_router(i18n.api_router())  # catalogs for static/i18n.js (any screen)
+    app.include_router(common.i18n_router())  # catalogs for static/i18n.js (any screen)
     # the admin panel (clients, research, pre-plan) on its own page: /admin
     clients_dir = Path(session.client.dir).parent
     sessions_dir = Path(session.session_dir).resolve().parent.parent  # sessions/<client>/<id>
@@ -179,19 +179,19 @@ def create_app(session: Session, auto_start: bool = False, research: ResearchMan
     # the Plan view of this session (static/plan.html), its data and its PDF export
     @app.get("/plan", response_class=HTMLResponse)
     async def plan_page() -> HTMLResponse:
-        return plan_view.page_response()
+        return common.plan_page()
 
     @app.get("/api/plan")
     async def plan_data() -> dict:
-        return plan_view.payload_response(session.session_dir)
+        return common.plan_payload(session.session_dir)
 
     @app.get("/api/plan/md")
     async def plan_markdown() -> FileResponse:
-        return plan_view.markdown_response(session.session_dir)
+        return common.plan_markdown(session.session_dir)
 
     @app.get("/api/plan/pdf")
     async def plan_pdf() -> FileResponse:
-        return await plan_view.pdf_response(session.session_dir)
+        return await common.plan_pdf(session.session_dir)
 
     @app.get("/plan.md")
     async def plan_md() -> FileResponse:

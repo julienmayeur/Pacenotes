@@ -322,26 +322,8 @@ def languages_payload(ui: str | None = None, locales_dir: Path | None = None) ->
 
 
 # --- web: the catalogs for the browser helper (static/i18n.js) -------------------------------
-def api_router(locales_dir: Path | None = None):
-    """FastAPI router serving the catalogs to `static/i18n.js`. Any FastAPI app (the interview
-    screen, an admin panel…) plugs in with `app.include_router(i18n.api_router())`.
-
-    GET /api/i18n              -> {languages: [{code, name, native, label}], fallback, speech}
-    GET /api/i18n/{lang}       -> the flat catalog for `lang`, fallbacks filled in
-    """
-    from fastapi import APIRouter, HTTPException
-
-    router = APIRouter()
-
-    @router.get("/api/i18n")
-    async def languages(ui: str | None = None) -> dict:
-        return languages_payload(ui, locales_dir)
-
-    @router.get("/api/i18n/{lang}")
-    async def catalog_for(lang: str) -> dict:
-        if not is_language(lang):
-            raise HTTPException(status_code=404, detail=f"unknown language {lang!r}")
-        return {"lang": lang, "has_file": lang in available(locales_dir) or _base(lang) in available(locales_dir),
-                "catalog": {k: v for k, v in merged(lang, locales_dir).items() if not k.startswith("_meta.")}}
-
-    return router
+def catalog_payload(lang: str, locales_dir: Path | None = None) -> dict:
+    """The flat catalog for `lang` as the browser gets it: fallbacks filled in, no `_meta.` keys, and whether
+    a locale file exists for it (else the strings are English and Claude's overlay)."""
+    return {"lang": lang, "has_file": lang in available(locales_dir) or _base(lang) in available(locales_dir),
+            "catalog": {k: v for k, v in merged(lang, locales_dir).items() if not k.startswith("_meta.")}}

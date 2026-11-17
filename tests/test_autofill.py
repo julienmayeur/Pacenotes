@@ -19,6 +19,7 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
+from pacenote.web.common import STATIC_DIR
 from pacenote.shared import i18n
 from pacenote.web.admin import create_admin_app
 from pacenote.research.autofill import (
@@ -582,7 +583,7 @@ def test_autofill_keys_exist_in_every_locale():
 def test_admin_js_shows_no_hard_coded_text():
     """Every visible string of the admin script goes through t(): no literal words between tags of
     its HTML templates, nor assigned to textContent."""
-    js = (Path(i18n.__file__).parent.parent / "web" / "static" / "admin.js").read_text(encoding="utf-8")
+    js = (STATIC_DIR / "admin.js").read_text(encoding="utf-8")
     code = re.sub(r"^\s*//.*$", "", js, flags=re.M)
     templates = re.findall(r"`([^`]*)`", code)
     stripped = [re.sub(r"\$\{(?:[^{}]|\{[^{}]*\})*\}", "", x) for x in templates]

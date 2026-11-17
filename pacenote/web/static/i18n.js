@@ -12,7 +12,7 @@
  *   i18n.onChange((lang, info) => render());  // re-render dynamic parts, no page reload
  *
  * Catalogs are the JSON files in pacenote/locales/ (the same ones Python uses), served by
- * pacenote.i18n.api_router(). Adding a language = adding <lang>.json there.
+ * pacenote.web.common.i18n_router(). Adding a language = adding <lang>.json there.
  */
 (function () {
   const state = {

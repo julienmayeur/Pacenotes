@@ -42,9 +42,9 @@ from pacenote.people.profiles import (DEFAULT_PEOPLE_MODEL, CATEGORIES as PERSON
 from pacenote.plan.finalize import md_to_html
 from pacenote.copilot.engines import DEFAULT_MODEL
 from pacenote.research.desk import ResearchManager, list_history, restore_version
+from pacenote.web import common
+from pacenote.web.common import STATIC_DIR
 from pacenote.web.guard import SameOriginGuard
-
-STATIC_DIR = Path(__file__).parent / "static"
 
 
 class NewClient(BaseModel):
@@ -208,19 +208,19 @@ def admin_router(clients_dir: Path, manager: ResearchManager, sessions_dir: Path
     @r.get("/admin/plan/{slug}/{session_id}", response_class=HTMLResponse)
     async def plan_page(slug: str, session_id: str) -> HTMLResponse:
         sdir(slug, session_id)
-        return plan_view.page_response()
+        return common.plan_page()
 
     @r.get("/admin/api/plan/{slug}/{session_id}")
     async def plan_data(slug: str, session_id: str) -> dict:
-        return plan_view.payload_response(sdir(slug, session_id))
+        return common.plan_payload(sdir(slug, session_id))
 
     @r.get("/admin/api/plan/{slug}/{session_id}/md")
     async def plan_markdown(slug: str, session_id: str):
-        return plan_view.markdown_response(sdir(slug, session_id))
+        return common.plan_markdown(sdir(slug, session_id))
 
     @r.get("/admin/api/plan/{slug}/{session_id}/pdf")
     async def plan_pdf(slug: str, session_id: str):
-        return await plan_view.pdf_response(sdir(slug, session_id))
+        return await common.plan_pdf(sdir(slug, session_id))
 
     @r.put("/admin/api/clients/{slug}")
     async def update(slug: str, info: ClientInfo) -> dict:
@@ -446,7 +446,7 @@ def create_admin_app(clients_dir: Path, claude_bin: str | None = None, model: st
                                     autofill=autofill or AutofillManager(claude_bin, autofill_model, check_links=dead_links),
                                     people=people or PeopleManager(clients_dir, claude_bin, people_model or DEFAULT_PEOPLE_MODEL,
                                                                    check_links=dead_links)))
-    app.include_router(i18n.api_router())  # catalogs for static/i18n.js
+    app.include_router(common.i18n_router())  # catalogs for static/i18n.js
 
     @app.get("/", response_class=HTMLResponse)
     async def root() -> HTMLResponse:

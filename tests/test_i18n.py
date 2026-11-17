@@ -15,6 +15,7 @@ import yaml
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from pacenote.web.common import STATIC_DIR
 from pacenote.transcription import capture
 from pacenote.shared import i18n
 from pacenote.interview import translate
@@ -32,6 +33,7 @@ from pacenote.copilot.prompts import (
 from pacenote.plan.headings import plan_headings
 from pacenote.interview.questionnaire import load_questionnaire
 from pacenote.interview.preparation import load_client
+from pacenote.web import common
 from pacenote.web.server import create_app
 from pacenote.interview.session import Session, Settings
 from pacenote.interview.state import SessionState
@@ -67,7 +69,7 @@ def test_every_key_used_by_the_ui_exists():
     import re
 
     keys = set(i18n.flatten(i18n.catalog("en")))
-    static = Path(i18n.__file__).parent.parent / "web" / "static"
+    static = STATIC_DIR
     html = "".join((static / f).read_text(encoding="utf-8") for f in ("index.html", "admin.html"))
     js = "".join((static / f).read_text(encoding="utf-8") for f in ("app.js", "i18n.js", "admin.js"))
     used = set(re.findall(r'data-i18n="([\w.]+)"', html))
@@ -102,7 +104,7 @@ def test_adding_a_language_is_just_a_new_file(tmp_path):
     assert "focus.next" in i18n.missing_keys("es", ("focus.",), tmp_path)
 
     app = FastAPI()
-    app.include_router(i18n.api_router(tmp_path))
+    app.include_router(common.i18n_router(tmp_path))
     with TestClient(app) as http:
         langs = http.get("/api/i18n").json()["languages"]
         assert [x["code"] for x in langs] == ["en", "es", "fr"] and langs[1]["label"] == "Español"
@@ -629,7 +631,7 @@ def test_browser_switches_language_instantly(tmp_path, client_cfg):
 def test_pages_have_no_hard_coded_strings_and_use_the_shared_helper(page):
     import re
 
-    static = Path(i18n.__file__).parent.parent / "web" / "static"
+    static = STATIC_DIR
     html = (static / page).read_text(encoding="utf-8")
     assert '<script src="/static/i18n.js"></script>' in html and '<language-select ' in html and 'bind="ui"' in html
     body = re.sub(r"<!--.*?-->|<(script|style|title)[^>]*>.*?</\1>", "", html, flags=re.S)

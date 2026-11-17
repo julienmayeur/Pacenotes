@@ -12,6 +12,7 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
+from pacenote.web.common import STATIC_DIR
 from pacenote.interview import phases as P
 from pacenote.interview.preparation import load_core_themes, merge_core
 from pacenote.copilot.contract import FastResult, MapsUpdate, empty_maps, parse_sync_result
@@ -186,7 +187,7 @@ def test_skip_phase_key_moves_to_the_next_phase(tmp_path):
     assert session.state.phases_skipped == ["wealth"]
     log = (tmp_path / "s" / "sync_log.jsonl").read_text()
     assert "interviewer skipped to the next phase" in log
-    js = (ROOT / "pacenote" / "web" / "static" / "app.js").read_text()
+    js = (STATIC_DIR / "app.js").read_text()
     assert 'k === "p"' in js and "/api/next-phase" in js
 
 
