@@ -13,8 +13,9 @@ from markdown.extensions import Extension
 from markdown.treeprocessors import Treeprocessor
 
 from . import ambassadors, briefs, fsutil, personas
+from . import pilots as pilots_lib
 from . import recipes as recipe_lib
-from .contract import SLOT_KEYS, Fact, Measure, PlanDoc, PlanUseCase, Recipe
+from .contract import SLOT_KEYS, Fact, Measure, Pilot, PlanDoc, PlanUseCase, Recipe
 from .horizons import HORIZONS, checked_horizon
 from .prompts import state_headings
 from .srt import load_srt, parse_srt
@@ -236,11 +237,33 @@ def apply_horizons(doc: PlanDoc, state: SessionState | None = None, library: dic
     if light is None or light.horizon != "h1":
         light = next((u for u in order if u.horizon == "h1"), None) or light or (order[0] if order else None)
     update: dict = {"lighthouse": light.id if light is not None else ""}
-    if state is not None and light is not None and not a.ambassador.strip():
-        found = ambassadors.for_use_case(state, light.id)
-        if found is not None:
-            update |= {"ambassador": found["person"], "evidence": found["quote"], "question": "", "ask": ""}
-    return doc.model_copy(update={"adoption": a.model_copy(update=update)})
+    return doc.model_copy(update={"adoption": a.model_copy(update=update | adoption_people(a, state, update["lighthouse"]))})
+
+
+def adoption_people(a, state: SessionState | None, lighthouse: str) -> dict:
+    """Who carries the first wave (pilots.py): the pilots the model named (never one described with a
+    label), else the ones the interview surfaced (ambassadors.pilots_for_plan); several are fine. With
+    pilots, no sponsor. With none, the leader interviewed (an executive or a function leader) sponsors
+    the first wave, leading by example, named by role; an operator interviewed sponsors nothing."""
+    pilots = [p.model_copy(update={"person": _one_line(p.person), "evidence": _one_line(p.evidence)})
+              for p in a.pilots if p.person.strip() and not _PEOPLE_LABELS.search(f"{p.person} {p.evidence}")]
+    if not pilots and state is not None:
+        pilots = [Pilot(**p) for p in ambassadors.pilots_for_plan(state, lighthouse)
+                  if not _PEOPLE_LABELS.search(p["evidence"])]
+    seen, unique = set(), []
+    for p in pilots:
+        if (k := ambassadors.person_id(p.person)) and k not in seen:
+            seen.add(k)
+            unique.append(p)
+    if unique:
+        return {"pilots": unique, "sponsor": "", "sponsor_plan": "", "question": "", "ask": ""}
+    if state is None:
+        return {"pilots": []}
+    if not pilots_lib.can_sponsor(state):
+        return {"pilots": [], "sponsor": "", "sponsor_plan": ""}
+    sponsor = pilots_lib.sponsor_label(state, state.tr())
+    return {"pilots": [], "sponsor": sponsor, "sponsor_plan": wave_text(a.sponsor_plan),
+            "ask": a.ask.strip() or sponsor}  # who to ask who else would go first: the sponsor, by default
 
 
 def _one_line(text: str) -> str:
@@ -653,20 +676,33 @@ def render_plan_md(doc: PlanDoc, state: SessionState) -> str:
     light = next((u for u in cases if u.id == a.lighthouse), None)
     out += [f"## {h['adoption']}", "", f"_{tr('plan.adoption.intro')}_", "",
             field("lighthouse", light.title.strip() if light is not None else tr("plan.toConfirm")), ""]
-    if a.ambassador.strip():
-        quote = a.evidence.strip()
-        who = a.ambassador.strip() + (f" — « {quote} »" if quote else f" _({tr('plan.toConfirm')})_")
+    def pilot(p) -> str:
+        quote = p.evidence.strip()
+        return p.person.strip() + (f" — « {quote} »" if quote else f" _({tr('plan.toConfirm')})_")
+
+    pilots = [p for p in a.pilots if p.person.strip()]
+    if len(pilots) > 1:
+        out += [field("pilots", "").rstrip(), ""] + [f"- {pilot(p)}" for p in pilots]
     else:
-        who = tr("plan.confirmLine", question=a.question.strip() or tr("plan.adoption.findQuestion"),
-                 ask=a.ask.strip() or unknown)
-    out += [field("ambassador", who), ""]
+        out.append(field("pilots", pilot(pilots[0]) if pilots else tr(
+            "plan.confirmLine", question=a.question.strip() or tr("plan.adoption.findQuestion"),
+            ask=a.ask.strip() or unknown)))
+    sponsor = a.sponsor.strip() if not pilots else ""
+    if hint := pilots_lib.hint_line(state.pilots_hint, len(pilots), tr):
+        out += ["", f"_{hint}_"]
+    if sponsor:
+        out += ["", field("sponsor", tr("plan.adoption.sponsorLine", sponsor=sponsor,
+                                         plan=wave_text(a.sponsor_plan) or tr("plan.adoption.default.sponsorPlan")))]
+    out.append("")
     lm = metric_by_case.get(light.id) if light is not None else None
     proof = (tr("plan.metricLine", name=lm.name, baseline=measure(lm.baseline), target=measure(lm.target))
              if lm is not None else tr("plan.adoption.noMetric"))
     for n, k in enumerate(("volunteers", "majority", "everyone"), 1):
         w = getattr(a, k)
         trigger = wave_text(w.trigger) or tr(f"plan.adoption.default.{k}Trigger")
-        out += [f"{n}. **{tr(f'plan.adoption.{k}')}** — {wave_text(w.plan) or tr(f'plan.adoption.default.{k}')}",
+        default = tr("plan.adoption.default.volunteersSponsor", sponsor=sponsor) if k == "volunteers" and sponsor \
+            else tr(f"plan.adoption.default.{k}")
+        out += [f"{n}. **{tr(f'plan.adoption.{k}')}** — {wave_text(w.plan) or default}",
                 f"    - {tr('plan.adoption.startsWhen', trigger=trigger)}"]
         if k == "majority":
             out.append(f"    - {tr('plan.adoption.proof', proof=proof)}")

@@ -641,6 +641,7 @@ class OfflineEngine:
                 enough_data_reason="",
                 interviewee_read=empty_read(),
                 ambassador_probes=[],
+                sponsor_probe=None,
                 value_framings=[],
                 metric_questions=[],
                 to_check=[],
@@ -666,6 +667,7 @@ class OfflineEngine:
             enough_data_reason="offline heuristic: all must-have questions answered" if enough else "",
             interviewee_read=empty_read(),  # no model: no read, no probe (the screen falls back to a template)
             ambassador_probes=[],
+            sponsor_probe=None,
             value_framings=[],  # no model: no talking point (metric questions fall back to templates)
             metric_questions=[],
             to_check=[],

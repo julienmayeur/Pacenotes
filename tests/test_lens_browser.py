@@ -92,7 +92,7 @@ class _PlanEngine(OfflineEngine):
               "freed": {"who": "Claire", "task": "ressaisir les mails de commande dans Excel", "time": "3 h/jour",
                         "evidence": "trois heures par jour", "moves_up_to": "le suivi des grands comptes"}}
         return parse_plan_doc(plan_doc(uc, metrics=[metric], adoption={
-            "lighthouse": "orders", "ambassador": "Claire", "evidence": "elle essaie toujours en premier",
+            "lighthouse": "orders", "pilots": [{"person": "Claire", "evidence": "elle essaie toujours en premier"}],
             "majority": {"plan": "Claire montre ses chiffres à la réunion du lundi.", "trigger": ""}}))
 
 

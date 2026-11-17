@@ -6,6 +6,7 @@ import json
 from typing import Mapping
 
 from . import ambassadors, briefs, horizons, i18n, lens, personas
+from . import pilots as pilots_lib
 from . import phases as P
 from . import recipes as recipe_lib
 from .contract import CATALOG_DESCRIPTIONS, SLOT_DESCRIPTIONS, SLOT_KEYS, SLOT_RUNG
@@ -196,8 +197,11 @@ POSTURE_NOTES = {"explorer": "explorer (sector behind, gentle approach)",
                  "urgent": "urgent (competitors already have results: move fast)"}
 
 AMBASSADORS_GUIDE = """\
-# Potential ambassadors (who could carry a first pilot)
-A pilot spreads through a colleague the others listen to, not through the consultant or the management.
+# Potential pilots (who could carry the first use case)
+A first use case spreads through pilots: colleagues the others listen to, not the consultant or the \
+management. There can be several (a dynamic company, a young team), or none in a large company that \
+moves slowly, where the leader then opens the way. {expected} Keep listening for pilots across every \
+workflow; do not stop at the first one, and never turn this into a count of people.
 - In the org map, `adoption_signal` = a short quote of what the interviewee said that makes this person a \
 potential ambassador: tries new tools or software first, shows the others how, is listened to when \
 they say something works, complains about a repetitive task they would gladly hand over, or would \
@@ -240,6 +244,17 @@ through change; a numbers-first one through time saved.
 how, on a real case) AND the conversation is on that workflow or has just left it; else "later". \
 Never in the opening, never two in a row. "done" when the interviewee already told it (who tries new \
 things on that team, how they took the last change): the app stops suggesting it.
+- sponsor_probe: when no pilot was named so far (nobody in state.potential_ambassadors is keen) and the interviewee leads the company or a \
+function, the leader may have to open the way themself, leading by example. Write one indirect question \
+that checks whether they would be willing to try it first on their own work (a report or decision they \
+prepare every week) and show the team: through how changes usually started here, or what they did the \
+last time they changed how the team works ("When something new came in, did it start with you?"). Never \
+"would you be the ambassador / the sponsor", never as a test of their commitment, no AI vocabulary. \
+timing: "now" once the workflows were walked through and rapport is there, and more readily when the \
+expected pilots say the leader will likely open the way; "done" when they already said it (they started \
+the last change themself, or they said they would rather not). null when a pilot was named, when the \
+interviewee does the work themself, or when nothing changed; never change one already asked \
+(state.sponsor_probe).
 - ambassador_probes: at most one per workflow, use_case = its id in state.use_cases, only new or \
 changed ones (empty list when nothing changed); person = the person or role behind it as heard \
 ("" = the team); question = short, ready to say, in {lang_name}; reason = for the interviewer only, \
@@ -381,7 +396,7 @@ def horizons_guide(state: SessionState) -> str:
         out += "\n" + POSTURE_GUIDE.format(posture=state.posture, posture_note=POSTURE_NOTES[state.posture],
                                            rationale=f"{rationale}\n" if rationale else "",
                                            posture_rule=POSTURE_RULES[state.posture])
-    return out + "\n" + AMBASSADORS_GUIDE
+    return out + "\n" + AMBASSADORS_GUIDE.format(expected=pilots_lib.prompt_line(state.pilots_hint or None))
 
 
 SLOTS_GUIDE = """\
@@ -505,7 +520,7 @@ noise, the room (TV, nearby voices) and unrelated chatter.
 coverage of at least about 0.6, or when the time budget is used up and the remaining gaps can \
 be listed as open points in the plan. Be conservative: once true, the interview ends and plan \
 writing starts. enough_data_reason: one sentence why (or why not yet).
-- interviewee_read and ambassador_probes: see Reading the interviewee and People questions above.
+- interviewee_read, ambassador_probes and sponsor_probe: see Reading the interviewee and People questions above.
 - value_framings and metric_questions: see The executive lens above.
 - to_check: what the interviewee could not answer in this slice, new items only (see Who you \
 interview): use_case (its id, or null), question_id (or null), slots (the slot keys it leaves open, \
@@ -600,8 +615,11 @@ def state_snapshot(state: SessionState, for_plan: bool = False) -> dict:
         "use_cases": use_cases_snapshot(state),
         "maps": maps_snapshot(state),
         "recipe_matches": recipe_matches_snapshot(state),
-        "potential_ambassadors": [{k: e[k] for k in ("person", "role", "use_case", "quote")}
+        # keen = the interviewee said they would be keen, try new tools first or are listened to (a pilot);
+        # otherwise the interview only put them on that work
+        "potential_ambassadors": [{k: e[k] for k in ("person", "role", "use_case", "quote", "keen")}
                                   for e in ambassadors.candidates(state)],
+        "expected_pilots": pilots_lib.prompt_line(state.pilots_hint or None),
         # what the interviewee could not answer, and who would know (personas.py)
         "to_check": [{"ask": t["ask"], "question": t["question"], "use_case": t.get("use_case")}
                      for t in state.to_check],
@@ -617,7 +635,9 @@ def state_snapshot(state: SessionState, for_plan: bool = False) -> dict:
                   "ambassador_probes": [{"use_case": uc, "person": p.get("person", ""), "question": p.get("question", ""),
                                          "timing": p.get("timing", ""), "asked": bool(p.get("asked"))}
                                         for uc, p in state.ambassador_probes.items()],
-                  "people_questions_shown_for": sorted({p for p in state.ambassador_prompted.values() if p})}
+                  "people_questions_shown_for": sorted({p for p in state.ambassador_prompted.values() if p}),
+                  "sponsor_probe": {k: state.sponsor_probe.get(k) for k in ("question", "timing", "asked")
+                                    if k in state.sponsor_probe} or None}
 
 
 def build_sync_user(
@@ -827,20 +847,29 @@ person before they enter the library. Empty list when every opportunity has a re
 </other_recipes>
 
 # Adoption plan: three waves
-Bet on the people keen to go further, never on converting the reluctant: the volunteers prove it, \
+Bet on the people keen to go further, never on converting the reluctant: the pilots prove it, \
 their measured results convince most of the team, and once most of the company works this way the \
-rest follow. One lighthouse use case, visible beyond its user, carried by one ambassador.
+rest follow. One lighthouse use case, visible beyond its user, carried by its pilots. {pilots_expected}
 - adoption.lighthouse: the id of the opportunity to start with: an h1 one, high volume, a human \
 who validates, a metric already counted, a gain others will see.
-- adoption.ambassador: the person (name or role) who would pilot it, only as heard in the \
-interview (state.potential_ambassadors lists who the interviewee put on each use case and what \
-they said about them); evidence = the interviewee's quote. Nobody named: ambassador and evidence "", question = the \
-question to ask to find one ("Qui, dans l'équipe, aurait envie d'essayer en premier ?"), ask = who \
-to ask it. Never pick someone the interviewee described as reluctant.
+- adoption.pilots: everyone the interview named as keen to go first (0, 1 or several), each with person \
+(name or role, as heard) and evidence (the interviewee's quote); state.potential_ambassadors lists who \
+the interviewee put on each use case and what they said about them. Only as heard; never pick someone \
+the interviewee described as reluctant; never invent pilots to reach the expected number. Nobody \
+named: [] , question = the question to ask to find some ("Qui, dans l'équipe, aurait envie d'essayer \
+en premier ?"), ask = who to ask it.
+- adoption.sponsor and sponsor_plan: only when adoption.pilots is empty and {interviewee_short} leads \
+the company or a function: sponsor = their role (never their name), sponsor_plan = how they lead by \
+example, short and concrete: they use it first on their own work (a report or a decision they prepare \
+every week, from the interview when one was named), then show their own numbers to the team; when \
+the interview shows they would rather not try it themself, keep sponsor_plan modest (they announce it \
+and follow the first results). Worded as leading by example, never as a lack of volunteers or a failing of the \
+team. Otherwise both "".
 - The three waves, each with plan (what happens, short, concrete, plain business words) and \
 trigger (what starts it):
-  - volunteers: weeks 1 to 4: the ambassador and the colleagues keen to go first run the lighthouse \
-on real cases (a demo on yesterday's case, then shadow mode), measured against today's figure.
+  - volunteers: weeks 1 to 4: the pilots (or the sponsor, on their own work) and the colleagues keen \
+to go first run the lighthouse on real cases (a demo on yesterday's case, then shadow mode), measured \
+against today's figure.
   - majority: most of the team: the volunteers show their own numbers (the lighthouse metric against \
 its baseline) in an existing meeting, and the next workflow or team starts. Its trigger is wave 1's \
 measured result: name the metric and the result that starts it.
@@ -900,6 +929,8 @@ def build_plan_system(state: SessionState, glossary: str, context: str = "") -> 
         interviewee=interviewee_label(state)[0].upper() + interviewee_label(state)[1:],
         horizons=horizons.HORIZON_GUIDE,
         pace=plan_pace(state),
+        pilots_expected=pilots_lib.prompt_line(state.pilots_hint or None),
+        interviewee_short=interviewee_label(state),
         streams=describe_streams(state),
         target=state.target_minutes,
         client=state.client,

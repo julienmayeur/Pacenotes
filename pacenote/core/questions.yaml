@@ -54,15 +54,16 @@ themes:
           implementation:
             - {fr: "combien de personnes par service", en: "how many people per department"}
         keywords: [clés, absent, vacances, indispensable, service, entrepôt, comptabilité, keys]
-      # who could carry a first pilot (ambassadors.py): who tries new tools first, who the others listen to
+      # who could be the pilots of the first use case (ambassadors.py, pilots.py): who tries new tools first
+      # (one person, several, or the leader themself), who the others listen to
       - id: core-first-to-try
         priority: 2
         slots: [actors]
-        fr: "La dernière fois qu'un nouveau logiciel ou une nouvelle façon de faire est arrivé chez vous, qui l'a essayé en premier et l'a montré aux autres ? Et quand cette personne dit qu'une chose marche, est-ce que les autres l'écoutent ?"
-        en: "The last time new software or a new way of working came in, who tried it first and showed the others? And when that person says something works, do the others listen?"
+        fr: "La dernière fois qu'un nouveau logiciel ou une nouvelle façon de faire est arrivé chez vous, qui l'a essayé en premier et l'a montré aux autres : une personne, plusieurs, ou c'est parti de vous ? Et quand elles disent qu'une chose marche, est-ce que les autres les écoutent ?"
+        en: "The last time new software or a new way of working came in, who tried it first and showed the others: one person, several, or did it start with you? And when they say something works, do the others listen?"
         expect:
           business:
-            - {fr: "qui l'a essayé en premier (nom, poste)", en: "who tried it first (name, role)"}
+            - {fr: "qui l'a essayé en premier (une ou plusieurs personnes : nom, poste), ou si c'est parti de la direction", en: "who tried it first (one or several people: name, role), or whether it started with the management"}
           workflow:
             - {fr: "ce qui est arrivé, et comment cette personne l'a montré aux autres", en: "what came in, and how that person showed the others"}
           implementation:

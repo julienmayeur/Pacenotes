@@ -1,4 +1,7 @@
-"""Potential ambassadors: people inside the client company who could carry a first pilot.
+"""Potential pilots (internally "ambassadors"): people inside the client company who could carry the
+first use case. There can be several, or none (pilots.py says how many to expect for this company):
+when none emerges and the person interviewed leads the company or a function, an indirect sponsor
+question checks whether they would open the way themself, by trying it first on their own work.
 
 A pilot spreads through a respected colleague, not through the consultant or the management. During the
 interview the engine notices when a use case maps to a named person or role (the interviewee puts them on
@@ -29,6 +32,8 @@ from datetime import datetime
 from pathlib import Path
 
 from . import fsutil
+from . import phases as P
+from . import pilots as pilots_lib
 
 FILE = "ambassadors.json"
 MAX_LEN = 300
@@ -150,6 +155,62 @@ def _suggestion(person: str, title: str, question: str, reason: str, source: str
     return {"person": person, "use_case": title, "question": question, "reason": reason, "source": source}
 
 
+def keen(state) -> list[dict]:
+    """The people the interviewee described as keen (an adoption_signal quote in the org map)."""
+    return [p for p in _people(state) if p["signal"]]
+
+
+def sponsor_needed(state) -> bool:
+    """No pilot was named so far, and the person interviewed leads the company or a function: they may
+    have to open the way themself."""
+    return pilots_lib.can_sponsor(state) and not keen(state)
+
+
+FIRST_TO_TRY = "core-first-to-try"  # the core question: who tried the last new software first
+
+
+def _sponsor_template_ready(state, q) -> bool:
+    """The template sponsor question waits for the deep dives (the workflows were told) and for a reason
+    to think nobody else will carry it: the hint says the leader will likely open the way, or the
+    interviewee was asked who tried the last new software first and named nobody keen."""
+    if P.PHASE_INDEX.get(q.phase, 0) < P.PHASE_INDEX[P.DEEP_DIVES]:
+        return False
+    first = state.get(FIRST_TO_TRY)
+    return bool(state.pilots_hint.get("leader_likely")) or (first is not None and bool(first.answer))
+
+
+def _sponsor_for(state, q) -> dict | None:
+    """The sponsor question under question `q`, or None: once (back on the same question, it shows
+    again), only while no pilot was named, and in a laggard sector only once rapport is established."""
+    if not sponsor_needed(state) or not _rapport_ok(state):
+        return None
+    sp = state.sponsor_probe
+    shown_on = sp.get("shown_on")
+    if (shown_on and shown_on != q.id) or sp.get("timing") == "done":
+        return None
+    if shown_on is None and state.ambassador_prompted.get(q.id) is not None:
+        return None  # another people question already showed under this one
+    person = ((state.interviewee or {}).get("role") or "").strip()
+    if sp.get("question"):
+        if shown_on is None and sp.get("timing") != "now":
+            return None
+        return _suggestion(person, "", sp["question"], sp.get("reason", ""), "model") | {"kind": "sponsor"}
+    if shown_on is None and not _sponsor_template_ready(state, q):
+        return None
+    question = state.tr()(f"focus.sponsorProbe.{tone(state)}")
+    return _suggestion(person, "", question, "", "template") | {"kind": "sponsor"}
+
+
+def mark_shown(state, qid: str, use_case: str | None, suggested: dict) -> None:
+    """The suggestion was on screen under question `qid` when the focus left it: it is not suggested
+    again under another question."""
+    state.ambassador_prompted[qid] = suggested.get("person", "")
+    if suggested.get("kind") == "sponsor":
+        state.sponsor_probe = {**state.sponsor_probe, "shown_on": qid, "asked": True}
+    else:
+        mark_asked(state, use_case)
+
+
 def prompt_for(state, qid: str | None = None, lang: str | None = None) -> dict | None:
     """The people question to suggest under question `qid` (default: the one in focus), or None:
     {person, use_case (title), question (to say, interview language), reason (interviewer only; ""
@@ -160,11 +221,16 @@ def prompt_for(state, qid: str | None = None, lang: str | None = None) -> dict |
     "later" and "done" hold it back); without one (no model, or not yet), an indirect template in the
     tone of the sector. Once per person: a person already suggested under another question is not
     suggested again; back on the same question, the same suggestion shows. `lang`: the language of
-    the use case title (default: the interview language)."""
+    the use case title (default: the interview language). When no workflow question applies, the
+    sponsor question (_sponsor_for, kind "sponsor"), while no pilot was named."""
     q = state.get(qid or state.focus_id)
-    if q is None or not q.use_case or q.status == "removed":
+    if q is None or q.status == "removed":
         return None
-    if not workflow_discussed(state, q.use_case) or not _rapport_ok(state):
+    return _workflow_probe(state, q, lang) or _sponsor_for(state, q)
+
+
+def _workflow_probe(state, q, lang: str | None) -> dict | None:
+    if not q.use_case or not workflow_discussed(state, q.use_case) or not _rapport_ok(state):
         return None
     uc = state.get_use_case(q.use_case)
     title = uc.title(lang or state.language)
@@ -260,6 +326,41 @@ def apply_probes(state, probes, read: int, ok, reject) -> None:
         ok("probe", uc, f"{p.timing}: {question}"[:120])
 
 
+def apply_sponsor(state, p, read: int, ok, reject) -> None:
+    """Merge the model's sponsor question. Rejected: the interviewee does not lead a team (an operator),
+    an empty question, wording that sounds like an assessment or uses AI vocabulary, a question read
+    from an older slice, a question already asked (never reworded). "done" closes it."""
+    if p is None:
+        return
+    old = state.sponsor_probe
+    if old.get("read", 0) > read:
+        reject("stale", "sponsor", f"read at line {read}, kept the sponsor question read at line {old['read']}")
+        return
+    if not pilots_lib.can_sponsor(state):
+        reject("sponsor", None, "the interviewee does the work: no sponsor question")
+        return
+    if p.timing == "done":
+        if old.get("timing") != "done":
+            state.sponsor_probe = {**old, "timing": "done", "read": read, "at": time.time()}
+            ok("sponsor", None, "done")
+        return
+    question = _clean(p.question)
+    if not question:
+        reject("sponsor", None, "no question")
+        return
+    if bad := probe_problem(question):
+        reject("sponsor", None, f"wording: {bad!r} (indirect, never an assessment, no AI vocabulary)")
+        return
+    if old.get("asked"):
+        reject("sponsor", None, "already asked")
+        return
+    new = {"question": question, "reason": _clean(p.reason), "timing": p.timing}
+    if all(old.get(k) == v for k, v in new.items()):
+        return
+    state.sponsor_probe = {**old, **new, "read": read, "at": time.time()}
+    ok("sponsor", None, f"{p.timing}: {question}"[:120])
+
+
 def probes_view(state, lang: str | None = None) -> list[dict]:
     """The console's people questions: per workflow, the question, the reason, whether it is held for
     later or was asked (closed ones left out)."""
@@ -271,6 +372,11 @@ def probes_view(state, lang: str | None = None) -> list[dict]:
         out.append({"use_case": u.title(lang or state.language) if u else uc, "person": p.get("person", ""),
                     "question": p["question"], "reason": p.get("reason", ""), "timing": p.get("timing", ""),
                     "asked": bool(p.get("asked"))})
+    sp = state.sponsor_probe
+    if sp.get("question") and sp.get("timing") != "done" and sponsor_needed(state):
+        out.append({"use_case": "", "kind": "sponsor", "person": ((state.interviewee or {}).get("role") or "").strip(),
+                    "question": sp["question"], "reason": sp.get("reason", ""), "timing": sp.get("timing", ""),
+                    "asked": bool(sp.get("asked"))})
     return out
 
 
@@ -296,16 +402,31 @@ def for_use_case(state, use_case: str) -> dict | None:
     return None
 
 
+MAX_PILOTS = 6
+
+
+def pilots_for_plan(state, lighthouse: str) -> list[dict]:
+    """The pilots the interview named, for the plan's first wave: everyone the interviewee described as
+    keen (adoption_signal, quoted), those on the lighthouse's work first; when nobody was described as
+    keen, the person the interview put on the lighthouse's work, quoted. [{person, evidence}]."""
+    on_light = {person_id(x["person"]) for x in links(state) if x["use_case"] == lighthouse}
+    found = sorted(keen(state), key=lambda p: person_id(p["label"]) not in on_light)
+    if found:
+        return [{"person": p["label"], "evidence": p["signal"]} for p in found][:MAX_PILOTS]
+    one = for_use_case(state, lighthouse) if lighthouse else None
+    return [{"person": one["person"], "evidence": one["quote"]}] if one else []
+
+
 def candidates(state) -> list[dict]:
     """The potential ambassadors heard so far, one per person: a quote saying they would be keen,
     try new tools first or are listened to (adoption_signal) wins over a use-case link (they do
-    the work). {id, person, role, use_case, quote}."""
+    the work). {id, person, role, use_case, quote, keen}."""
     by_id: dict[str, dict] = {}
     for p in _people(state):
         if p["signal"]:
             pid = person_id(p["label"])
             by_id[pid] = {"id": pid, "person": p["label"], "role": p["role"] if p["person"] else "",
-                          "use_case": "", "quote": p["signal"]}
+                          "use_case": "", "quote": p["signal"], "keen": True}
     for link in links(state):
         pid = person_id(link["person"])
         if not pid:
@@ -314,7 +435,7 @@ def candidates(state) -> list[dict]:
             by_id[pid]["use_case"] = by_id[pid]["use_case"] or link["title"]
             continue
         by_id[pid] = {"id": pid, "person": link["person"], "role": link["role"], "use_case": link["title"],
-                      "quote": link["quote"]}
+                      "quote": link["quote"], "keen": False}
     return [e for e in by_id.values() if e["quote"]][:MAX_ENTRIES]
 
 

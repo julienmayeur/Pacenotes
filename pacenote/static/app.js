@@ -672,9 +672,11 @@ function renderConsoleProbes() {
   setClass($("console-probes"), "hidden", !all.length && !read);
   setClass($("console-read"), "hidden", !read);
   setText($("console-read"), read ? t("console.readLine", { tone: read.tone || "—", approach: read.approach || "—" }) : "");
-  const html = all.map((p) => `<li><b>${esc(p.use_case)}</b> <span class="fit">${esc(t(`console.probeState.${p.asked ? "asked" : p.timing === "now" ? "now" : "later"}`))}</span>`
+  // the sponsor question (no pilot named so far: would the leader interviewed open the way) has no workflow
+  const sponsor = (p) => p.kind === "sponsor";
+  const html = all.map((p) => `<li><b>${esc(sponsor(p) ? t("console.sponsorProbe") : p.use_case)}</b> <span class="fit">${esc(t(`console.probeState.${p.asked ? "asked" : p.timing === "now" ? "now" : "later"}`))}</span>`
     + `<br>${esc(p.question)}`
-    + `<br><small>${esc(t("console.probeWhy"))} : ${esc(p.reason || t("console.probeTemplateWhy", { person: p.person || "—" }))}</small></li>`).join("");
+    + `<br><small>${esc(t("console.probeWhy"))} : ${esc(p.reason || t(sponsor(p) ? "console.sponsorTemplateWhy" : "console.probeTemplateWhy", { person: p.person || "—" }))}</small></li>`).join("");
   if ($("console-probe-list").innerHTML !== html) $("console-probe-list").innerHTML = html;
   renderConsoleFramings();
 }

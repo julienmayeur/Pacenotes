@@ -151,7 +151,8 @@ RESULT = {
                  "market_pressure": "moderate", "pressure_note": "Les boulangers comparent les délais.",
                  "task_exposure": "high", "exposure_note": "Commandes par mail ressaisies.",
                  "regulated": False, "ceo_uses_ai": "unknown",
-                 "rationale": "Secteur en retard mais un concurrent a déjà un résultat publié."},
+                 "rationale": "Secteur en retard mais un concurrent a déjà un résultat publié.",
+                 "workforce": "unknown", "workforce_note": ""},
     "personas": [],
     "sources": [{"title": "Fornaxa", "url": "https://www.fornaxa.example"}],
 }

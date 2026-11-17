@@ -71,7 +71,12 @@
     },
     "toCheckLabel": "To check with",
     "toCheck": "{{who}}: {{question}}",
-    "deferred": "→ {{who}}"
+    "deferred": "→ {{who}}",
+    "sponsorProbe": {
+      "explorer": "When something new came in here, did it usually start with you?",
+      "pragmatic": "When you changed how the team works, did you try it on your own work first?",
+      "urgent": "Would you be up for trying the quicker way first on your own work, so the team sees it?"
+    }
   },
   "where": {
     "title": "Where we are",
@@ -148,12 +153,12 @@
       "none": "ruled out"
     },
     "recipeMissing": "missing",
-    "ambassadors": "Potential ambassadors",
+    "ambassadors": "Potential pilots",
     "ambassadorUseCase": "for {{useCase}}",
     "probes": "People questions",
     "readLine": "Tone: {{tone}} · How to ask: {{approach}}",
     "probeWhy": "why",
-    "probeTemplateWhy": "whether {{person}} picks up new tools and the others follow: a possible pilot ambassador",
+    "probeTemplateWhy": "whether {{person}} picks up new tools and the others follow: a possible pilot",
     "probeState": {
       "now": "to ask now",
       "later": "later",
@@ -167,7 +172,9 @@
       "asked": "said"
     },
     "toCheck": "To check with others",
-    "interviewee": "Interviewing: {{who}}"
+    "interviewee": "Interviewing: {{who}}",
+    "sponsorProbe": "Leading by example",
+    "sponsorTemplateWhy": "no pilot named so far: whether {{person}} would open the way on their own work"
   },
   "interview": {
     "bannerDone": "All good, I'm taking care of the plan.",
@@ -243,8 +250,9 @@
       "recipeProof": "Proof",
       "horizon": "When",
       "lighthouse": "Start with",
-      "ambassador": "Pilot ambassador",
-      "freed": "Time given back"
+      "freed": "Time given back",
+      "pilots": "Pilots",
+      "sponsor": "Sponsor"
     },
     "table": {
       "rank": "#",
@@ -363,12 +371,12 @@
       "cadence": "Cadence",
       "owner": "Who verifies",
       "baseline": "Today",
-      "target": "Pilot target",
+      "target": "Trial target",
       "none": "No metric could be defined: the starting figures are still to be obtained (see open items)."
     },
     "metricQuestion": {
       "baseline": "What is today's figure for “{{name}}”, and where is it read?",
-      "target": "Which figure for “{{name}}” would show the pilot worked, and by when?"
+      "target": "Which figure for “{{name}}” would show the trial worked, and by when?"
     },
     "metricLine": "{{name}} — today: {{baseline}} · target: {{target}}",
     "firstWinLine": "{{description}} — on about {{cases}} real cases, week {{week}}",
@@ -427,15 +435,27 @@
       "everyone": "Everyone",
       "startsWhen": "Starts: {{trigger}}",
       "proof": "Result to show: {{proof}}",
-      "noMetric": "the first use case's figure, today against the pilot (to confirm)",
+      "noMetric": "the first use case's figure, today against the first weeks (to confirm)",
       "findQuestion": "Who on the team would be keen to try it first?",
       "default": {
-        "volunteers": "The pilot ambassador and the colleagues keen to go first use it on real cases: a demo on yesterday's case, then measured against today's figure.",
+        "volunteers": "The pilots and the colleagues keen to go first use it on real cases: a demo on yesterday's case, then measured against today's figure.",
         "volunteersTrigger": "week 1, on the first use case.",
         "majority": "The volunteers show their own numbers to the team in an existing meeting; the next workflow or team starts.",
         "majorityTrigger": "the first results measured on real cases, against today's figure (week 4).",
         "everyone": "It becomes the usual way of working; the others follow, with no campaign aimed at them.",
-        "everyoneTrigger": "once most of the company works this way."
+        "everyoneTrigger": "once most of the company works this way.",
+        "sponsorPlan": "uses it first on their own work (a report or a decision they prepare every week), then shows their own numbers to the team.",
+        "volunteersSponsor": "The sponsor ({{sponsor}}) opens the way on their own work, joined by the colleagues who want to try it: a demo on yesterday's case, then measured against today's figure."
+      },
+      "leaderDefault": "The company's leader",
+      "sponsorLine": "{{sponsor}}, leading by example: {{plan}}",
+      "hint": {
+        "range": "{{low}} to {{high}}",
+        "line": "A company of this size usually finds {{usual}} pilots; this interview named {{named}}.",
+        "one": "A company of this size usually finds {{usual}} pilots; this interview named one.",
+        "none": "A company of this size usually finds {{usual}} pilots; none was named yet.",
+        "leader": "In a company like this one, volunteers rarely come forward in a first interview: the leader opens the way, and pilots join once the first results show.",
+        "small": "In a team this size, the leader is often the first to use it, and shows the others."
       }
     },
     "freedLine": "{{task}} — {{who}} · time freed: {{time}} · moves up to: {{moves}}",
@@ -503,7 +523,7 @@
       "history": "Versions",
       "metrics": "Metrics",
       "prestudy": "Pre-study",
-      "ambassadors": "Ambassadors"
+      "ambassadors": "Pilots"
     },
     "questionsHint": "These questions are added to the interview (theme “Opportunities to check”, right after the first theme), each dug Business › Workflow › Implementation like the others.",
     "useCases": "Use cases",
@@ -732,10 +752,30 @@
       "rationale": "Why",
       "override": "Pace for the interview",
       "overrideAuto": "From the pre-study",
-      "overrideSaved": "Pace saved."
+      "overrideSaved": "Pace saved.",
+      "pilots": "Pilots to expect",
+      "pilotsRange": "{{low}} to {{high}} for {{size}} people",
+      "pilotsLeader": "The leader will likely open the way: plan the interview's sponsor question.",
+      "pilotsUnknown": "Add the headcount to the client sheet to get a hint.",
+      "pilotsFactors": {
+        "small_team": "small team: the leader is close to the work",
+        "large_slow": "large company that moves slowly: volunteers rarely surface in a first interview",
+        "pace_urgent": "the sector moves fast",
+        "pace_explorer": "the sector is behind",
+        "workforce_young": "a young workforce (public signals)",
+        "workforce_mature": "an experienced, older workforce (public signals)"
+      },
+      "pilotsNote": "A hint about the company, never about a person.",
+      "workforce": "Workforce:",
+      "workforces": {
+        "young": "young",
+        "mixed": "mixed",
+        "mature": "experienced, older",
+        "unknown": "no public signal"
+      }
     },
     "ambassadors": {
-      "hint": "People the interviews suggested as potential ambassadors for a first pilot, with the words of the person interviewed. Stored on this Mac only. Your edits are kept; a removed person never comes back.",
+      "hint": "People the interviews suggested as potential pilots for the first use case (there can be several), with the words of the person interviewed. Stored on this Mac only. Your edits are kept; a removed person never comes back.",
       "empty": "None yet: the interview suggests them when the person interviewed names who does the work.",
       "person": "Person",
       "role": "Role",

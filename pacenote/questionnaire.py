@@ -250,6 +250,8 @@ class Questionnaire(BaseModel):
     # pre-study's score or the interviewer's override (client.yaml); may also be written here by hand.
     posture: Literal["explorer", "pragmatic", "urgent"] | None = None
     posture_rationale: str = ""  # operator-only: why this pace (never shown to the client)
+    # how many pilots to expect (pilots.expected): set when tailoring from the client sheet and the pre-study
+    pilots_hint: dict | None = None
     themes: list[ThemeDef]
 
     @field_validator("phase_minutes")

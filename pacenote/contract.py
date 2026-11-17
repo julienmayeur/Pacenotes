@@ -277,6 +277,16 @@ class AmbassadorProbe(_Strict):
     timing: ProbeTiming  # now = rapport is there and the workflow was walked through; done = answered
 
 
+class SponsorProbe(_Strict):
+    """When no pilot emerges (typical of a large company that moves slowly), the leader interviewed may
+    open the way themself. An indirect question checks whether they would be willing to try it first on
+    their own work, phrased for this interviewee; never "would you be the ambassador" (pilots.py)."""
+
+    question: str  # the indirect question, in the interview language, ready to say
+    reason: str  # interviewer-only, a few words: what the answer would tell
+    timing: ProbeTiming  # now = rapport is there and no pilot was named so far; done = they already said
+
+
 MetricKind = Literal["time", "volume", "errors", "delay"]
 METRIC_KINDS = ("time", "volume", "errors", "delay")  # time spent, volume, error rate, delay
 MetricSide = Literal["baseline", "target"]
@@ -340,6 +350,8 @@ class SyncResult(_Strict):
     value_framings: list[ValueFraming]  # new or changed talking points only; empty list when nothing changed
     metric_questions: list[MetricQuestion]  # for workflows still missing a baseline or a target; new ones only
     to_check: list[ToCheck]  # new items the interviewee could not answer, with who would know; [] when none
+    # no pilot named so far: may the leader interviewed open the way themself? null when not needed or unchanged
+    sponsor_probe: SponsorProbe | None
 
 
 class FastResult(_Strict):
@@ -624,15 +636,25 @@ class AdoptionWave(_Strict):
     trigger: str  # what starts it (wave 2: wave 1's measured result against today's figure)
 
 
+class Pilot(_Strict):
+    """One pilot of the first wave: a person keen to go first, as heard in the interview (pilots.py)."""
+
+    person: str  # name or role, as heard
+    evidence: str  # the interviewee's quote that makes them a pilot ("" when none)
+
+
 class AdoptionPlan(_Strict):
-    """How the first pilot spreads, in three waves: the volunteers keen to go further prove it on the
-    lighthouse use case; their measured results convince most of the team; once most of the company
-    works this way, everyone follows. Nothing is designed around converting the reluctant."""
+    """How the first use case spreads, in three waves: the pilots (the volunteers keen to go further)
+    prove it on the lighthouse use case; their measured results convince most of the team; once most
+    of the company works this way, everyone follows. Nothing is designed around converting the
+    reluctant. There can be several pilots, or none: then the leader interviewed sponsors the first
+    wave, leading by example (pilots.py)."""
 
     lighthouse: str  # id of the opportunity to start with (an h1 one)
-    ambassador: str  # the person (name or role) who pilots it, as heard in the interview; "" when nobody was named
-    evidence: str  # the interviewee's quote supporting that choice ("" when none)
-    question: str  # when no ambassador was named: the question to ask to find one ("" otherwise)
+    pilots: list[Pilot]  # 0..N, as heard in the interview; [] when nobody was named
+    sponsor: str  # only when no pilot was named: the interviewed leader (role), who opens the way; "" otherwise
+    sponsor_plan: str  # how the sponsor leads by example (uses it first on their own work...); "" when no sponsor
+    question: str  # when no pilot was named: the question to ask to find some ("" otherwise)
     ask: str  # who to ask it (a name or role heard; "" when unknown)
     volunteers: AdoptionWave  # wave 1, weeks 1-4: the colleagues keen to go first run it on real cases
     majority: AdoptionWave  # wave 2: most of the team, convinced by wave 1's measured results
@@ -654,7 +676,7 @@ class PlanDoc(_Strict):
     metrics: list[Metric]
     use_cases: list[PlanUseCase]
     timeline: list[TimelineStep]  # week 1 thin slice, week 4 checkpoint, week 8 go / kill
-    adoption: AdoptionPlan  # the lighthouse, its ambassador, demo -> proven value -> spread
+    adoption: AdoptionPlan  # the lighthouse, its pilots (or the leader as sponsor), demo -> proven value -> spread
     open_items: list[OpenItem]  # open items not tied to one slot (budget, sponsor, security rules...)
     recipe_candidates: list[RecipeCandidate]  # drafts for the opportunities no library recipe fits
 
@@ -668,8 +690,8 @@ def empty_wave() -> AdoptionWave:
 
 
 def empty_adoption() -> AdoptionPlan:
-    return AdoptionPlan(lighthouse="", ambassador="", evidence="", question="", ask="", volunteers=empty_wave(),
-                        majority=empty_wave(), everyone=empty_wave())
+    return AdoptionPlan(lighthouse="", pilots=[], sponsor="", sponsor_plan="", question="", ask="",
+                        volunteers=empty_wave(), majority=empty_wave(), everyone=empty_wave())
 
 
 def empty_freed() -> TimeFreed:
@@ -723,13 +745,26 @@ def _loads_lenient(text: str):
         return json.loads(candidate[start : end + 1])
 
 
+def _legacy_adoption(raw: dict) -> dict:
+    """A plan.json written before pilots (one `ambassador` with its `evidence`) still loads."""
+    a = raw.get("adoption") if isinstance(raw, dict) else None
+    if not isinstance(a, dict) or "pilots" in a or "ambassador" not in a:
+        return raw
+    a = dict(a)
+    person, evidence = str(a.pop("ambassador") or "").strip(), str(a.pop("evidence", "") or "")
+    a["pilots"] = [{"person": person, "evidence": evidence}] if person else []
+    a.setdefault("sponsor", "")
+    a.setdefault("sponsor_plan", "")
+    return {**raw, "adoption": a}
+
+
 def parse_plan_doc(raw: str | dict | PlanDoc) -> PlanDoc:
     if isinstance(raw, PlanDoc):
         return raw
     try:
         if isinstance(raw, str):
             raw = _loads_lenient(raw)
-        return PlanDoc.model_validate(raw)
+        return PlanDoc.model_validate(_legacy_adoption(raw))
     except (json.JSONDecodeError, ValueError) as exc:
         raise ContractError(f"plan response violates the contract: {exc}") from exc
 
@@ -749,6 +784,7 @@ def empty_result() -> SyncResult:
         enough_data_reason="",
         interviewee_read=empty_read(),
         ambassador_probes=[],
+        sponsor_probe=None,
         value_framings=[],
         metric_questions=[],
         to_check=[],

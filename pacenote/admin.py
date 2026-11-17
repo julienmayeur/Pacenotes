@@ -29,7 +29,7 @@ from .clients import (
     set_next_client,
     slug_from_name,
 )
-from . import ambassadors, fsutil, i18n, personas, planview
+from . import ambassadors, fsutil, i18n, personas, pilots, planview
 from . import horizons as horizons_lib
 from . import metrics as metrics_lib
 from .autofill import (DEFAULT_AUTOFILL_MODEL, FIELDS as AUTOFILL_FIELDS, RELATIONS, AutofillManager, dead_links,
@@ -201,6 +201,9 @@ def admin_router(clients_dir: Path, manager: ResearchManager, sessions_dir: Path
             "seed_questions": preplan.get("seed_questions", []),
             "sources": preplan.get("sources", []),
             "prestudy": prestudy_view(preplan, info),  # operator-only: never on a client-facing page
+            # how many pilots to expect, and why (pilots.py); operator-only, like the pace
+            "pilots_hint": pilots.for_client(info, preplan if info.use_preplan else None,
+                                             horizons_lib.effective_posture(info.posture_override, preplan)[0]),
             "ambassadors": ambassadors.load(d),
             # per contact, in the sheet's order: the persona in force, why, and the inferred one (personas.py)
             "personas": [personas.for_contact(c, info, preplan) for c in info.contacts],

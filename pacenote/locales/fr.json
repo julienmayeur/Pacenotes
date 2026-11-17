@@ -71,7 +71,12 @@
     },
     "toCheckLabel": "À vérifier avec",
     "toCheck": "{{who}} : {{question}}",
-    "deferred": "→ {{who}}"
+    "deferred": "→ {{who}}",
+    "sponsorProbe": {
+      "explorer": "Quand quelque chose de nouveau est arrivé ici, est-ce que c'est souvent parti de vous ?",
+      "pragmatic": "Quand vous avez changé la façon de travailler de l'équipe, l'aviez-vous d'abord essayé sur votre propre travail ?",
+      "urgent": "Seriez-vous partant pour essayer la façon plus rapide d'abord sur votre propre travail, pour que l'équipe le voie ?"
+    }
   },
   "where": {
     "title": "Où on en est",
@@ -148,12 +153,12 @@
       "none": "écartée"
     },
     "recipeMissing": "manque",
-    "ambassadors": "Ambassadeurs potentiels",
+    "ambassadors": "Pilotes potentiels",
     "ambassadorUseCase": "pour {{useCase}}",
     "probes": "Questions sur l'équipe",
     "readLine": "Ton : {{tone}} · Comment demander : {{approach}}",
     "probeWhy": "pourquoi",
-    "probeTemplateWhy": "savoir si {{person}} s'empare des nouveaux outils et si les autres suivent : un ambassadeur possible du pilote",
+    "probeTemplateWhy": "savoir si {{person}} s'empare des nouveaux outils et si les autres suivent : un pilote possible",
     "probeState": {
       "now": "à poser maintenant",
       "later": "plus tard",
@@ -167,7 +172,9 @@
       "asked": "dit"
     },
     "toCheck": "À vérifier avec d'autres",
-    "interviewee": "Entretien avec : {{who}}"
+    "interviewee": "Entretien avec : {{who}}",
+    "sponsorProbe": "Montrer l'exemple",
+    "sponsorTemplateWhy": "aucun pilote cité pour l'instant : savoir si {{person}} ouvrirait la voie sur son propre travail"
   },
   "interview": {
     "bannerDone": "C'est parfait, j'ai ce qu'il me faut. Je m'occupe du plan.",
@@ -243,8 +250,9 @@
       "recipeProof": "Preuve",
       "horizon": "Quand",
       "lighthouse": "Pour commencer",
-      "ambassador": "Ambassadeur du pilote",
-      "freed": "Temps rendu"
+      "freed": "Temps rendu",
+      "pilots": "Pilotes",
+      "sponsor": "Sponsor"
     },
     "table": {
       "rank": "#",
@@ -363,12 +371,12 @@
       "cadence": "Fréquence",
       "owner": "Qui le vérifie",
       "baseline": "Aujourd'hui",
-      "target": "Cible du pilote",
+      "target": "Cible de l'essai",
       "none": "Aucun indicateur n'a pu être défini : les chiffres de départ sont à obtenir (voir points à confirmer)."
     },
     "metricQuestion": {
       "baseline": "Quel est le chiffre d'aujourd'hui pour « {{name}} », et où le lit-on ?",
-      "target": "Quel chiffre pour « {{name}} » montrerait que le pilote a réussi, et pour quand ?"
+      "target": "Quel chiffre pour « {{name}} » montrerait que l'essai a réussi, et pour quand ?"
     },
     "metricLine": "{{name}} — aujourd'hui : {{baseline}} · cible : {{target}}",
     "firstWinLine": "{{description}} — sur environ {{cases}} cas réels, semaine {{week}}",
@@ -427,15 +435,27 @@
       "everyone": "Tout le monde",
       "startsWhen": "Démarre : {{trigger}}",
       "proof": "Résultat à montrer : {{proof}}",
-      "noMetric": "le chiffre du premier cas d'usage, aujourd'hui face au pilote (à confirmer)",
+      "noMetric": "le chiffre du premier cas d'usage, aujourd'hui face aux premières semaines (à confirmer)",
       "findQuestion": "Qui, dans l'équipe, aurait envie de l'essayer en premier ?",
       "default": {
-        "volunteers": "L'ambassadeur du pilote et les collègues partants l'utilisent sur des cas réels : une démonstration sur un cas de la veille, puis la mesure face au chiffre d'aujourd'hui.",
+        "volunteers": "Les pilotes et les collègues partants l'utilisent sur des cas réels : une démonstration sur un cas de la veille, puis la mesure face au chiffre d'aujourd'hui.",
         "volunteersTrigger": "semaine 1, sur le premier cas d'usage.",
         "majority": "Les volontaires montrent leurs propres chiffres à l'équipe, lors d'une réunion existante ; le processus ou l'équipe suivante démarre.",
         "majorityTrigger": "les premiers résultats mesurés sur des cas réels, face au chiffre d'aujourd'hui (semaine 4).",
         "everyone": "Ça devient la façon de travailler habituelle ; les autres suivent, sans campagne à leur intention.",
-        "everyoneTrigger": "quand la plupart de l'entreprise travaille ainsi."
+        "everyoneTrigger": "quand la plupart de l'entreprise travaille ainsi.",
+        "sponsorPlan": "l'utilise d'abord sur son propre travail (un point ou une décision préparés chaque semaine), puis montre ses propres chiffres à l'équipe.",
+        "volunteersSponsor": "Le sponsor ({{sponsor}}) ouvre la voie sur son propre travail, rejoint par les collègues qui ont envie d'essayer : une démonstration sur un cas de la veille, puis la mesure face au chiffre d'aujourd'hui."
+      },
+      "leaderDefault": "Le dirigeant",
+      "sponsorLine": "{{sponsor}}, qui montre l'exemple : {{plan}}",
+      "hint": {
+        "range": "{{low}} à {{high}}",
+        "line": "Une entreprise de cette taille compte en général {{usual}} pilotes ; l'entretien en a cité {{named}}.",
+        "one": "Une entreprise de cette taille compte en général {{usual}} pilotes ; l'entretien en a cité un.",
+        "none": "Une entreprise de cette taille compte en général {{usual}} pilotes ; aucun n'a encore été cité.",
+        "leader": "Dans une entreprise comme celle-ci, les volontaires se déclarent rarement dès un premier entretien : le dirigeant ouvre la voie, et des pilotes le rejoignent dès les premiers résultats.",
+        "small": "Dans une équipe de cette taille, le dirigeant est souvent le premier à l'utiliser, et le montre aux autres."
       }
     },
     "freedLine": "{{task}} — {{who}} · temps libéré : {{time}} · pour se consacrer à : {{moves}}",
@@ -503,7 +523,7 @@
       "history": "Versions",
       "metrics": "Indicateurs",
       "prestudy": "Pré-étude",
-      "ambassadors": "Ambassadeurs"
+      "ambassadors": "Pilotes"
     },
     "questionsHint": "Ces questions sont ajoutées à l'entretien (thème « Pistes à vérifier », juste après le premier thème), chacune creusée Business › Workflow › Implémentation comme les autres.",
     "useCases": "Cas d'usage",
@@ -732,10 +752,30 @@
       "rationale": "Pourquoi",
       "override": "Rythme de l'entretien",
       "overrideAuto": "D'après la pré-étude",
-      "overrideSaved": "Rythme enregistré."
+      "overrideSaved": "Rythme enregistré.",
+      "pilots": "Pilotes à attendre",
+      "pilotsRange": "{{low}} à {{high}} pour {{size}} personnes",
+      "pilotsLeader": "Le dirigeant ouvrira probablement la voie : prévoir la question sponsor pendant l'entretien.",
+      "pilotsUnknown": "Ajoutez l'effectif dans la fiche client pour obtenir une indication.",
+      "pilotsFactors": {
+        "small_team": "petite équipe : le dirigeant est proche du travail",
+        "large_slow": "grande entreprise qui bouge lentement : les volontaires se déclarent rarement dès un premier entretien",
+        "pace_urgent": "le secteur avance vite",
+        "pace_explorer": "le secteur est en retard",
+        "workforce_young": "des effectifs jeunes (signaux publics)",
+        "workforce_mature": "des effectifs expérimentés, plus âgés (signaux publics)"
+      },
+      "pilotsNote": "Une indication sur l'entreprise, jamais sur une personne.",
+      "workforce": "Effectifs :",
+      "workforces": {
+        "young": "jeunes",
+        "mixed": "mélangés",
+        "mature": "expérimentés, plus âgés",
+        "unknown": "aucun signal public"
+      }
     },
     "ambassadors": {
-      "hint": "Les personnes que les entretiens ont désignées comme ambassadeurs potentiels d'un premier pilote, avec les mots de la personne interrogée. Gardé sur ce Mac uniquement. Vos modifications sont conservées ; une personne retirée ne revient jamais.",
+      "hint": "Les personnes que les entretiens ont désignées comme pilotes potentiels du premier cas d'usage (il peut y en avoir plusieurs), avec les mots de la personne interrogée. Gardé sur ce Mac uniquement. Vos modifications sont conservées ; une personne retirée ne revient jamais.",
       "empty": "Personne pour l'instant : l'entretien les propose quand la personne interrogée nomme qui fait le travail.",
       "person": "Personne",
       "role": "Rôle",

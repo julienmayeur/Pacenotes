@@ -122,7 +122,7 @@ def test_the_interview_view_carries_the_suggestion_and_the_console_list(tmp_path
     assert view["current"]["ambassador"]["person"] == "Claire"
     assert view["ambassadors"] == [{"id": "claire", "person": "Claire", "role": "assistante ADV",
                                     "use_case": s.state.get_use_case("bakery-orders").title("fr"),
-                                    "quote": "elle essaie toujours les nouveautés en premier"}]
+                                    "quote": "elle essaie toujours les nouveautés en premier", "keen": True}]
 
 
 def test_the_ceo_words_about_a_person_win_over_the_use_case_link():
@@ -141,12 +141,12 @@ def test_prompts_ask_for_the_adoption_signal_and_show_the_people_heard():
     st = _state()
     for build in (build_sync_system, build_fast_system):
         text = build(st, "", "")
-        assert "# Potential ambassadors" in text and "`adoption_signal`" in text
+        assert "# Potential pilots" in text and "`adoption_signal`" in text
         assert "never record reluctance, criticism or personal judgments" in text
     _heard(st)
     assert state_snapshot(st)["potential_ambassadors"] == [
         {"person": "Claire", "role": "assistante ADV", "use_case": st.get_use_case("bakery-orders").title("fr"),
-         "quote": "c'est Claire qui saisit"}]
+         "quote": "c'est Claire qui saisit", "keen": False}]
 
 
 def test_the_core_question_asks_who_tries_new_tools_first_and_who_others_listen_to():
@@ -210,9 +210,10 @@ def test_finalize_records_the_ambassadors_and_the_plan_names_one(tmp_path):
     assert [(e["person"], e["quote"], e["session"]) for e in saved["entries"]] == [
         ("Claire", "elle essaie toujours en premier", "x")]
     doc = parse_plan_doc(json.loads((tmp_path / "s" / "x" / "plan.json").read_text(encoding="utf-8")))
-    assert doc.adoption.lighthouse == "bakery-orders" and doc.adoption.ambassador == "Claire"
+    assert doc.adoption.lighthouse == "bakery-orders" and [p.person for p in doc.adoption.pilots] == ["Claire"]
+    assert doc.adoption.sponsor == ""
     md = (tmp_path / "s" / "x" / "plan.md").read_text(encoding="utf-8")
-    assert "**Ambassadeur du pilote** : Claire — « elle essaie toujours en premier »" in md
+    assert "**Pilotes** : Claire — « elle essaie toujours en premier »" in md
 
 
 # --- the admin: list, edit, remove; the pre-study and the pace ------------------------------------------------

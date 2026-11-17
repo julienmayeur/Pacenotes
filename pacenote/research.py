@@ -116,7 +116,11 @@ AI" without a result is a signal, not a result;
 - whether the sector's own software vendors (ERP, trade software) already ship AI features;
 - market and customer pressure: do customers already compare on speed, price or self-service?
 - task exposure: how much of the company's work is text, documents, re-keying and back-office;
-- whether the sector is strongly regulated, and whether the CEO publicly uses AI tools himself.
+- whether the sector is strongly regulated, and whether the CEO publicly uses AI tools himself;
+- the workforce's age profile, only from public, company-level signals (a published average age, \
+graduate or apprenticeship hiring, a recent hiring wave, retirements announced, the company's own \
+pages): it hints at how many colleagues may be keen to try new tools first. Never about an individual, \
+never inferred from photos or names.
 Never invent a statistic, a competitor or a result: when not found, say so.
 
 Write in {lang_name}.
@@ -154,7 +158,8 @@ sentence: figure, year, scope), competitors (each: competitor, signal, result = 
 outcome with its number or "" when none, url, date), market_pressure (none, moderate, strong) \
 with pressure_note, task_exposure (low, medium, high) with exposure_note, regulated, ceo_uses_ai \
 (yes, no, unknown), rationale (2 or 3 plain sentences: how fast this company should move and why, \
-from these facts). It is for the interviewer only: it sets the interview's pace and is never shown \
+from these facts), workforce (young, mixed, mature, unknown: unknown unless a public company-level \
+signal says so) with workforce_note (the signal and its source, "" when unknown). It is for the interviewer only: it sets the interview's pace and is never shown \
 to the client.
 - personas: one per person listed in "People we will meet" (same name as given; [] when nobody is \
 listed): who they are for the interview. executive = runs the company and knows the outcomes, not \

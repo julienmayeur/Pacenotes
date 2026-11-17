@@ -450,7 +450,11 @@ def tailor_questionnaire(q: Questionnaire, info: ClientInfo | None, preplan: dic
         keep = [x for x in extra.questions if x.id not in taken]
         if keep and extra.id not in {t.id for t in themes}:
             themes.append(extra.model_copy(update={"questions": keep}))
+    from .pilots import for_client  # (avoid an import cycle)
+
+    hint = for_client(info, preplan if use else None, posture) or q.pilots_hint
     return q.model_copy(update={"themes": themes, "posture": posture, "posture_rationale": rationale,
+                                "pilots_hint": hint,
                                 "context": client_context(q.context, info, preplan if use else None, profiles)})
 
 

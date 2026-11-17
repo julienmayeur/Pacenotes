@@ -294,15 +294,16 @@ def test_the_plan_groups_opportunities_by_horizon_in_plain_words(lang, heads):
     assert not [w for w in LEAKS if w.lower() in lowered.replace("urgence", "")], [w for w in LEAKS if w.lower() in lowered]
 
 
-def test_a_named_ambassador_is_quoted_in_the_adoption_plan():
+def test_a_named_pilot_is_quoted_in_the_adoption_plan():
     st = _state()
     st.language = "en"
     doc = parse_plan_doc(plan_doc(plan_use_case("orders", "Orders", horizon="h1"), adoption={
-        "lighthouse": "orders", "ambassador": "Claire", "evidence": "she always tries new things first",
+        "lighthouse": "orders", "pilots": [{"person": "Claire", "evidence": "she always tries new things first"}],
         "volunteers": {"plan": "Yesterday's 10 orders", "trigger": ""},
         "majority": {"plan": "Claire shows it on Monday", "trigger": ""}}))
     md = render_plan_md(apply_horizons(doc, st), st)
-    assert "**Pilot ambassador**: Claire — « she always tries new things first »" in md
+    assert "**Pilots**: Claire — « she always tries new things first »" in md
+    assert "**Sponsor**" not in md  # a pilot was named: no sponsor
     assert "**Start with**: Orders" in md and "**When**: This week" in md
     assert "1. **The volunteers (weeks 1 to 4)** — Yesterday's 10 orders" in md
     assert "2. **Most of the team** — Claire shows it on Monday" in md

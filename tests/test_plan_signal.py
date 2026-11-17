@@ -100,7 +100,7 @@ def test_plan_has_the_new_sections_in_order():
 def test_missing_numbers_become_open_items_never_estimates():
     d = full_doc()
     rows = open_items(d, state().tr())
-    assert rows[0] == ("Délai de saisie d'une commande — Cible du pilote", "Quel délai serait un succès ?", "Marc")
+    assert rows[0] == ("Délai de saisie d'une commande — Cible de l'essai", "Quel délai serait un succès ?", "Marc")
     assert any(r[1] == "Combien de fois par semaine ?" for r in rows)  # the bottleneck to confirm
 
 

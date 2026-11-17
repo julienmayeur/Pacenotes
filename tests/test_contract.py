@@ -31,6 +31,7 @@ VALID = {
                          "politics": "", "tone": "chaleureux, chiffré", "rapport": "established",
                          "approach": "par la curiosité, sur des cas réels"},
     "ambassador_probes": [],
+    "sponsor_probe": None,
     "value_framings": [],
     "metric_questions": [],
     "to_check": [],

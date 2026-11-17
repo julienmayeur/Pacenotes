@@ -388,6 +388,11 @@ class SessionState(BaseModel):
     interviewee_read: dict[str, str] = Field(default_factory=dict)
     interviewee_read_at: int = 0  # the transcript line the read was written from
     ambassador_probes: dict[str, dict] = Field(default_factory=dict)
+    # pilots.py: how many pilots to expect for this company ({} = unknown), and the indirect question that
+    # checks whether the leader interviewed would open the way when no pilot was named
+    # (contract.SponsorProbe + read, asked, shown_on); interviewer-side only
+    pilots_hint: dict = Field(default_factory=dict)
+    sponsor_probe: dict = Field(default_factory=dict)
     # the executive lens (lens.py): talking points per use case (contract.ValueFraming + read, asked), the
     # metric questions per "use_case:side", what showed under each question, and the metric sides asked
     value_framings: dict[str, dict] = Field(default_factory=dict)
@@ -461,6 +466,7 @@ class SessionState(BaseModel):
             phase_budgets=P.budgets(q.target_minutes, q.phase_minutes),
             posture=q.posture,
             posture_rationale=q.posture_rationale,
+            pilots_hint=dict(q.pilots_hint or {}),
         )
         st.coverage = st.computed_coverage()
         st._refill_next()
@@ -1041,6 +1047,7 @@ class SessionState(BaseModel):
         # 6b. the interviewee read and the people questions (ambassadors.py)
         ambassadors.apply_read(self, result.interviewee_read, read, ok)
         ambassadors.apply_probes(self, result.ambassador_probes, read, ok, reject)
+        ambassadors.apply_sponsor(self, result.sponsor_probe, read, ok, reject)
         # 6c. the executive lens: talking points and metric questions per workflow (lens.py)
         lens.apply_framings(self, result.value_framings, read, ok, reject)
         lens.apply_metric_questions(self, result.metric_questions, read, ok, reject)
@@ -1212,8 +1219,7 @@ class SessionState(BaseModel):
         if (left := self.get(old)) is not None:
             left.thread_at = time.time()  # joins the thread, at the bottom
             if (suggested := ambassadors.prompt_for(self, old)) is not None:
-                self.ambassador_prompted[old] = suggested["person"]
-                ambassadors.mark_asked(self, left.use_case)
+                ambassadors.mark_shown(self, old, left.use_case, suggested)
             lens.mark_shown(self, old)
         if self.phase is None:
             self.phase = left.phase if left is not None else self.current_phase

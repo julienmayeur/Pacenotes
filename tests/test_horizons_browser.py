@@ -215,7 +215,7 @@ class _PlanEngine(OfflineEngine):
             plan_use_case("orders", "Saisie des commandes", horizon="h1"),
             plan_use_case("sav", "Pré-diagnostic SAV", horizon="h2", feasibility=3),
             plan_use_case("portal", "Portail boulangers", horizon="h3", feasibility=3),
-            adoption={"lighthouse": "orders", "ambassador": "Claire", "evidence": "elle essaie toujours en premier",
+            adoption={"lighthouse": "orders", "pilots": [{"person": "Claire", "evidence": "elle essaie toujours en premier"}],
                       "volunteers": {"plan": "Dix commandes d'hier rejouées devant Claire.", "trigger": ""},
                       "majority": {"plan": "Claire présente le résultat à la réunion du lundi.", "trigger": ""}}))
 
@@ -233,7 +233,7 @@ def test_plan_view_groups_by_horizon_in_plain_words_in_a_browser(tmp_path):
     h2 = r["h2"]
     assert h2.index("Calendrier d'engagement") < h2.index("Plan d'adoption") < h2.index("Points à confirmer")
     text = r["text"]
-    assert "Ambassadeur du pilote : Claire — « elle essaie toujours en premier »" in text
+    assert "Pilotes : Claire — « elle essaie toujours en premier »" in text
     assert "Claire présente le résultat à la réunion du lundi." in text
     for leak in ("H1", "H2", "H3", "urgent", "Urgent", "posture", "horizon"):
         assert leak not in text, leak

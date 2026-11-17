@@ -269,7 +269,7 @@ function renderPrestudy(d) {
   sel.innerHTML = opts.map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join("");
   sel.value = (d.info && d.info.posture_override) || "";
   const box = $("prestudy");
-  if (!v) { box.innerHTML = `<p class="empty">${esc(t("admin.prestudy.empty"))}</p>`; return; }
+  if (!v) { box.innerHTML = `<p class="empty">${esc(t("admin.prestudy.empty"))}</p>` + pilotsHint(d.pilots_hint); return; }
   const p = v.prestudy, sc = v.score;
   let html = "";
   if (v.posture) {
@@ -300,9 +300,20 @@ function renderPrestudy(d) {
       : `<p class="muted small">${esc(t("admin.prestudy.noCompetitors"))}</p>`);
     html += `<p class="small"><b>${esc(t("admin.prestudy.pressure"))}</b> ${esc(t(`admin.prestudy.levels.${p.market_pressure}`))}`
       + `${p.pressure_note ? ` — ${esc(p.pressure_note)}` : ""}<br><b>${esc(t("admin.prestudy.exposure"))}</b> `
-      + `${esc(t(`admin.prestudy.levels.${p.task_exposure}`))}${p.exposure_note ? ` — ${esc(p.exposure_note)}` : ""}</p>`;
+      + `${esc(t(`admin.prestudy.levels.${p.task_exposure}`))}${p.exposure_note ? ` — ${esc(p.exposure_note)}` : ""}`
+      + `<br><b>${esc(t("admin.prestudy.workforce"))}</b> ${esc(t(`admin.prestudy.workforces.${p.workforce || "unknown"}`))}`
+      + `${p.workforce_note ? ` — ${esc(p.workforce_note)}` : ""}</p>`;
   }
-  box.innerHTML = html;
+  box.innerHTML = html + pilotsHint(d.pilots_hint);
+}
+// How many pilots to expect for this company, and why (pilots.py): a hint, never a label on a person.
+function pilotsHint(h) {
+  const head = `<h3>${esc(t("admin.prestudy.pilots"))}</h3>`;
+  if (!h) return `<div class="pilots-hint">${head}<p class="muted small">${esc(t("admin.prestudy.pilotsUnknown"))}</p></div>`;
+  return `<div class="pilots-hint">${head}<p><b>${esc(t("admin.prestudy.pilotsRange", { low: h.low, high: h.high, size: h.size }))}</b></p>`
+    + ((h.factors || []).length ? `<ul class="small">${h.factors.map((f) => `<li>${esc(t(`admin.prestudy.pilotsFactors.${f}`))}</li>`).join("")}</ul>` : "")
+    + (h.leader_likely ? `<p class="small">${esc(t("admin.prestudy.pilotsLeader"))}</p>` : "")
+    + `<p class="muted small">${esc(t("admin.prestudy.pilotsNote"))}</p></div>`;
 }
 $("posture-override").addEventListener("change", async () => {
   try {

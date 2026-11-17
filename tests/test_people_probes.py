@@ -217,7 +217,7 @@ def test_the_sync_prompt_reads_the_interviewee_and_never_asks_head_on():
     assert "# Reading the interviewee" in text and "# People questions" in text
     assert "Never head-on, never like an assessment of people" in text
     assert "(no pre-study: the default tone)" in text
-    assert "interviewee_read and ambassador_probes" in text
+    assert "interviewee_read, ambassador_probes and sponsor_probe" in text
     fast = build_fast_system(st, "", "")
     assert "# People questions" not in fast and "Never ask the interviewee head-on" in fast
 

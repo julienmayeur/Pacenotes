@@ -49,6 +49,7 @@
    "approach": ""
   },
   "ambassador_probes": [],
+  "sponsor_probe": null,
   "value_framings": [
    {
     "use_case": "bakery-orders",
@@ -114,6 +115,7 @@
    "approach": ""
   },
   "ambassador_probes": [],
+  "sponsor_probe": null,
   "value_framings": [
    {
     "use_case": "bakery-orders",
@@ -179,6 +181,7 @@
    "approach": ""
   },
   "ambassador_probes": [],
+  "sponsor_probe": null,
   "value_framings": [
    {
     "use_case": "bakery-orders",
