@@ -441,11 +441,10 @@ language-select .ls-seg button:focus-visible { outline: 2px solid var(--accent);
 /* with several attendees: who to address the question to */
 .ask-to { margin: var(--sp-1) 0 0; font-size: var(--fs-sm, 14px); color: var(--accent); font-weight: 600; }
 .ask-to.hidden { display: none; }
-/* the console's stance view: one line per attendee, the stance as a quiet tag */
-.attendee-list .stance { margin-left: 4px; }
-.attendee-list .nowrap { white-space: nowrap; }
-.attendee-list .stance-driver .stance { color: var(--ok); }
-.attendee-list .stance-opposed .stance, .attendee-list .stance-hesitant .stance { color: var(--warn, #b26a00); }
+/* the console's views heard: one line per viewpoint, its kind as a quiet tag */
+.viewpoint-list .vp-kind { margin-right: 4px; }
+.viewpoint-list .vp-keen .vp-kind { color: var(--ok); }
+.viewpoint-list .vp-cautious .vp-kind, .viewpoint-list .vp-opposed .vp-kind { color: var(--warn, #b26a00); }
 .who-chip { font-size: 12px; font-weight: 500; letter-spacing: 0; color: var(--muted); padding: 2px 10px;
   border: 1px solid var(--rule); border-radius: 999px; white-space: nowrap; }
 .who-chip.hidden { display: none; }

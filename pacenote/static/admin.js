@@ -197,7 +197,7 @@ function drawPersona(li, p) {
     .map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join("");
   sel.value = li.dataset.persona || "";
   const why = li.querySelector(".c-why");
-  // before the meeting: how to approach this person, from the persona in force (the stance starts unknown)
+  // before the meeting: how to approach this person, from the persona in force
   const prep = li.querySelector(".c-prep");
   const persona = li.dataset.persona || (inferred && inferred.persona);
   prep.textContent = persona ? `${t("admin.prepLabel")} : ${t(`attendees.prep.${persona}`)}` : "";

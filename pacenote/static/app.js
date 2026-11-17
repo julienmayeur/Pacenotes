@@ -710,7 +710,7 @@ function renderConsoleToCheck() {
 }
 
 // --- who is in the meeting: the client sheet's people with their personas (attendees.py), listed on the
-// consent screen; a quiet chip in the header afterwards; each one's stance on AI in the console only. ---
+// consent screen; a quiet chip in the header afterwards; the views heard in the console only. ---
 function personLabel(p) {
   return [p.role, p.name].filter(Boolean).join(" · ") || t(`persona.${p.persona}`);
 }
@@ -729,17 +729,36 @@ function renderWho() {
   setText($("who-why"), people.length ? "" : t("consent.noContact"));
 }
 
-// Each attendee's stance on AI, its evidence and confidence, and the prep note (interviewer console only).
+// Who is in the meeting, with persona and prep note (interviewer console only).
 function renderConsoleAttendees() {
   const people = S.attendees || [];
   setClass($("console-attendees"), "hidden", !people.length);
-  const html = people.map((p) => `<li class="stance-${esc(p.stance)}"><b>${esc(personLabel(p))}</b>`
+  const html = people.map((p) => `<li><b>${esc(personLabel(p))}</b>`
     + ` <span class="muted">· ${esc(t(`persona.${p.persona}`))}${p.lead ? ` · ${esc(t("console.lead"))}` : ""}</span>`
-    + ` <span class="fit stance">${esc(t(`attendees.stance.${p.stance}`))}</span>`
-    + (p.stance !== "unknown" && p.confidence ? ` <span class="muted small nowrap">${esc(t("console.stanceSure", { pct: Math.round(p.confidence * 100) }))}</span>` : "")
-    + (p.evidence || []).map((q) => `<br><small>« ${esc(q)} »</small>`).join("")
-    + (p.stance === "unknown" && p.prep ? `<br><small class="muted">${esc(p.prep)}</small>` : "") + `</li>`).join("");
+    + (p.prep ? `<br><small class="muted">${esc(p.prep)}</small>` : "") + `</li>`).join("");
   if ($("console-attendee-list").innerHTML !== html) $("console-attendee-list").innerHTML = html;
+  renderConsoleViewpoints();
+}
+
+// The views heard on AI, by statement, not by person: kind, position, topic, verbatim quotes. A quote names
+// someone only when the statement did, or when a labelled transcript mapped its voice after the meeting.
+function renderConsoleViewpoints() {
+  const V = S.viewpoints || { items: [], speakers: {} };
+  const items = V.items || [];
+  setClass($("console-viewpoints"), "hidden", !items.length && !(S.attendees || []).length);
+  const quote = (q) => `<br><small>« ${esc(q.text)} »`
+    + (q.speaker ? ` <span class="muted">— ${esc(q.speaker)}</span>` : "")
+    + (q.voice && (q.voice_who || q.voice) !== q.speaker
+      ? ` <span class="muted">· ${esc(t("console.voice", { who: q.voice_who || q.voice }))}</span>` : "") + `</small>`;
+  const html = items.length ? items.map((v) => `<li class="vp-${esc(v.kind)}">`
+    + `<span class="fit vp-kind">${esc(t(`viewpoints.kind.${v.kind}`))}</span> <b>${esc(v.position)}</b>`
+    + (v.topic ? ` <span class="muted">· ${esc(v.topic)}</span>` : "")
+    + (v.quotes || []).map(quote).join("") + `</li>`).join("")
+    : `<li class="muted">${esc(t("console.viewpointsEmpty"))}</li>`;
+  if ($("console-viewpoint-list").innerHTML !== html) $("console-viewpoint-list").innerHTML = html;
+  const sp = V.speakers || {};
+  setText($("console-speakers"), sp.status === "mapped" ? t("console.speakersMapped", { n: sp.mapped || 0 })
+    : sp.status === "unavailable" ? t("console.speakersUnavailable") : "");
 }
 
 // --- languages: the same <language-select> component on the consent screen, header and console.

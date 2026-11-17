@@ -1,4 +1,4 @@
-"""Who is in the meeting: one or several attendees, each with a persona and a live stance toward AI.
+"""Who is in the meeting: one or several attendees, each with a persona and a prep note.
 
 The client sheet lists the people who will be in the meeting (the CEO alone, a head of department, a head
 and an operator, or three or four people). Each comes with a persona (personas.py). The session holds them
@@ -6,15 +6,11 @@ all; the live copilot knows every attendee, words each question for the person i
 suggest addressing it to a specific attendee (the operator for the execution detail, the head for the
 workflow).
 
-Stance. For each attendee the live sync keeps a stance toward AI, discovered through the conversation:
-driver (pushes for it, already does things), open, hesitant, opposed, or unknown, with short evidence quotes
-and a confidence. It starts unknown. It is interviewer-side only: shown in the console, stored in the
-session data (sessions/, never in git), never in the plan or the PDF.
+Views, not stances. The transcript has no diarization: nobody knows who said a line, so there is no stance
+per attendee. The different views heard in the room are grouped by statement instead (viewpoints.py).
 
-Speaker attribution. The transcript has no diarization: nobody knows who said a line. A statement counts for
-an attendee only when the conversation makes it clear: they introduce themself ("as head of sales I..."),
-someone names them, or the interviewer's question was addressed to them. Otherwise it is "unknown" and no
-stance moves. Simple and honest.
+Who to ask. The card can suggest the attendee a question is best put to (the consultant directing it); that
+needs no speaker labels.
 
 The lead. When an executive or a function leader is in the meeting, the most senior one is the lead: the
 seed questions take that persona (state.persona), and the plan names them as the sponsor who leads by
@@ -28,11 +24,8 @@ import time
 
 from .personas import DEFAULT, PERSONA_NAMES, PERSONAS, fold
 
-STANCES = ("driver", "open", "hesitant", "opposed", "unknown")
-ATTRIBUTIONS = ("self", "named", "addressed")  # how the transcript shows who spoke
 SENIORITY = {"executive": 0, "function_leader": 1, "operator": 2}
 LEADERS = ("executive", "function_leader")
-MAX_EVIDENCE = 3
 _KEEP = ("index", "name", "role", "notes", "persona", "reason", "confidence", "origin")
 
 
@@ -43,13 +36,12 @@ def key(index: int) -> str:
 
 def build(people: list[dict]) -> list[dict]:
     """The session's attendees from the client sheet's people (personas.interviewees): each keeps its
-    persona and gets an id and an unknown stance."""
+    persona and gets an id."""
     out = []
     for i, p in enumerate(people or []):
         a = {k: p.get(k) for k in _KEEP if k in p}
         a["index"], a["key"] = i, key(i)
         a["persona"] = a.get("persona") if a.get("persona") in PERSONAS else DEFAULT
-        a["stance"] = {"label": "unknown", "confidence": 0.0, "evidence": [], "read": 0, "at": None}
         out.append(a)
     return out
 
@@ -99,45 +91,8 @@ def find(state, ref: str) -> dict | None:
     return None
 
 
-# --- the live stance ----------------------------------------------------------------------------------
-
-
 def _clean(text, n: int = 200) -> str:
     return " ".join(str(text or "").split())[:n]
-
-
-def apply_stances(state, items, read: int, ok, reject) -> None:
-    """Merge the model's stance reads. Rejected: an unknown attendee, a line not attributed by what was
-    said (self, named, addressed), a stance other than unknown without a quote, a read older than the
-    one kept. Evidence quotes accumulate (newest first, at most three)."""
-    if not state.attendees:
-        state.attendees = of(state)
-    for s in items or []:
-        a = find(state, s.attendee)
-        if a is None:
-            reject("stance", s.attendee, "unknown attendee")
-            continue
-        if s.attributed not in ATTRIBUTIONS:
-            reject("stance", a["key"], "not attributed: the transcript has no speakers")
-            continue
-        quote = _clean(s.evidence)
-        if s.stance != "unknown" and not quote:
-            reject("stance", a["key"], "a stance needs the words it comes from")
-            continue
-        old = a.get("stance") or {}
-        if old.get("read", 0) > read:
-            reject("stale", a["key"], f"read at line {read}, kept the stance read at line {old['read']}")
-            continue
-        evidence = list(old.get("evidence") or [])
-        if quote and quote not in evidence:
-            evidence = [quote, *evidence][:MAX_EVIDENCE]
-        try:
-            conf = round(max(0.0, min(1.0, float(s.confidence))), 2)
-        except (TypeError, ValueError):
-            conf = 0.0
-        a["stance"] = {"label": s.stance, "confidence": conf, "evidence": evidence, "read": read,
-                       "attributed": s.attributed, "at": time.time()}
-        ok("stance", a["key"], f"{s.stance} ({conf}): {quote}"[:120])
 
 
 # --- who to ask: the question addressed to a specific attendee ----------------------------------------
@@ -192,58 +147,35 @@ def ask_to_for(state, qid: str | None = None) -> dict | None:
 
 
 def prep_note(a: dict, tr) -> str:
-    """Before the meeting: how to approach this attendee, from their persona (the stance starts unknown)."""
+    """Before the meeting: how to approach this attendee, from their persona."""
     return tr(f"attendees.prep.{a.get('persona') if a.get('persona') in PERSONAS else DEFAULT}")
 
 
 def view(state, tr) -> list[dict]:
-    """The console's stance view: each attendee with persona, stance, evidence, confidence and prep note."""
-    out = []
-    for a in of(state):
-        s = a.get("stance") or {}
-        out.append({"key": a["key"], "name": a.get("name", ""), "role": a.get("role", ""), "persona": a["persona"],
-                    "lead": False, "stance": s.get("label", "unknown"), "confidence": s.get("confidence", 0.0),
-                    "evidence": list(s.get("evidence") or []), "prep": prep_note(a, tr)})
-    if (ld := lead(of(state))) is not None:
-        for v in out:
-            v["lead"] = v["key"] == ld["key"]
-    return out
-
-
-STANCE_RULES = {
-    "driver": "explore what they already do with these tools and what they would take further; they can carry it",
-    "open": "give them a concrete case to picture it on their own work",
-    "hesitant": "stay on their own work and the time it would give back; one concrete case, no promise",
-    "opposed": "stay concrete on the time given back and the decision they keep; never push, never argue",
-    "unknown": "listen first: how they talk about their work and the last change of tools",
-}
+    """Who is in the meeting, for the consent screen, the header and the console: persona, the lead, the
+    prep note (a session saved with stances still loads: they are no longer read)."""
+    ld = lead(of(state))
+    return [{"key": a["key"], "name": a.get("name", ""), "role": a.get("role", ""), "persona": a["persona"],
+             "lead": ld is not None and a["key"] == ld["key"], "prep": prep_note(a, tr)} for a in of(state)]
 
 
 def prompt_block(state) -> str:
-    """The attendees for the live prompts: id, who, persona, stance so far (interviewer-side)."""
+    """The attendees for the live prompts: id, who, persona, the lead."""
     people = of(state)
     if not people:
         return "- Nobody listed on the client sheet: one interviewee, asked as an executive."
     ld = lead(people)
-    lines = []
-    for a in people:
-        s = a.get("stance") or {}
-        stance = s.get("label", "unknown")
-        lead_note = " (the lead: sponsor of the first wave)" if ld is not None and a["key"] == ld["key"] else ""
-        lines.append(f"- {a['key']}: {label(a)} — {PERSONA_NAMES[a['persona']]}{lead_note}; stance so far: {stance}"
-                     f"{' (' + str(s.get('confidence')) + ')' if stance != 'unknown' else ''}; "
-                     f"with them: {STANCE_RULES[stance]}.")
-    return "\n".join(lines)
+    return "\n".join(f"- {a['key']}: {label(a)} — {PERSONA_NAMES[a['persona']]}"
+                     f"{' (the lead: sponsor of the first wave)' if ld is not None and a['key'] == ld['key'] else ''}"
+                     for a in people)
 
 
 def snapshot(state) -> list[dict]:
-    """The attendees as the sync model sees them (stance included: interviewer-side only)."""
-    return [{"id": a["key"], "who": label(a), "persona": a["persona"],
-             "stance": (a.get("stance") or {}).get("label", "unknown"),
-             "evidence": (a.get("stance") or {}).get("evidence", [])[:2]} for a in of(state)]
+    """The attendees as the sync model sees them."""
+    return [{"id": a["key"], "who": label(a), "persona": a["persona"]} for a in of(state)]
 
 
 def for_plan(state) -> list[dict]:
-    """The attendees as the plan writer sees them: role and persona only. No name, no stance (the plan is
-    shared with the client)."""
+    """The attendees as the plan writer sees them: role and persona only, no name (the plan is shared with
+    the client)."""
     return [{"role": (a.get("role") or "").strip(), "persona": a["persona"]} for a in of(state)]

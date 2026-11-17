@@ -176,11 +176,16 @@
     "interviewee": "In the meeting: {{who}}",
     "sponsorProbe": "Leading by example",
     "sponsorTemplateWhy": "what {{person}} would do themself, to lead by example",
-    "attendees": "In the meeting · stance on AI",
-    "attendeesNote": "Interviewer only, never in the plan. Read from what each person says; the transcript has no speakers, so a line counts only when it's clear who said it.",
+    "attendees": "In the meeting",
+    "attendeesNote": "Interviewer only, never in the plan.",
     "lead": "lead · sponsor",
-    "stanceSure": "{{pct}} % sure",
-    "others": "+{{n}}"
+    "others": "+{{n}}",
+    "viewpoints": "Views heard on AI",
+    "viewpointsNote": "Grouped by what was said, not by person: the live transcript has no speaker labels. A quote names someone only when the statement itself does.",
+    "viewpointsEmpty": "No view heard yet.",
+    "speakersMapped": "After the meeting: speakers from the pasted transcript ({{n}} quotes matched).",
+    "speakersUnavailable": "After the meeting: speakers unavailable (the pasted transcript has no speaker labels).",
+    "voice": "voice: {{who}}"
   },
   "interview": {
     "bannerDone": "All good, I'm taking care of the plan.",
@@ -457,7 +462,8 @@
       "leaderDefault": "The company's leader",
       "sponsorLine": "{{sponsor}}, leading by example: {{plan}}",
       "group": "{{group}} (as a group)",
-      "sponsorTbc": "to be confirmed with the leadership."
+      "sponsorTbc": "to be confirmed with the leadership.",
+      "toAddress": "Points raised in the meeting, to address:"
     },
     "freedLine": "{{task}} — {{who}} · time freed: {{time}} · moves up to: {{moves}}",
     "freedTeam": "the team",
@@ -887,16 +893,18 @@
   },
   "attendees": {
     "prep": {
-      "executive": "Ask at workflow level: outcomes, where the time goes, who does what. Find out what they would do themself: as the boss, they lead by example. Stance on AI: unknown until the meeting.",
-      "function_leader": "Ask how the process runs: who owns each step, the tools, the figures they follow. Find out what they would try first on their own work. Stance on AI: unknown until the meeting.",
-      "operator": "Ask step by step on their last real case: volumes, time per item, exceptions. No strategy. Stance on AI: unknown until the meeting."
-    },
-    "stance": {
-      "driver": "Driver",
+      "executive": "Ask at workflow level: outcomes, where the time goes, who does what. Find out what they would do themself: as the boss, they lead by example.",
+      "function_leader": "Ask how the process runs: who owns each step, the tools, the figures they follow. Find out what they would try first on their own work.",
+      "operator": "Ask step by step on their last real case: volumes, time per item, exceptions. No strategy."
+    }
+  },
+  "viewpoints": {
+    "kind": {
+      "keen": "Keen",
       "open": "Open",
-      "hesitant": "Hesitant",
+      "cautious": "Cautious",
       "opposed": "Opposed",
-      "unknown": "Unknown"
+      "practical": "Practical concern"
     }
   }
 }

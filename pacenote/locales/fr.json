@@ -176,11 +176,16 @@
     "interviewee": "Dans la réunion : {{who}}",
     "sponsorProbe": "Montrer l'exemple",
     "sponsorTemplateWhy": "ce que {{person}} ferait lui-même, pour montrer l'exemple",
-    "attendees": "Dans la réunion · position sur l'IA",
-    "attendeesNote": "Pour l'intervieweur seulement, jamais dans le plan. Lu dans ce que dit chacun ; la transcription ne sépare pas les voix, donc une phrase ne compte que s'il est clair qui l'a dite.",
+    "attendees": "Dans la réunion",
+    "attendeesNote": "Pour l'intervieweur seulement, jamais dans le plan.",
     "lead": "responsable · sponsor",
-    "stanceSure": "sûr à {{pct}} %",
-    "others": "+{{n}}"
+    "others": "+{{n}}",
+    "viewpoints": "Points de vue entendus sur l'IA",
+    "viewpointsNote": "Regroupés par ce qui a été dit, pas par personne : la transcription en direct ne distingue pas les voix. Une citation nomme quelqu'un seulement si la phrase elle-même le fait.",
+    "viewpointsEmpty": "Aucun point de vue entendu pour l'instant.",
+    "speakersMapped": "Après la réunion : voix tirées de la transcription collée ({{n}} citations retrouvées).",
+    "speakersUnavailable": "Après la réunion : voix indisponibles (la transcription collée ne distingue pas les intervenants).",
+    "voice": "voix : {{who}}"
   },
   "interview": {
     "bannerDone": "C'est parfait, j'ai ce qu'il me faut. Je m'occupe du plan.",
@@ -457,7 +462,8 @@
       "leaderDefault": "Le dirigeant",
       "sponsorLine": "{{sponsor}}, qui montre l'exemple : {{plan}}",
       "group": "{{group}} (en groupe)",
-      "sponsorTbc": "à confirmer avec la direction."
+      "sponsorTbc": "à confirmer avec la direction.",
+      "toAddress": "Points soulevés pendant la réunion, à traiter :"
     },
     "freedLine": "{{task}} — {{who}} · temps libéré : {{time}} · pour se consacrer à : {{moves}}",
     "freedTeam": "l'équipe",
@@ -887,16 +893,18 @@
   },
   "attendees": {
     "prep": {
-      "executive": "Questions au niveau des processus : résultats, où passe le temps, qui fait quoi. Voir ce qu'il ferait lui-même : en tant que patron, il montre l'exemple. Position sur l'IA : inconnue avant la réunion.",
-      "function_leader": "Questions sur le déroulé du processus : qui porte chaque étape, les outils, les chiffres suivis. Voir ce qu'il essaierait d'abord sur son propre travail. Position sur l'IA : inconnue avant la réunion.",
-      "operator": "Questions étape par étape sur son dernier cas réel : volumes, temps par dossier, exceptions. Pas de stratégie. Position sur l'IA : inconnue avant la réunion."
-    },
-    "stance": {
-      "driver": "Moteur",
+      "executive": "Questions au niveau des processus : résultats, où passe le temps, qui fait quoi. Voir ce qu'il ferait lui-même : en tant que patron, il montre l'exemple.",
+      "function_leader": "Questions sur le déroulé du processus : qui porte chaque étape, les outils, les chiffres suivis. Voir ce qu'il essaierait d'abord sur son propre travail.",
+      "operator": "Questions étape par étape sur son dernier cas réel : volumes, temps par dossier, exceptions. Pas de stratégie."
+    }
+  },
+  "viewpoints": {
+    "kind": {
+      "keen": "Partant",
       "open": "Ouvert",
-      "hesitant": "Hésitant",
+      "cautious": "Prudent",
       "opposed": "Opposé",
-      "unknown": "Inconnu"
+      "practical": "Question pratique"
     }
   }
 }

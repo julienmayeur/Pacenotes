@@ -16,6 +16,7 @@ from . import ambassadors, briefs, fsutil, personas
 from . import attendees as attendees_lib
 from . import pilots as pilots_lib
 from . import recipes as recipe_lib
+from . import viewpoints as viewpoints_lib
 from .contract import SLOT_KEYS, Fact, Measure, Pilot, PlanDoc, PlanUseCase, Recipe
 from .horizons import HORIZONS, checked_horizon
 from .prompts import state_headings
@@ -259,7 +260,7 @@ def adoption_people(a, state: SessionState | None, lighthouse: str) -> dict:
         if (k := ambassadors.person_id(p.person)) and k not in seen:
             seen.add(k)
             unique.append(p)
-    out: dict = {"pilots": unique}
+    out: dict = {"pilots": unique, "to_address": points_to_address(a.to_address, state)}
     if unique:
         out |= {"question": "", "ask": ""}
     if state is None:
@@ -269,6 +270,28 @@ def adoption_people(a, state: SessionState | None, lighthouse: str) -> dict:
     if not unique and sponsor:
         out["ask"] = a.ask.strip() or sponsor  # who to ask who else would go first: the sponsor, by default
     return out
+
+
+def points_to_address(points: list[str], state: SessionState | None) -> list[str]:
+    """The points wave 2 addresses, from the views heard (viewpoints.py): the writer's, else the cautious,
+    opposed and practical views' positions. Never one that labels people or names an attendee (the plan is
+    shared): such a point is dropped."""
+    people = attendees_lib.of(state) if state is not None else []
+    names = {personas.fold(w) for a in people for w in (a.get("name") or "").split() if len(w) > 2}
+
+    def neutral(text: str) -> str:
+        text = wave_text(text)
+        return "" if names & set(personas.fold(text).split()) else text
+
+    kept = [t for t in (neutral(x) for x in points or []) if t]
+    if not kept and state is not None:
+        kept = [t for t in (neutral(x) for x in viewpoints_lib.concerns(state)) if t]
+    seen, out = set(), []
+    for t in kept:
+        if (k := personas.fold(t)) not in seen:
+            seen.add(k)
+            out.append(t)
+    return out[:5]
 
 
 def _one_line(text: str) -> str:
@@ -710,6 +733,11 @@ def render_plan_md(doc: PlanDoc, state: SessionState) -> str:
                 f"    - {tr('plan.adoption.startsWhen', trigger=trigger)}"]
         if k == "majority":
             out.append(f"    - {tr('plan.adoption.proof', proof=proof)}")
+            # the views heard in the meeting, as points to address: about the subject, never who raised them
+            points = [p for p in (_one_line(x) for x in a.to_address) if p]
+            if points:
+                out.append(f"    - {tr('plan.adoption.toAddress')}")
+                out += [f"        - {p}" for p in points]
     out.append("")
 
     # 8. what the interviewee could not answer, by who would know (personas.py)
@@ -727,7 +755,7 @@ def render_plan_md(doc: PlanDoc, state: SessionState) -> str:
 
 def interviewed_line(state: SessionState, tr) -> str:
     """"**In the meeting**: CEO — executive; Order desk — hands-on operator": each attendee's role and
-    persona, never the name and never their stance (the plan is shared). "" when nobody was listed."""
+    persona, never the name (the plan is shared). "" when nobody was listed."""
     people = attendees_lib.of(state)
     if not people:
         return ""

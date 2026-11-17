@@ -25,6 +25,7 @@ from . import ambassadors, fsutil, i18n, lens, personas, translate
 from . import attendees as attendees_lib
 from . import phases as P
 from . import recipes as recipe_lib
+from . import viewpoints as viewpoints_lib
 from .capture import ReplaySource, Source
 from .contract import ContractError
 from .finalize import apply_horizons, apply_recipes, assemble_plan, render_plan_md, write_plan_files
@@ -728,8 +729,17 @@ class Session:
         if self.wispr_text:
             fsutil.atomic_write_text(self.session_dir / "wispr.txt", self.wispr_text)
         self.state.wispr_merged = bool(self.wispr_text)
+        self.refine_speakers()
         self.persist()
         await self.notify()
+
+    def refine_speakers(self) -> None:
+        """After the meeting: when the final transcript has speaker labels, map the views heard to the voices
+        that said them (viewpoints.refine); a plain transcript leaves the speakers unavailable."""
+        if self.wispr_text:
+            viewpoints_lib.refine(self.state, self.wispr_text, "pasted")
+        else:
+            self.state.viewpoint_speakers = {}
 
     # --- finalize ------------------------------------------------------------------
     @property
@@ -971,9 +981,10 @@ class Session:
             "read": ambassadors.read_view(st),  # console only: the interviewee's tone and how to ask
             "framings": lens.framings_view(st, shown),  # console only: the talking points and why now
             "to_check": personas.view(st, shown),  # console: what to check with whom
-            # who is in the meeting (consent screen, header chip, console): role, persona and, in the
-            # console only, each attendee's stance toward AI with its evidence (attendees.py)
+            # who is in the meeting (consent screen, header chip, console): role, persona, prep note
             "attendees": attendees_lib.view(st, st.tr(shown)),
+            # console only: the views heard, by statement, not by person (viewpoints.py)
+            "viewpoints": viewpoints_lib.view(st, shown),
             "persona": st.persona,
             # the interview thread above the current question: what was asked or answered, in order
             "history": [{**qv(q), **summary(q), "thread": thread(q, 20), "thread_at": q.thread_at,

@@ -463,6 +463,7 @@ def cmd_finalize(args) -> int:
         session.wispr_text = read_wispr(args.wispr)
         (sdir / "wispr.txt").write_text(session.wispr_text, encoding="utf-8")
         session.state.wispr_merged = True
+        session.refine_speakers()  # the views heard mapped to voices, when this transcript has speaker labels
     files = asyncio.run(session.finalize())
     print(_plan_written(files).strip("\n"))
     if session.state.last_sync_error:

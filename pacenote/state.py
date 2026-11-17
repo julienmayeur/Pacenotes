@@ -64,6 +64,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from . import ambassadors, fsutil, i18n, lens, personas
 from . import attendees as attendees_lib
+from . import viewpoints as viewpoints_lib
 from . import phases as P
 from . import recipes as recipe_lib
 from .contract import (CATALOG_CATEGORIES, MAP_KINDS, PLAN_SECTIONS, RUNGS, SLOT_KEYS, SLOT_RUNG, FastResult,
@@ -377,8 +378,12 @@ class SessionState(BaseModel):
     posture: str | None = None
     posture_rationale: str = ""
     # who is in the meeting (attendees.py): one or several people from the client sheet, each with a persona
-    # and a live stance toward AI (interviewer-side only, never in the plan)
     attendees: list[dict] = Field(default_factory=list)
+    # the views heard, grouped by statement, not by person (viewpoints.py): id -> {kind, position, topic,
+    # use_case, quotes: [{text, speaker, read, voice?}], read, at}. Interviewer-side only, never in the plan
+    viewpoints: dict[str, dict] = Field(default_factory=dict)
+    # after the meeting: the speakers from a final transcript with labels (viewpoints.refine), {} = not tried
+    viewpoint_speakers: dict = Field(default_factory=dict)
     # the attendee whose persona the seed questions take (attendees.primary: the lead, else the first):
     # {index, name, role, notes, persona, reason, confidence, origin}; {} = nobody listed (the default persona)
     interviewee: dict = Field(default_factory=dict)
@@ -811,8 +816,8 @@ class SessionState(BaseModel):
         return p if p in personas.PERSONAS else personas.DEFAULT
 
     def set_attendees(self, people: list[dict]) -> list[str]:
-        """Who is in the meeting (before it starts): every attendee with their persona and an unknown
-        stance; the lead's persona (else the first attendee's) re-words the seed questions."""
+        """Who is in the meeting (before it starts): every attendee with their persona; the lead's persona
+        (else the first attendee's) re-words the seed questions."""
         self.attendees = attendees_lib.build(people)
         main = attendees_lib.primary(self.attendees)
         return self.set_interviewee(main if main is not None else personas.default_interviewee())
@@ -1063,8 +1068,8 @@ class SessionState(BaseModel):
         lens.apply_metric_questions(self, result.metric_questions, read, ok, reject)
         # 6d. what the interviewee could not answer, and who would know (personas.py)
         personas.apply_to_check(self, result.to_check, read, ok, reject)
-        # 6e. who is in the meeting: each attendee's stance, and who to address a question to (attendees.py)
-        attendees_lib.apply_stances(self, result.attendee_stances, read, ok, reject)
+        # 6e. the views heard, by statement (viewpoints.py), and who to address a question to (attendees.py)
+        viewpoints_lib.apply(self, result.viewpoints, read, ok, reject)
         attendees_lib.apply_ask_to(self, result.ask_to, read, ok, reject)
 
         # 7. enough_data is sticky

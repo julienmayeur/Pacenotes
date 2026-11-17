@@ -91,7 +91,7 @@ def result(**kw) -> SyncResult:
         value_framings=[],
         metric_questions=[],
         to_check=[],
-        attendee_stances=[],
+        viewpoints=[],
         ask_to=[],
     )
     base.update(kw)
@@ -149,7 +149,8 @@ WAVE_KEYS = ("volunteers", "majority", "everyone")
 
 def adoption_doc(**kw):
     """A contract-valid AdoptionPlan dict: every field "", no pilot and every wave empty unless given."""
-    return {**{k: "" for k in ADOPTION_KEYS}, "pilots": [], **{k: {"plan": "", "trigger": ""} for k in WAVE_KEYS}, **kw}
+    return {**{k: "" for k in ADOPTION_KEYS}, "pilots": [], **{k: {"plan": "", "trigger": ""} for k in WAVE_KEYS},
+            "to_address": [], **kw}
 
 
 def plan_doc(*use_cases, context="Brioche & Four distribue des fours Fornaxa.", open_items=None, current_state=None, bottlenecks=None,

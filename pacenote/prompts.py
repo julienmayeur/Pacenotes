@@ -7,6 +7,7 @@ from typing import Mapping
 
 from . import ambassadors, briefs, horizons, i18n, lens, personas
 from . import attendees as attendees_lib
+from . import viewpoints as viewpoints_lib
 from . import pilots as pilots_lib
 from . import phases as P
 from . import recipes as recipe_lib
@@ -264,20 +265,24 @@ a few words in {lang_name}: what the answer would tell ("whether Claire picks up
 for the orders"). state.ambassador_probes lists the ones given so far: never change one already \
 asked. What the interviewee answers about a person goes in the org map's adoption_signal.
 
-# Each attendee's stance toward AI (interviewer-side only: never said out loud, never in the plan)
-state.attendees lists who is in the meeting, with each one's stance so far. Several attendees may differ \
-(one driving it, two against it): discover each one's stance from what they say, never by asking it. \
-Return in attendee_stances only new or changed reads:
-- attendee: its id (a1, a2...); stance: driver (pushes for it, already uses such tools or asks for them), \
-open (curious, willing to try), hesitant (doubts, worries, "pas pour nous tout de suite"), opposed (against \
-it, firmly protects the current way), unknown; evidence: their own words, a short quote; confidence 0 to 1, \
-lower when the attribution is indirect; attributed: self (they introduced themself or spoke of their own \
-role), named (someone named them), addressed (it answers a question the interviewer addressed to them).
-- The transcript has no speaker labels: a line you cannot attribute that way moves no stance. Never guess \
-who spoke from the content alone.
-- Follow-ups adapt to the person they are addressed to: with an opposed or hesitant attendee, stay concrete \
-on the time given back and the decision they keep, never push, never argue; with a driver, explore what \
-they already do and what they would take further.
+# The views heard on AI and the change, by statement (interviewer-side only: never said out loud, never in the plan)
+The people in the meeting may not agree (one keen, one worried about reliability, one against it). The \
+transcript has no speaker labels, so group the statements, never the people: return in viewpoints only new or \
+changed ones. state.viewpoints lists the ones so far: reuse an id to add a quote, never repeat a quote.
+- id: a short stable slug (fiabilite-extraction); kind: keen (wants it, already uses such tools or asks for \
+them), open (curious, willing to try), cautious (doubts, "pas pour nous tout de suite"), opposed (against it, \
+protects the current way), practical (a concrete condition or concern: reliability, data, cost, who keeps the \
+final say); position: the position itself in a few words in {lang_name}, phrased on the subject, never on a \
+person ("fiabilité de l'extraction sur les bons manuscrits, mise en doute", not "doute que..."); topic: the workflow or topic it \
+bears on, as heard ("" when general); use_case: its id in state.use_cases, or null.
+- quotes: the statements, short and verbatim (corrected only for mishearings). speaker = an attendee's id only \
+when the statement itself names who speaks ("en tant que directeur commercial, je trouve que..."), with \
+named_by = those words, copied from the quote; otherwise speaker and named_by are "". Never guess who said it \
+from the content, the persona or the order of the lines. The interviewer's own words are never a viewpoint.
+- A distinct position is a new viewpoint; the same position heard again adds a quote to it. At most 8.
+- Follow-ups adapt to the views heard: on a concern, stay concrete (the check, the time given back, the \
+decision people keep), never push, never argue; on a keen view, explore what is already done and what would \
+go further.
 - ask_to: with two attendees or more, who should answer a question: question_id (usually the current one), \
 attendee (its id), reason (a few words in {lang_name}: "fait les commandes tous les jours"). The per-item \
 detail to the one who does the work, how the process runs to the one who owns it, the outcome and the \
@@ -387,9 +392,9 @@ handles it), never push and never ask it again: {defer}; aim the follow-up at wh
 SEVERAL = """\
 - Several people attend. Word each question for the person it is addressed to: the outcome and the \
 decisions to the lead, how the process runs to the function leader, the per-item detail to the one who \
-does the work. The transcript has no speaker labels: never invent who said what. A line counts for an \
-attendee only when the conversation shows it (they introduce themself, "en tant que directeur commercial, \
-je..."; someone names them; or it answers a question addressed to them); otherwise the speaker is unknown.
+does the work. The transcript has no speaker labels: never invent who said what. A line belongs to an \
+attendee only when it names who speaks ("en tant que directeur commercial, je..."); otherwise the speaker is \
+unknown, and the views heard are kept by statement, not by person.
 """
 
 DEFER_SYNC = ("record it in to_check (the question to ask, who would know: a role, or a name as heard, the slots it "
@@ -554,7 +559,7 @@ coverage of at least about 0.6, or when the time budget is used up and the remai
 be listed as open points in the plan. Be conservative: once true, the interview ends and plan \
 writing starts. enough_data_reason: one sentence why (or why not yet).
 - interviewee_read, ambassador_probes and sponsor_probe: see Reading the interviewee and People questions above.
-- attendee_stances and ask_to: see Each attendee's stance above.
+- viewpoints and ask_to: see The views heard and the ask_to rule above.
 - value_framings and metric_questions: see The executive lens above.
 - to_check: what the interviewee could not answer in this slice, new items only (see Who you \
 interview): use_case (its id, or null), question_id (or null), slots (the slot keys it leaves open, \
@@ -662,14 +667,17 @@ def state_snapshot(state: SessionState, for_plan: bool = False) -> dict:
         "plan_notes": {k: v for k, v in state.plan_notes.items() if v},
     }
     if for_plan:  # the talking points' task and the decision it frees time for, never why they were said;
-        # who attended by role and persona only (no stance: the plan is shared)
-        return out | {"value_framings": lens.for_plan(state), "attendees": attendees_lib.for_plan(state)}
+        # who attended by role and persona only, and the views heard by position and topic, never a quote or
+        # a speaker (the plan is shared)
+        return out | {"value_framings": lens.for_plan(state), "attendees": attendees_lib.for_plan(state),
+                      "viewpoints": viewpoints_lib.for_plan(state)}
     return out | {"value_framings": [{"use_case": uc, "point": f.get("point", ""), "timing": f.get("timing", ""),
                                       "asked": bool(f.get("asked"))} for uc, f in state.value_framings.items()],
                   "metric_questions": {k: {"kind": m.get("kind", ""), "question": m.get("question", "")}
                                        for k, m in state.metric_questions.items()},
                   "interviewee_read": state.interviewee_read or None,
                   "attendees": attendees_lib.snapshot(state),
+                  "viewpoints": viewpoints_lib.snapshot(state),
                   "ask_to": {qid: x.get("attendee") for qid, x in state.ask_to.items()},
                   "ambassador_probes": [{"use_case": uc, "person": p.get("person", ""), "question": p.get("question", ""),
                                          "timing": p.get("timing", ""), "asked": bool(p.get("asked"))}
@@ -913,7 +921,12 @@ majority or everyone waves; "" when nothing supports a field.
 {pace}
 # Who was in the meeting
 {interviewee}. state.attendees lists them by role and persona. Never write anything about how anyone \
-feels about AI or new tools (no "réticent", "opposed", "enthusiastic" about a person). What the people \
+feels about AI or new tools (no "réticent", "opposed", "enthusiastic" about a person). state.viewpoints lists \
+the views heard in the meeting, by position and topic, never by person: reflect their diversity neutrally. \
+adoption.to_address = the points the cautious, opposed and practical views raise, that wave 2 addresses, \
+each a short topic in plain business words ("la fiabilité de l'extraction sur les commandes manuscrites", "qui \
+garde la validation finale"): about the subject, never who raised it, no name, no role, no label on anyone; \
+[] when no such view was heard. What the people \
 in the meeting could not know stays open, never guessed: state.to_check lists what they deferred and who \
 would know; each one that is not already a slot gap goes in open_items with that person as `ask`.
 

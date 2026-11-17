@@ -1,10 +1,13 @@
 """Real-browser checks (Node + Playwright, skipped without them) of who is in the meeting, with fake data and
-no model call: the admin's attendee rows with their persona and prep note, the interviewer console's stance
-view (three attendees: one driving it, two hesitant or against), and the interview card suggesting who to
-address the question to. Fixed spare ports 8796 (admin) and 8797 (interview). Each script takes an optional
-screenshot path. Fictional people and companies only."""
+no model call: the admin's attendee rows with their persona and prep note, the interviewer console's views
+heard (three distinct viewpoints, grouped by statement, not by person), the interview card suggesting who to
+address the question to, and the plan listing the points to address with no one named. Fixed spare ports
+8796 (admin) and 8797 (interview). Each script takes optional screenshot paths. Fictional people and
+companies only."""
 
 from __future__ import annotations
+
+import asyncio
 
 import pytest
 
@@ -20,6 +23,8 @@ from .conftest import CLIENTS, fill, result, upd
 from .test_horizons_browser import ADMIN_PORT, APP_PORT, QUIET, run_node, serve
 from .test_i18n import _node_playwright
 from .test_personas import _client
+from .test_pilots_browser import PLAN_SCRIPT
+from .test_viewpoints import THREE
 
 pytestmark = pytest.mark.skipif(not _node_playwright(), reason="needs node + playwright")
 
@@ -66,12 +71,12 @@ def test_admin_lists_who_will_be_in_the_meeting_with_a_prep_note_each(tmp_path):
     assert rows[0]["prep"].startswith("Préparation : Questions au niveau des processus")
     assert "il montre l'exemple" in rows[0]["prep"]
     assert rows[2]["prep"].startswith("Préparation : Questions étape par étape")
-    assert all("Position sur l'IA : inconnue avant la réunion" in x["prep"] for x in rows)
+    assert all("Position sur l'IA" not in x["prep"] for x in rows)  # no stance per person
 
 
 def meeting_session(tmp_path) -> Session:
-    """Three people in the meeting: the PDG drives it, the sales director is against it, the order desk
-    assistant hesitates; the card is on the order entry, at the per-item detail."""
+    """Three people in the meeting and three views heard (keen, a practical concern, against it), kept by
+    statement; the card is on the order entry, at the per-item detail."""
     s = Session(client=_client(tmp_path, ROOM, headcount="120"), session_dir=tmp_path / "s" / "20261117-140000",
                 engine=OfflineEngine(), source_factory=lambda d: ReplaySource({}), settings=QUIET)
     st = s.state
@@ -83,13 +88,7 @@ def meeting_session(tmp_path) -> Session:
         question_updates=[upd(st.focus_id, "partial", "Les commandes des boulangeries arrivent par mail.",
                               rung="implementation", follow_up="Sur la commande de ce matin : combien de lignes, et "
                                                               "combien de temps pour la saisir ?")],
-        attendee_stances=[
-            {"attendee": "a1", "stance": "driver", "evidence": "J'utilise déjà un assistant pour préparer mes comités",
-             "confidence": 0.85, "attributed": "self"},
-            {"attendee": "a2", "stance": "opposed", "evidence": "Mes commerciaux ont besoin du contact, pas d'un robot",
-             "confidence": 0.7, "attributed": "self"},
-            {"attendee": "a3", "stance": "hesitant", "evidence": "Pour la saisie, je ne vois pas trop ce que ça changerait",
-             "confidence": 0.55, "attributed": "addressed"}]), read=40)
+        viewpoints=THREE), read=40)
     return s
 
 
@@ -112,17 +111,24 @@ const { chromium } = require('playwright');
   await p.keyboard.press('c');
   await p.waitForSelector('#console:not(.hidden) #console-attendees:not(.hidden)');
   const people = await p.evaluate(() => [...document.querySelectorAll('#console-attendee-list li')].map((li) => li.textContent));
+  const views = await p.evaluate(() => [...document.querySelectorAll('#console-viewpoint-list li')].map((li) => li.textContent));
+  const speakers = await p.evaluate(() => document.querySelector('#console-speakers').textContent);
   if (process.argv[4]) {
-    const el = await p.$('#console-attendees');
-    await el.screenshot({ path: process.argv[4] });
+    const box = await p.evaluate(() => {
+      const a = document.querySelector('#console-attendees').getBoundingClientRect();
+      const v = document.querySelector('#console-viewpoints').getBoundingClientRect();
+      return { x: Math.min(a.left, v.left) - 8, y: a.top + window.scrollY - 8,
+               width: Math.max(a.width, v.width) + 16, height: v.bottom - a.top + 16 };
+    });
+    await p.screenshot({ path: process.argv[4], clip: box, fullPage: true });
   }
-  console.log(JSON.stringify({ ...card, people, errors }));
+  console.log(JSON.stringify({ ...card, people, views, speakers, errors }));
   await b.close();
 })().catch((e) => { console.error(e); process.exit(1); });
 """
 
 
-def test_the_console_shows_each_attendee_stance_and_the_card_who_to_ask(tmp_path):
+def test_the_console_shows_the_views_heard_by_statement_and_the_card_who_to_ask(tmp_path):
     s = meeting_session(tmp_path)
     with serve(create_app(s), APP_PORT) as url:
         r = run_node(tmp_path, INTERVIEW_SCRIPT, url)
@@ -130,13 +136,48 @@ def test_the_console_shows_each_attendee_stance_and_the_card_who_to_ask(tmp_path
     assert r["chip"] == "Dans la réunion : PDG · Dirigeant +2"
     assert r["askTo"] == "→ Demander à Léa Morin (Assistante ADV)"  # the per-item detail: the one who does it
     p = r["people"]
-    assert p[0].startswith("PDG · Hélène Varenne · Dirigeant · responsable · sponsor Moteur")
-    assert "sûr à 85\u00a0%" in p[0] and "« J'utilise déjà un assistant pour préparer mes comités »" in p[0]
-    assert "Opposé" in p[1] and "« Mes commerciaux ont besoin du contact, pas d'un robot »" in p[1]
-    assert "Hésitant" in p[2] and "sûr à 55\u00a0%" in p[2]
-    assert r["alsoLabel"] == "À demander aussi · PDG"  # the sponsor question says it is for the lead
-    for leak in ("Moteur", "Opposé", "Hésitant", "robot"):  # stances never on the interview card itself
+    assert p[0].startswith("PDG · Hélène Varenne · Dirigeant · responsable · sponsor")
+    assert all(x not in " ".join(p) for x in ("Moteur", "Opposé", "Hésitant", "sûr à"))  # no stance per person
+    v = r["views"]
+    assert len(v) == 3
+    assert v[0].startswith("Partant aller plus loin avec un assistant déjà utilisé · comités de direction")
+    assert "« En tant que PDG, j'utilise déjà un assistant pour préparer mes comités » — Hélène Varenne (PDG)" in v[0]
+    assert v[1].startswith("Opposé garder le contact humain avec les clients · relation client")
+    assert v[1].endswith("« Nos clients veulent parler à quelqu'un, pas à un robot »")  # nobody named: no name
+    assert v[2].startswith("Question pratique fiabilité de l'extraction")
+    assert r["speakers"] == ""  # no final transcript pasted yet
+    for leak in ("Partant", "Opposé", "robot", "fiabilité"):  # the views never on the interview card itself
         assert leak not in r["page"], leak
+
+
+def test_after_the_meeting_a_labelled_transcript_shows_the_voices(tmp_path):
+    from .test_viewpoints import LABELLED
+
+    s = meeting_session(tmp_path)
+    asyncio.run(s.set_wispr(LABELLED))
+    with serve(create_app(s), APP_PORT) as url:
+        r = run_node(tmp_path, INTERVIEW_SCRIPT, url)
+    assert r["errors"] == []
+    assert r["speakers"] == "Après la réunion : voix tirées de la transcription collée (3 citations retrouvées)."
+    assert "voix : Speaker 3" in r["views"][1]
+    asyncio.run(s.set_wispr("Une transcription dictée, sans intervenants."))
+    with serve(create_app(s), APP_PORT) as url:
+        r = run_node(tmp_path, INTERVIEW_SCRIPT, url)
+    assert r["speakers"].startswith("Après la réunion : voix indisponibles") and "voix :" not in " ".join(r["views"])
+
+
+def test_the_plan_lists_the_points_to_address_with_no_one_named(tmp_path):
+    s = meeting_session(tmp_path)
+    asyncio.run(s.finalize())
+    with serve(create_app(s), APP_PORT) as url:
+        r = run_node(tmp_path, PLAN_SCRIPT, url)
+    assert r["errors"] == []
+    a = r["adoption"]
+    assert "Points soulevés pendant la réunion, à traiter :" in a
+    assert "garder le contact humain avec les clients (relation client)" in a
+    assert "fiabilité de l'extraction sur les commandes manuscrites, mise en doute (saisie des commandes)" in a
+    for leak in ("Varenne", "Ardent", "Morin", "robot", "Opposé", "Partant", "Prudent", "Speaker"):
+        assert leak not in r["text"], leak
 
 
 def test_the_model_can_address_the_question_to_a_specific_attendee(tmp_path):

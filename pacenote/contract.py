@@ -287,21 +287,30 @@ class SponsorProbe(_Strict):
     timing: ProbeTiming  # now = rapport is there and the workflows were told; done = they already said
 
 
-Stance = Literal["driver", "open", "hesitant", "opposed", "unknown"]
-Attribution = Literal["self", "named", "addressed"]
+ViewpointKind = Literal["keen", "open", "cautious", "opposed", "practical"]
 
 
-class AttendeeStance(_Strict):
-    """An attendee's stance toward AI, as the conversation shows it (attendees.py). Interviewer-side only,
-    never in the plan. The transcript has no speakers: a statement counts for an attendee only when it is
-    clear who said it; otherwise leave it out."""
+class ViewpointQuote(_Strict):
+    """A statement behind a viewpoint, verbatim. The transcript has no speaker labels: speaker stays ""
+    unless the statement itself names who speaks ("en tant que directeur commercial, je..."), and named_by
+    then copies those words from the quote."""
 
-    attendee: str  # the attendee's id (a1, a2...) from the state's attendees
-    stance: Stance  # driver = pushes for it or already does things; open; hesitant; opposed; unknown
-    evidence: str  # their words, a short quote ("" only for unknown)
-    confidence: float  # 0 to 1: how sure, given how clear the attribution is
-    attributed: Attribution  # self = they introduced themself; named = someone named them; addressed = it
-    # answered a question the interviewer addressed to them
+    text: str  # the statement, a short verbatim quote
+    speaker: str  # the attendee's id (a1, a2...) only when the quote itself names the speaker; "" otherwise
+    named_by: str  # the words of the quote that name the speaker ("en tant que directeur commercial"); "" otherwise
+
+
+class Viewpoint(_Strict):
+    """A distinct position on AI or on the change, as the statements express it (viewpoints.py): grouped
+    by what is said, never by person. Interviewer-side only, never in the plan."""
+
+    id: str  # short stable slug, kept across syncs (reliability-worries); reuse it to add a quote
+    kind: ViewpointKind  # keen; open; cautious (doubts, "pas tout de suite"); opposed; practical (a concrete
+    # condition or concern: reliability, data, who keeps the decision)
+    position: str  # the position in a few words, in the interview language, about the subject, never a person
+    topic: str  # the workflow or topic it bears on, as heard ("" when general)
+    use_case: str | None  # the state use case it bears on; null when none
+    quotes: list[ViewpointQuote]  # new statements for it, verbatim; at least one for a new viewpoint
 
 
 class AskTo(_Strict):
@@ -378,7 +387,7 @@ class SyncResult(_Strict):
     to_check: list[ToCheck]  # new items the interviewee could not answer, with who would know; [] when none
     # what would the leader in the meeting do themself? null when no leader attends, or nothing changed
     sponsor_probe: SponsorProbe | None
-    attendee_stances: list[AttendeeStance]  # new or changed stances only; [] when nothing new
+    viewpoints: list[Viewpoint]  # new or changed viewpoints only; [] when nothing new
     ask_to: list[AskTo]  # who to address a question to, when two attendees or more; [] when nothing new
 
 
@@ -690,6 +699,9 @@ class AdoptionPlan(_Strict):
     volunteers: AdoptionWave  # wave 1, weeks 1-4: the colleagues keen to go first run it on real cases
     majority: AdoptionWave  # wave 2: most of the team, convinced by wave 1's measured results
     everyone: AdoptionWave  # wave 3: it becomes the standard way of working; the rest follow
+    # the points the views heard in the meeting raise, that wave 2 addresses (reliability of the extraction, who
+    # keeps the final say): about the subject, never who raised them; [] when none (viewpoints.py)
+    to_address: list[str]
 
 
 class TimelineStep(_Strict):
@@ -722,7 +734,7 @@ def empty_wave() -> AdoptionWave:
 
 def empty_adoption() -> AdoptionPlan:
     return AdoptionPlan(lighthouse="", pilots=[], sponsor="", sponsor_plan="", question="", ask="",
-                        volunteers=empty_wave(), majority=empty_wave(), everyone=empty_wave())
+                        volunteers=empty_wave(), majority=empty_wave(), everyone=empty_wave(), to_address=[])
 
 
 def empty_freed() -> TimeFreed:
@@ -746,6 +758,8 @@ def parse_sync_result(raw: str | dict | SyncResult) -> SyncResult:
     try:
         if isinstance(raw, str):
             raw = _loads_lenient(raw)
+        if isinstance(raw, dict) and "attendee_stances" in raw:  # recorded before viewpoints
+            raw = {k: v for k, v in raw.items() if k != "attendee_stances"} | {"viewpoints": raw.get("viewpoints", [])}
         return SyncResult.model_validate(raw)
     except (json.JSONDecodeError, ValueError) as exc:
         raise ContractError(f"sync response violates the contract: {exc}") from exc
@@ -777,12 +791,13 @@ def _loads_lenient(text: str):
 
 
 def _legacy_adoption(raw: dict) -> dict:
-    """A plan.json written before pilots (one `ambassador` with its `evidence`), or before pilot groups,
-    still loads."""
+    """A plan.json written before pilots (one `ambassador` with its `evidence`), before pilot groups, or
+    before the points to address, still loads."""
     a = raw.get("adoption") if isinstance(raw, dict) else None
     if not isinstance(a, dict):
         return raw
     a = dict(a)
+    a.setdefault("to_address", [])
     if "pilots" not in a and "ambassador" in a:
         person, evidence = str(a.pop("ambassador") or "").strip(), str(a.pop("evidence", "") or "")
         a["pilots"] = [{"person": person, "evidence": evidence}] if person else []
@@ -823,6 +838,6 @@ def empty_result() -> SyncResult:
         value_framings=[],
         metric_questions=[],
         to_check=[],
-        attendee_stances=[],
+        viewpoints=[],
         ask_to=[],
     )

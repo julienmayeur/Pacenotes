@@ -645,7 +645,7 @@ class OfflineEngine:
                 value_framings=[],
                 metric_questions=[],
                 to_check=[],
-                attendee_stances=[],
+                viewpoints=[],
                 ask_to=[],
             )
         )
@@ -673,7 +673,7 @@ class OfflineEngine:
             value_framings=[],  # no model: no talking point (metric questions fall back to templates)
             metric_questions=[],
             to_check=[],
-            attendee_stances=[],
+            viewpoints=[],
             ask_to=[],
         )
 
