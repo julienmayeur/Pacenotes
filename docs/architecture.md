@@ -82,7 +82,8 @@ flowchart LR
 | `horizons.py` | Horizon tags (h1 execution now, h2 emerging, h3 foresight), the pre-study's 0–10 score and posture (explorer / pragmatic / urgent, operator-only), the posture's questions (`core/horizons.yaml`) |
 | `ambassadors.py` | Potential pilots: use case → person links; the interviewee read and the indirect people questions per workflow (merge, wording guard, timing, tone from the pace, template fallback); the sponsor question (what the leader in the meeting would do themself); the pilots the plan names, people or groups; the local `ambassadors.json` (engine fills, hand edit wins) |
 | `pilots.py` | The sponsor of the first wave: always the leader in the meeting (an executive, else a function leader), alongside any pilots; none with operators only (to confirm with the leadership). No expected count: pilots come only from the interview |
-| `attendees.py` | Who is in the meeting: every person on the client sheet with a persona, the lead (whose persona sets the questions), each attendee's live stance toward AI (driver, open, hesitant, opposed, unknown; evidence, confidence, how it was attributed), who to address a question to (the model's pick, else the rung); console view and prompt blocks |
+| `attendees.py` | Who is in the meeting: every person on the client sheet with a persona, the lead (whose persona sets the questions), who to address a question to (the model's pick, else the rung); console view and prompt blocks |
+| `viewpoints.py` | The views heard on AI, grouped by statement, not by person (keen, open, cautious, opposed, practical; position, topic, verbatim quotes; a speaker only when the quote itself names them); console view, sync snapshot, the plan's points to address; after the meeting, quotes mapped to the voices of a final transcript with speaker labels (`refine`), else speakers unavailable |
 | `personas.py` | Who is interviewed: the persona (executive, function leader, operator) inferred from title, headcount and notes, refined by the research, overridden by hand; questions re-worded and re-weighed per persona (`personas:` in the questions YAML); what the interviewee can't answer recorded as "to check with" (defers those details on the card, listed in the plan) |
 | `lens.py` | The executive lens: talking points on manual work and metric questions per workflow (merge, wording guard, timing, template fallback for metric questions); what the plan may use of them |
 | `recipes.py`, `metrics.py`, `briefs.py` | Recipe library schema and evidence; per-client metrics with locking; the dated knowledge briefs and their refresh |
@@ -471,16 +472,22 @@ Everyone on the client sheet is in the meeting (`state.set_attendees`, at sessio
 screen lists them). The lead (the most senior leader present, else the first attendee) sets the questions'
 persona: `state.set_interviewee` applies the `personas:` variants (wording and priority; priority 0 = not
 asked, its theme drops out of the coverage). The prompts get a "Who is in the meeting" block: each attendee
-with id, persona and stance so far, how deep to go, what not to ask, what to do when the person can't
+with id and persona, how deep to go, what not to ask, what to do when the person can't
 answer, and, with several attendees, to word each question for the person it is addressed to and never to
-invent who said what (the transcript has no diarization). The full sync returns `attendee_stances` (only
-from lines attributed by self-introduction, a name, or a question addressed to that person) and `ask_to`
-(question → attendee); without a model pick, the card suggests the attendee from the question's rung. The
-stances live in the session state (`sessions/`, git-ignored), show in the console, and never reach the
-plan writer or the plan (it gets attendees by role and persona only). The full sync then returns `to_check` items (question, who would know, the slots it
+invent who said what (the transcript has no diarization). The full sync returns `ask_to` (question →
+attendee); without a model pick, the card suggests the attendee from the question's rung. There is no stance
+per attendee: the full sync returns `viewpoints` (`viewpoints.py`), the distinct positions heard, grouped by
+statement, each with verbatim quotes; a quote carries a speaker only when its own words name them
+(`named_by` must be in the quote). They live in the session state (`sessions/`, git-ignored) and show in the
+console; the plan writer gets their positions and topics only (no quote, no speaker) and returns
+`adoption.to_address`, the points wave 2 addresses; `finalize.points_to_address` drops any that labels
+someone or names an attendee and falls back to the concerns' positions. After the meeting, the pasted final
+transcript (console box or `finalize --wispr`) goes through `viewpoints.refine`: when its lines carry speaker
+labels, each quote is matched to its line and gets that voice (an attendee when the label is their name); a
+transcript without labels leaves `viewpoint_speakers.status = "unavailable"`. The full sync then returns `to_check` items (question, who would know, the slots it
 leaves open, the quote): those expect items stop counting as missing (`QuestionState.deferred`), the card
 shows "To check with", and the plan gets a "To check with other people" section grouped by person plus
-each attendee's role and persona under the context (never the name, never a stance). The talking points (`lens.py`)
+each attendee's role and persona under the context (never the name). The talking points (`lens.py`)
 are off for an operator.
 
 The « next client » (`~/.pacenote/config.json`, `pacenote next`) is the default for `run`, `replay`,

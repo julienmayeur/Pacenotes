@@ -71,14 +71,20 @@ prepare (admin) ─► consent ─► interview: capture + follow-ups ─► sto
   person it's addressed to and can suggest asking someone in particular ("→ Ask Léa (order desk)": the
   per-item detail to the one who does it, the workflow to the one who owns it). When someone can't answer,
   it doesn't push: it shows "To check with" and who would know, and the plan lists those points per person.
-- **Each attendee's stance on AI.** Some people in the room may drive it, others may be against it. The
-  copilot reads each attendee's stance (driver, open, hesitant, opposed, or unknown) from what they say,
-  with their words as evidence and how sure it is, and updates it live. The transcript doesn't separate
-  voices, so a line only counts when it's clear who said it (they introduce themself, someone names them,
-  or it answers a question addressed to them). Follow-ups adapt: with someone opposed, they stay concrete
-  on the time given back and never push; with a driver, they explore what that person already does. The
-  stances show in your console (`c`) only and stay in the session data on your Mac; the plan and the PDF
-  never mention them.
+- **The views heard on AI.** People in the room may not agree: one keen, one worried about reliability,
+  one against it. The live transcript doesn't separate voices, so the copilot doesn't guess who thinks
+  what. It groups the statements themselves into views (keen, open, cautious, opposed, or a practical
+  concern such as reliability or who keeps the final say), each with short quotes in the speakers' own
+  words and the workflow it's about. A quote names someone only when the statement itself does ("as head of
+  sales, I…"). Follow-ups adapt: on a concern they stay concrete and never push; on a keen view they explore
+  what's already done. The views show in your console (`c`) only and stay in the session data on your Mac.
+  The plan lists the concerns as points for the second wave to address ("reliability of the extraction"),
+  without names and without labelling anyone.
+- **Who said it, after the meeting (optional).** If you paste a final transcript that has speaker labels
+  ("Claire: …", "Speaker 2: …", as a meeting notetaker copies it) into the console's transcript box, or pass
+  it to `pacenote finalize --wispr`, each quote is matched to the voice that said it, in your console only.
+  A transcript without labels (dictation, or the live listening) leaves the speakers marked unavailable;
+  nothing is guessed.
 - **Guiding the executive on value.** Fifteen minutes with an executive is not weeks with the staff, so
   the copilot helps you steer toward value, workflow by workflow. When the interviewee describes manual work
   (someone opens emails by hand and re-keys them into Excel), a short, tactful talking point shows
@@ -92,7 +98,8 @@ prepare (admin) ─► consent ─► interview: capture + follow-ups ─► sto
   time each gives back (the task that goes away and the decision the person moves up to), grouped
   under "This week", "This quarter" and "Within two years", an adoption plan in three waves (the
   leader sponsors it and uses it first on their own work, the pilots prove the first use case; their
-  measured results convince most of the team; then everyone follows), open items and who to ask. Nothing
+  measured results convince most of the team, with the concerns raised in the meeting addressed; then
+  everyone follows), open items and who to ask. Nothing
   that was not said is presented as a fact. Read it in the Plan view and export it to PDF. Metrics can then be tracked per client, and measured results feed a
   library of reusable recipes.
 
@@ -198,7 +205,7 @@ pacenote replay --client brioche-four --srt fr-FR=sessions/brioche-four/<id>/fr.
 | `a` | Mark the current question answered and move on |
 | `k` | Skip the current question |
 | `s` | Sync now |
-| `c` | Console (who is in the meeting and their stance, languages, transcript paste, possible recipes, potential pilots, Stop & generate plan) |
+| `c` | Console (who is in the meeting, the views heard, languages, transcript paste, possible recipes, potential pilots, Stop & generate plan) |
 | `t` | Transcript tail |
 | `f` | Full screen |
 | `l` | Next screen language |
