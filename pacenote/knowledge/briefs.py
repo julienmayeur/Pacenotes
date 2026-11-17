@@ -1,35 +1,31 @@
 """Dated knowledge briefs the plan writer receives instead of relying on what a model remembers.
 
-pacenote/knowledge/
+pacenote/knowledge/data/
   capabilities.md   "what agents can do today": the plan never claims a capability absent from it,
                     and its per-use-case model choice leans on it; the plan footer states its date
   delivery-practice.md   "how value is proven": baselines, pilot targets, first verified win, kill
                     criteria, buy before build
 
-Each file starts with YAML front matter (`as_of:`, `sources:`). Both are tracked. A brief older
-than STALE_DAYS is flagged by `pacenote check` and in the Plan view. `pacenote capabilities refresh` rewrites
-them with one web-research `claude -p` run each (web_agent.run_claude_stream: web search and fetch
-only, JSON schema, timeout), keeping the same format.
+Each file starts with YAML front matter (`as_of:`, `sources:`). The shipped briefs are tracked; a brief in
+the local knowledge folder (knowledge.local_dir) wins over the shipped one, and that is where
+`pacenote capabilities refresh` (refresh.py) writes. A brief older than STALE_DAYS is flagged by
+`pacenote check` and in the Plan view.
 """
 
 from __future__ import annotations
 
-import json
-import os
 import re
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, ConfigDict
 
-from pacenote.shared import fsutil
+from pacenote.knowledge import SHIPPED_DIR, local_dir
 
-KNOWLEDGE_DIR = Path(__file__).parent / "data"
+KNOWLEDGE_DIR = SHIPPED_DIR  # the shipped briefs
 BRIEFS = {"capabilities": "capabilities.md", "delivery-practice": "delivery-practice.md"}
 STALE_DAYS = 30
-REFRESH_TIMEOUT = 20 * 60.0
 _FRONT = re.compile(r"^---\s*\n(.*?)\n---\s*\n?(.*)$", re.S)
 
 
@@ -55,7 +51,8 @@ class Brief:
 
 
 def knowledge_dir() -> Path:
-    return Path(os.environ.get("PACENOTE_KNOWLEDGE_DIR") or KNOWLEDGE_DIR)
+    """Where briefs are written (the local knowledge folder)."""
+    return local_dir()
 
 
 def parse_brief(name: str, text: str, path: Path) -> Brief:
@@ -71,8 +68,14 @@ def parse_brief(name: str, text: str, path: Path) -> Brief:
                  sources=[s for s in meta.get("sources") or [] if isinstance(s, dict)], title=str(meta.get("title") or ""))
 
 
+def brief_path(name: str) -> Path:
+    """The brief in force: the local one when this machine refreshed it, else the shipped one."""
+    local = knowledge_dir() / BRIEFS[name]
+    return local if local.exists() else KNOWLEDGE_DIR / BRIEFS[name]
+
+
 def load_brief(name: str, directory: Path | None = None) -> Brief | None:
-    path = (directory or knowledge_dir()) / BRIEFS[name]
+    path = Path(directory) / BRIEFS[name] if directory else brief_path(name)
     try:
         return parse_brief(name, path.read_text(encoding="utf-8"), path)
     except OSError:
@@ -97,84 +100,3 @@ def render_brief(name: str, as_of: str, title: str, body: str, sources: list[dic
     meta = {"as_of": as_of, "title": title, "sources": [{"title": s.get("title", ""), "url": s.get("url", "")}
                                                           for s in sources]}
     return "---\n" + yaml.safe_dump(meta, allow_unicode=True, sort_keys=False, width=120) + "---\n\n" + body.strip() + "\n"
-
-
-# --- refresh (web research through the Claude Code CLI) ---------------------------------------------
-
-
-class _Strict(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-
-class BriefSource(_Strict):
-    title: str
-    url: str
-
-
-class BriefOutput(_Strict):
-    body_md: str  # the brief in Markdown, same sections as before, single-source items marked (unconfirmed)
-    sources: list[BriefSource]
-
-
-REFRESH_SYSTEM = {
-    "capabilities": """\
-You maintain a short, dated brief "What agents can do today" that a planning model reads instead of \
-its memory, to propose AI agents to a non-technical SME (orders, stock, logistics, after-sales, \
-reporting). Use web search and web fetch to check every item of the current brief and to add what \
-changed since its date: computer use (agents operating software without an API), connectors (MCP and \
-others) to business systems, governance (agent credentials, scoped permissions, sandboxes), what \
-works in SMEs (narrow workflows, buy before build, adoption figures), organisation and information \
-flow (spans of control, time spent searching), and what distinguishes the model providers (Anthropic, \
-OpenAI, xAI) for extraction, reasoning, latency, cost, data residency. Prefer primary sources \
-(release notes, official docs, vendor changelogs), then serious press. Give a date for every \
-release. Mark an item **(unconfirmed)** when only one source supports it; mark vendor figures \
-(vendor-reported). Remove what is no longer true. Keep it under about 900 words, English, Markdown, \
-starting with "# What agents can do today" and a short paragraph on how the plan uses it.""",
-    "delivery-practice": """\
-You maintain a short, dated brief "How value is proven (delivery practice)" that a planning model reads to \
-write a consulting engineering plan for a non-technical SME. Use web search and web fetch to \
-check every item of the current brief and add what changed: how vendor delivery teams (OpenAI, Anthropic, \
-Mistral, Palantir, independent practitioners) measure value (baselines, pilot targets, first verified \
-win on real cases, kill criteria, shadow rollout, embed length), and independent studies of AI pilot \
-returns. Mark vendor figures **vendor-reported** and single-source items (unconfirmed). Keep it under \
-about 700 words, English, Markdown, starting with "# How value is proven (delivery practice)", and end \
-with a short section "What the plan does with it".""",
-}
-
-
-def refresh_brief(name: str, *, claude_bin: str | None = None, model: str | None = None, effort: str = "high",
-                  timeout: float = REFRESH_TIMEOUT, on_step=None, today: date | None = None, runner=None) -> Brief:
-    """Rewrite knowledge/<brief> from one web-research `claude -p` run. The previous file stays
-    untouched if the run fails. `runner(job, cmd, prompt, timeout, prefix)`: tests inject a fake."""
-    from pacenote.copilot.engines import DEFAULT_MODEL, find_claude
-    from pacenote.copilot.web_agent import AgentJob, run_claude_stream
-
-    current = load_brief(name)
-    stamp = (today or date.today()).isoformat()
-    cmd = [find_claude(claude_bin), "-p", "--output-format", "stream-json", "--verbose", "--include-partial-messages",
-           "--model", model or DEFAULT_MODEL, "--effort", effort,
-           "--system-prompt", REFRESH_SYSTEM[name],
-           "--tools", "WebSearch,WebFetch", "--allowedTools", "WebSearch,WebFetch",
-           "--strict-mcp-config", "--no-session-persistence",
-           "--json-schema", json.dumps(BriefOutput.model_json_schema(), separators=(",", ":"))]
-    prompt = (f"Today is {stamp}. Current brief (as of {current.as_of_text if current else 'never'}):\n\n"
-              f"{current.body if current else '(none)'}\n\nSources it cited:\n"
-              + "\n".join(f"- {s.get('title')}: {s.get('url')}" for s in (current.sources if current else []))
-              + "\n\nCheck it on the web and return the updated brief with every source you relied on.")
-    job = AgentJob(slug=f"brief-{name}", lang="en")
-    if on_step is not None:  # mirror progress steps (searches, pages read) as they come
-        steps = job.steps
-
-        class _Tap(list):
-            def append(self, item):
-                super().append(item)
-                on_step(item)
-
-        job.steps = _Tap(steps)
-    out = BriefOutput.model_validate((runner or run_claude_stream)(job, cmd, prompt, timeout, "pacenote-brief-"))
-    if not out.body_md.strip():
-        raise RuntimeError("the refresh returned an empty brief")
-    title = current.title if current and current.title else name
-    path = knowledge_dir() / BRIEFS[name]
-    fsutil.atomic_write_text(path, render_brief(name, stamp, title, out.body_md, [s.model_dump() for s in out.sources]))
-    return load_brief(name)

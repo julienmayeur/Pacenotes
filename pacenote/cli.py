@@ -11,7 +11,7 @@ import sys
 import webbrowser
 from pathlib import Path
 
-from pacenote.knowledge import briefs
+from pacenote.knowledge import briefs, refresh
 from pacenote.shared import i18n
 from pacenote.transcription import speech
 from pacenote.plan import metrics as metrics_lib
@@ -264,7 +264,7 @@ def cmd_capabilities(args) -> int:
     if args.action == "show":
         for name in names:
             b = briefs.load_brief(name)
-            print(_brief_line(b) if b else f"[!!] {name}: missing ({briefs.knowledge_dir() / briefs.BRIEFS[name]})")
+            print(_brief_line(b) if b else f"[!!] {name}: missing ({briefs.brief_path(name)})")
         return 0
     ok = True
     for name in names:
@@ -275,7 +275,7 @@ def cmd_capabilities(args) -> int:
                 print(f"     {entry.get('kind')}: {entry.get('text', '')[:120]}", flush=True)
 
         try:
-            b = briefs.refresh_brief(name, claude_bin=args.claude_bin, model=args.model, on_step=step)
+            b = refresh.refresh_brief(name, claude_bin=args.claude_bin, model=args.model, on_step=step)
         except (ClaudeCliNotFound, RuntimeError, ValueError) as exc:
             ok = False
             print(f"[!!] {name}: refresh failed, the brief is unchanged: {exc}")
@@ -510,7 +510,7 @@ def cmd_recipes(args) -> int:
         if args.action == "list":
             lib = recipe_lib.load_library()
             if not lib:
-                print(f"no recipes in {recipe_lib.recipes_dir()}")
+                print(f"no recipes in {recipe_lib.RECIPES_DIR} or {recipe_lib.recipes_dir()}")
             for r in lib.values():
                 print(f"{r.id:<28} {r.status:<6} evidence {len(r.evidence)}  {r.type:<22} {r.title.en}")
             return 0

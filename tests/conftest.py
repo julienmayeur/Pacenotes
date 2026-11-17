@@ -40,8 +40,11 @@ NOISY = SRT_DIR / "noisy"
 
 @pytest.fixture(autouse=True)
 def _isolated_config(tmp_path, monkeypatch):
-    """Never read or write the real ~/.pacenote/config.json (the "prochain client")."""
+    """Never read or write the real ~/.pacenote: the config (the "prochain client") and the local knowledge
+    folder (refreshed briefs, recorded recipes)."""
     monkeypatch.setenv("PACENOTE_CONFIG", str(tmp_path / "pacenote-config.json"))
+    monkeypatch.setenv("PACENOTE_KNOWLEDGE_DIR", str(tmp_path / "pacenote-knowledge"))
+    monkeypatch.delenv("PACENOTE_RECIPES_DIR", raising=False)
 
 
 @pytest.fixture(autouse=True)

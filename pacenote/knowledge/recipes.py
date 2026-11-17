@@ -1,8 +1,9 @@
 """The recipe library: workflows that already work, so each engagement can reuse one instead of
 starting from a blank page, and each result makes the next engagement better.
 
-pacenote/knowledge/recipes/<id>.yaml, one tracked file per recipe, strict schema (unknown keys are
-an error). A recipe says what fits (signals heard in the interview), what it needs (preconditions,
+pacenote/knowledge/data/recipes/<id>.yaml, one tracked file per recipe, strict schema (unknown keys are
+an error). Recording evidence writes the recipe to the local knowledge folder (recipes_dir), whose
+version then wins over the shipped one: client results never land in the repository. A recipe says what fits (signals heard in the interview), what it needs (preconditions,
 integrations), what it does (trigger -> what the agent does -> where it writes / whom it notifies ->
 the decision the human keeps), how it is measured (metric definitions in the plan's shape, with
 TYPICAL ranges that are never client facts), how it is proven (first verified win, shadow mode,
@@ -24,10 +25,11 @@ from typing import Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, ValidationError, field_validator, model_validator
 
-from pacenote.shared import fsutil
 from pacenote.copilot.contract import Pattern, RecipeFlow, RecipeMetricDef
+from pacenote.knowledge import SHIPPED_DIR, local_dir
+from pacenote.shared import fsutil
 
-RECIPES_DIR = Path(__file__).parent / "data" / "recipes"
+RECIPES_DIR = SHIPPED_DIR / "recipes"  # the shipped library
 RecipeStatus = Literal["seed", "proven"]
 _SLUG = re.compile(r"^[a-z0-9][a-z0-9-]{1,63}$")
 
@@ -131,7 +133,9 @@ class LibraryRecipe(_Strict):
 
 
 def recipes_dir() -> Path:
-    return Path(os.environ.get("PACENOTE_RECIPES_DIR") or RECIPES_DIR)
+    """Where recipes are written (`pacenote recipes record`): PACENOTE_RECIPES_DIR, default the local
+    knowledge folder's recipes/. Never the shipped library."""
+    return Path(os.environ.get("PACENOTE_RECIPES_DIR") or local_dir() / "recipes")
 
 
 def load_recipe(path: Path) -> LibraryRecipe:
@@ -146,12 +150,20 @@ def load_recipe(path: Path) -> LibraryRecipe:
     return recipe
 
 
-def load_library(directory: Path | None = None) -> dict[str, LibraryRecipe]:
-    """Every recipe of the library, by id (sorted). Raises RecipeError on the first invalid file."""
-    d = Path(directory or recipes_dir())
+def _load_dir(d: Path) -> dict[str, LibraryRecipe]:
     if not d.is_dir():
         return {}
     return {r.id: r for r in (load_recipe(p) for p in sorted(d.glob("*.yaml")))}
+
+
+def load_library(directory: Path | None = None) -> dict[str, LibraryRecipe]:
+    """Every recipe of the library, by id (sorted): the shipped ones, each replaced by its local version when
+    this machine recorded evidence on it (`directory`: that folder only). Raises RecipeError on the first
+    invalid file."""
+    if directory is not None:
+        return _load_dir(Path(directory))
+    lib = _load_dir(RECIPES_DIR) | _load_dir(recipes_dir())
+    return dict(sorted(lib.items()))
 
 
 def try_library(directory: Path | None = None) -> dict[str, LibraryRecipe]:
@@ -170,6 +182,7 @@ def dump_recipe(recipe: LibraryRecipe) -> str:
 def save_recipe(recipe: LibraryRecipe, directory: Path | None = None) -> Path:
     LibraryRecipe.model_validate(recipe.model_dump())  # never write an invalid recipe
     path = Path(directory or recipes_dir()) / f"{recipe.id}.yaml"
+    path.parent.mkdir(parents=True, exist_ok=True)
     fsutil.atomic_write_text(path, dump_recipe(recipe))
     return path
 

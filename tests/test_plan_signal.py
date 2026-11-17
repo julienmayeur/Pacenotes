@@ -10,7 +10,7 @@ from datetime import date
 import pytest
 from fastapi.testclient import TestClient
 
-from pacenote.knowledge import briefs
+from pacenote.knowledge import briefs, refresh
 from pacenote.cli import main
 from pacenote.copilot.contract import PlanDoc, empty_maps, parse_plan_doc
 from pacenote.plan.finalize import assemble_plan, comm_map_mermaid, md_to_html, mermaid_svg, open_items, ranked, render_plan_md
@@ -215,7 +215,7 @@ def test_capabilities_refresh_rewrites_the_brief_with_sources(tmp_path, monkeypa
                 "sources": [{"title": "Release notes", "url": "https://example.com/notes"}]}
 
     steps = []
-    b = briefs.refresh_brief("capabilities", claude_bin="/bin/echo", on_step=steps.append, today=date(2026, 12, 1),
+    b = refresh.refresh_brief("capabilities", claude_bin="/bin/echo", on_step=steps.append, today=date(2026, 12, 1),
                              runner=runner)
     assert b.as_of == date(2026, 12, 1) and b.sources == [{"title": "Release notes", "url": "https://example.com/notes"}]
     assert "New item" in b.body and steps and steps[0]["kind"] == "search"
@@ -228,7 +228,7 @@ def test_capabilities_refresh_rewrites_the_brief_with_sources(tmp_path, monkeypa
 
     before = (k / "capabilities.md").read_text(encoding="utf-8")
     with pytest.raises(RuntimeError):
-        briefs.refresh_brief("capabilities", claude_bin="/bin/echo", runner=broken)
+        refresh.refresh_brief("capabilities", claude_bin="/bin/echo", runner=broken)
     assert (k / "capabilities.md").read_text(encoding="utf-8") == before  # a failed run changes nothing
 
 
