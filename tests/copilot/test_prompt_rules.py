@@ -3,12 +3,10 @@ meetings). Fictional company and people only; no model call."""
 
 from __future__ import annotations
 
-from pacenote.research import autofill
-from pacenote.people import profiles
-from pacenote.research import desk
-from pacenote.interview import translate
 from pacenote.copilot.prompts import build_fast_system, build_plan_system, build_sync_system
-
+from pacenote.interview import translate
+from pacenote.people import profiles
+from pacenote.research import autofill, desk
 from tests.people.test_attendees import EXEC, _state
 
 CLERK = {"name": "Léa Morin", "role": "Assistante ADV", "persona": "operator", "origin": "rule"}

@@ -11,13 +11,12 @@ import time
 import pytest
 import uvicorn
 
-from pacenote.transcription.capture import ReplaySource
-from pacenote.shared import i18n
 from pacenote.copilot.engines import OfflineEngine
-from pacenote.web.server import create_app
 from pacenote.interview.session import Session, Settings
 from pacenote.interview.state import ThreadEntry
-
+from pacenote.shared import i18n
+from pacenote.transcription.capture import ReplaySource
+from pacenote.web.server import create_app
 from tests.conftest import SAMPLES
 from tests.shared.test_i18n import _node_playwright
 

@@ -19,9 +19,8 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
-from pacenote.web.common import STATIC_DIR
-from pacenote.shared import i18n
-from pacenote.web.admin import create_admin_app
+from pacenote.clients.sheet import ClientInfo, create_client, load_info, save_info
+from pacenote.interview.preparation import client_context
 from pacenote.research.autofill import (
     DEFAULT_AUTOFILL_MODEL,
     FIELDS,
@@ -35,9 +34,9 @@ from pacenote.research.autofill import (
     merge_into_sheet,
     parse_output,
 )
-from pacenote.clients.sheet import ClientInfo, create_client, load_info, save_info
-from pacenote.interview.preparation import client_context
-
+from pacenote.shared import i18n
+from pacenote.web.admin import create_admin_app
+from pacenote.web.common import STATIC_DIR
 from tests.conftest import REAL_CLIENTS
 
 FOUND = {
@@ -381,8 +380,8 @@ def test_candidates_then_the_chosen_one_fills_the_sheet(tmp_path):
 
 
 def test_a_schema_retry_is_not_shown_as_an_unreachable_source():
-    from pacenote.research.autofill import AutofillJob
     from pacenote.copilot.web_agent import progress
+    from pacenote.research.autofill import AutofillJob
 
     job = AutofillJob(slug="x")
     progress(job, {"type": "user", "message": {"content": [{"type": "tool_result", "is_error": True,

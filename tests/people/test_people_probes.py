@@ -13,17 +13,22 @@ from pathlib import Path
 
 import pytest
 
-from pacenote.people import pilots
-from pacenote.shared import i18n
-from pacenote.transcription.capture import ReplaySource
 from pacenote.copilot.contract import FastResult, SyncResult, parse_sync_result
 from pacenote.copilot.engines import OfflineEngine
-from pacenote.copilot.prompts import (build_fast_system, build_plan_user, build_sync_system, build_sync_user,
-                              people_guide, state_snapshot)
+from pacenote.copilot.prompts import (
+    build_fast_system,
+    build_plan_user,
+    build_sync_system,
+    build_sync_user,
+    people_guide,
+    state_snapshot,
+)
 from pacenote.interview.preparation import load_client
 from pacenote.interview.session import Session, Settings
 from pacenote.interview.state import SessionState
-
+from pacenote.people import pilots
+from pacenote.shared import i18n
+from pacenote.transcription.capture import ReplaySource
 from tests.conftest import CLIENTS, fill, result
 from tests.interview.test_phases import maps, org
 from tests.interview.test_questions import jargon

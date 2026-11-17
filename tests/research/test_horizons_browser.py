@@ -17,18 +17,17 @@ import time
 import pytest
 import uvicorn
 
-from pacenote.web.admin import create_admin_app
-from pacenote.transcription.capture import ReplaySource
 from pacenote.copilot.contract import parse_plan_doc
 from pacenote.copilot.engines import OfflineEngine
 from pacenote.interview.preparation import load_client
-from pacenote.web.server import create_app
 from pacenote.interview.session import Session, Settings
-
+from pacenote.transcription.capture import ReplaySource
+from pacenote.web.admin import create_admin_app
+from pacenote.web.server import create_app
 from tests.conftest import CLIENTS, REAL_CLIENTS, fill, plan_doc, plan_use_case, result
-from tests.web.test_admin import RESULT
-from tests.shared.test_i18n import _node_playwright
 from tests.interview.test_phases import maps, org
+from tests.shared.test_i18n import _node_playwright
+from tests.web.test_admin import RESULT
 
 ADMIN_PORT, APP_PORT = 8796, 8797
 QUIET = Settings(sync_interval=3600, first_sync_delay=3600, poll_interval=3600, fast_enabled=False)

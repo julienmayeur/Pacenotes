@@ -5,21 +5,19 @@ stance per attendee (the transcript has no speakers): the views heard are kept b
 
 from __future__ import annotations
 
-
 import pytest
 from fastapi.testclient import TestClient
 
-from pacenote.people import attendees
-from pacenote.transcription.capture import ReplaySource
 from pacenote.copilot.contract import AskTo
-from pacenote.plan.finalize import render_plan_md
 from pacenote.copilot.engines import OfflineEngine, offline_plan_doc
 from pacenote.copilot.prompts import build_fast_system, build_plan_system, build_sync_system, state_snapshot
 from pacenote.interview.preparation import load_client
-from pacenote.web.server import create_app
 from pacenote.interview.session import Session
 from pacenote.interview.state import SessionState
-
+from pacenote.people import attendees
+from pacenote.plan.finalize import render_plan_md
+from pacenote.transcription.capture import ReplaySource
+from pacenote.web.server import create_app
 from tests.conftest import CLIENTS, result, upd
 from tests.people.test_personas import QUIET, _client
 

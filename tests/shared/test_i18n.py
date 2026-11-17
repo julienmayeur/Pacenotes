@@ -5,7 +5,6 @@ import asyncio
 import json
 import shutil
 import subprocess
-import textwrap
 import threading
 import time
 from pathlib import Path
@@ -15,13 +14,7 @@ import yaml
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from pacenote.web.common import STATIC_DIR
-from pacenote.transcription import capture
-from pacenote.shared import i18n
-from pacenote.interview import translate
-from pacenote.transcription.capture import ListenCapture, locales_map, preflight
 from pacenote.cli import main
-from pacenote.plan.finalize import assemble_plan
 from pacenote.copilot.engines import OfflineEngine, offline_plan
 from pacenote.copilot.prompts import (
     build_fast_system,
@@ -30,15 +23,20 @@ from pacenote.copilot.prompts import (
     build_sync_system,
     describe_streams,
 )
-from pacenote.plan.headings import plan_headings
-from pacenote.interview.questionnaire import load_questionnaire
+from pacenote.interview import translate
 from pacenote.interview.preparation import load_client
-from pacenote.web import common
-from pacenote.web.server import create_app
+from pacenote.interview.questionnaire import load_questionnaire
 from pacenote.interview.session import Session, Settings
 from pacenote.interview.state import SessionState
-
-from tests.conftest import CLIENTS, REAL_CLIENTS, SAMPLES, edit, real_client, result, upd
+from pacenote.plan.finalize import assemble_plan
+from pacenote.plan.headings import plan_headings
+from pacenote.shared import i18n
+from pacenote.transcription import capture
+from pacenote.transcription.capture import ListenCapture, locales_map, preflight
+from pacenote.web import common
+from pacenote.web.common import STATIC_DIR
+from pacenote.web.server import create_app
+from tests.conftest import CLIENTS, SAMPLES, edit, real_client, result, upd
 from tests.transcription.test_listen_capture import FAST, fake_listen, runs
 
 LOCALES = Path(i18n.LOCALES_DIR)
@@ -322,7 +320,6 @@ def test_cli_engine_translates_through_claude_p(tmp_path, monkeypatch):
     """The translation call goes through the Claude Code CLI (subscription), never an API key."""
     from pacenote.copilot.engines import ClaudeCliEngine
 
-    seen = {}
     claude = tmp_path / "claude"
     claude.write_text("#!/bin/sh\nenv > " + str(tmp_path / "env.txt") + "\necho \"$@\" > " + str(tmp_path / "args.txt")
                       + "\ncat > /dev/null\necho '{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,"

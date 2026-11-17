@@ -9,7 +9,6 @@ from pathlib import Path
 from pacenote import knowledge
 from pacenote.knowledge import briefs, refresh
 from pacenote.knowledge import recipes as R
-
 from tests.conftest import ROOT
 
 

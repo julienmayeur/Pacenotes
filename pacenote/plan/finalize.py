@@ -12,19 +12,19 @@ import markdown as md_lib
 from markdown.extensions import Extension
 from markdown.treeprocessors import Treeprocessor
 
-from pacenote.people import pilots as pilots_lib
-from pacenote.knowledge import briefs
-from pacenote.shared import fsutil
-from pacenote.people import personas
-from pacenote.people import attendees as attendees_lib
-from pacenote.people import sponsor as sponsor_lib
-from pacenote.knowledge import recipes as recipe_lib
-from pacenote.people import viewpoints as viewpoints_lib
 from pacenote.copilot.contract import SLOT_KEYS, Fact, Measure, Pilot, PlanDoc, PlanUseCase, Recipe
+from pacenote.interview.state import SessionState
+from pacenote.knowledge import briefs
+from pacenote.knowledge import recipes as recipe_lib
+from pacenote.people import attendees as attendees_lib
+from pacenote.people import personas
+from pacenote.people import pilots as pilots_lib
+from pacenote.people import sponsor as sponsor_lib
+from pacenote.people import viewpoints as viewpoints_lib
 from pacenote.plan.headings import state_headings
 from pacenote.research.horizons import HORIZONS, checked_horizon
+from pacenote.shared import fsutil
 from pacenote.transcription.srt import load_srt, parse_srt
-from pacenote.interview.state import SessionState
 
 
 def interview_log_md(state: SessionState) -> str:
@@ -161,7 +161,7 @@ def _fold_num(text: str) -> str:
     return re.sub(r"[^0-9a-z%]+", " ", (text or "").casefold().replace("typical:", "")).strip()
 
 
-def is_typical(value: str, metric: "recipe_lib.RecipeMetricDef | None") -> bool:
+def is_typical(value: str, metric: recipe_lib.RecipeMetricDef | None) -> bool:
     """A value that is (part of) a recipe's typical range, or labelled typical: never a client fact."""
     v = _fold_num(value)
     if not v:

@@ -10,21 +10,27 @@ import shutil
 import pytest
 import yaml
 
-from pacenote.research import horizons
-from pacenote.interview.preparation import load_core_themes
 from pacenote.copilot.contract import parse_plan_doc
-from pacenote.plan.finalize import apply_horizons, by_horizon, ranked, render_plan_md
-from pacenote.research.horizons import (checked_horizon, counted_signals, effective_posture, offline_horizon, posture_for,
-                               posture_theme, preplan_horizon, score_prestudy)
 from pacenote.copilot.engines import offline_plan_doc
 from pacenote.copilot.prompts import build_fast_system, build_plan_system, build_sync_system
-from pacenote.interview.preparation import load_client
-from pacenote.research.desk import ResearchOutput, write_outputs
+from pacenote.interview.preparation import load_client, load_core_themes
 from pacenote.interview.state import SessionState
-
+from pacenote.plan.finalize import apply_horizons, by_horizon, ranked, render_plan_md
+from pacenote.research import horizons
+from pacenote.research.desk import ResearchOutput, write_outputs
+from pacenote.research.horizons import (
+    checked_horizon,
+    counted_signals,
+    effective_posture,
+    offline_horizon,
+    posture_for,
+    posture_theme,
+    preplan_horizon,
+    score_prestudy,
+)
 from tests.conftest import CLIENTS, REAL_CLIENTS, fill, plan_doc, plan_use_case, result
-from tests.web.test_admin import RESULT
 from tests.interview.test_questions import jargon
+from tests.web.test_admin import RESULT
 
 PRESTUDY = RESULT["prestudy"]
 

@@ -10,10 +10,9 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
+from pacenote.cli import main
 from pacenote.plan import metrics as M
 from pacenote.web.admin import create_admin_app
-from pacenote.cli import main
-
 from tests.conftest import REAL_CLIENTS, plan_doc, plan_use_case
 
 

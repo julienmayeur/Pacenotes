@@ -16,9 +16,9 @@ import time
 from dataclasses import dataclass, field
 from typing import Literal
 
-from pacenote.shared import i18n
 from pacenote.copilot.contract import loads_lenient
 from pacenote.copilot.engines import cli_env, kill_group
+from pacenote.shared import i18n
 
 
 @dataclass

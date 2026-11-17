@@ -36,7 +36,7 @@ from pathlib import Path
 from typing import ClassVar, Protocol
 
 from pacenote.shared import i18n
-from pacenote.transcription.srt import Cue, format_timestamp, load_srt
+from pacenote.transcription.srt import format_timestamp, load_srt
 
 log = logging.getLogger(__name__)
 
@@ -707,7 +707,3 @@ class ReplaySource:
 
     def stop(self) -> None:
         self._stopped = True
-
-
-def cues_to_timed(stream: str, cues: list[Cue]) -> list[TimedCue]:
-    return [TimedCue(stream, c.start, c.end, c.text) for c in cues]

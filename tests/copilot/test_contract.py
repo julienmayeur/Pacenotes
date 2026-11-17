@@ -8,7 +8,6 @@ import pytest
 
 from pacenote.copilot.contract import ContractError, SyncResult, empty_result, parse_sync_result
 from pacenote.copilot.engines import FALLBACK_BETA, ClaudeEngine, SyncFailed
-
 from tests.conftest import edit, fill, upd
 
 VALID = {

@@ -8,15 +8,14 @@ import time
 
 from fastapi.testclient import TestClient
 
-from pacenote.transcription.capture import ReplaySource
 from pacenote.copilot.contract import FastResult, SyncResult
 from pacenote.copilot.engines import OfflineEngine
 from pacenote.copilot.prompts import build_fast_system, build_sync_system
 from pacenote.interview.preparation import load_client
-from pacenote.web.server import create_app
 from pacenote.interview.session import Session, Settings
 from pacenote.interview.state import SessionState
-
+from pacenote.transcription.capture import ReplaySource
+from pacenote.web.server import create_app
 from tests.conftest import NOISY, REAL_CLIENTS, SAMPLES, edit, real_client, result, upd
 
 
@@ -53,7 +52,6 @@ def test_real_questionnaire_ignores_a_local_preplan(tmp_path):
     import json
     import shutil
 
-    from tests.conftest import REAL_CLIENTS
 
     shutil.copytree(REAL_CLIENTS / "brioche-four", tmp_path / "brioche-four")
     (tmp_path / "brioche-four" / "preplan.json").write_text(json.dumps(
@@ -282,14 +280,14 @@ def test_strip_shows_readable_lines_hides_noise_and_marks_pending(tmp_path):
         clock[0] += 17  # "Dans Sage…" arrives, not analysed yet
         s.ingest_once()
         v = s.view()
-        strip_all = [l["text"] for l in s.strip_lines(40)]
+        strip_all = [line["text"] for line in s.strip_lines(40)]
         await s.shutdown()
         v["_all"] = strip_all
         return v
 
     clock = [1000.0]
     v = asyncio.run(run())
-    texts = [(l["text"], l["pending"]) for l in v["tail"]]
+    texts = [(line["text"], line["pending"]) for line in v["tail"]]
     assert any(t.startswith("Et on a un ERP") and not p for t, p in texts)
     assert not any("Bretagne" in t or "bread tan" in t for t, _ in texts)
     assert v["noise_ignored"] == 2

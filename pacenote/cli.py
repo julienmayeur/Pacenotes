@@ -11,22 +11,43 @@ import sys
 import webbrowser
 from pathlib import Path
 
-from pacenote.knowledge import briefs, refresh
-from pacenote.shared import i18n
-from pacenote.transcription import speech
-from pacenote.plan import metrics as metrics_lib
-from pacenote.knowledge import recipes as recipe_lib
-from pacenote.transcription.capture import CaptureError, ListenCapture, ReplaySource, ensure_helper, locales_map, preflight
-from pacenote.research.autofill import DEFAULT_AUTOFILL_MODEL
-from pacenote.people.profiles import DEFAULT_PEOPLE_MODEL
-from pacenote.plan.finalize import archive_plan, read_wispr
-from pacenote.copilot.engines import DEFAULT_FAST_MODEL, DEFAULT_MODEL, ENGINES, ClaudeCliEngine, ClaudeCliNotFound, SyncFailed, find_claude, make_engine
-from pacenote.clients.sheet import (ClientError, create_client, get_next_client, list_slugs, load_info, resolve_client,
-                      set_next_client)
+from pacenote.clients.sheet import (
+    ClientError,
+    create_client,
+    get_next_client,
+    list_slugs,
+    load_info,
+    resolve_client,
+    set_next_client,
+)
+from pacenote.copilot.engines import (
+    DEFAULT_FAST_MODEL,
+    DEFAULT_MODEL,
+    ENGINES,
+    ClaudeCliEngine,
+    ClaudeCliNotFound,
+    SyncFailed,
+    find_claude,
+    make_engine,
+)
 from pacenote.interview.preparation import load_client
 from pacenote.interview.session import Session, Settings, new_session_dir, purge
-
-ROOT = Path.cwd()
+from pacenote.knowledge import briefs, refresh
+from pacenote.knowledge import recipes as recipe_lib
+from pacenote.people.profiles import DEFAULT_PEOPLE_MODEL
+from pacenote.plan import metrics as metrics_lib
+from pacenote.plan.finalize import archive_plan, read_wispr
+from pacenote.research.autofill import DEFAULT_AUTOFILL_MODEL
+from pacenote.shared import i18n
+from pacenote.transcription import speech
+from pacenote.transcription.capture import (
+    CaptureError,
+    ListenCapture,
+    ReplaySource,
+    ensure_helper,
+    locales_map,
+    preflight,
+)
 
 
 def _env_float(name: str, default: float) -> float:
@@ -101,14 +122,22 @@ def build_parser() -> argparse.ArgumentParser:
 
     run = sub.add_parser("run", help="live interview: one listening process for every spoken language "
                                      "(fr-FR + en-US by default) and the UI")
-    _common(run); _engine_opts(run); _server_opts(run); _locale_opts(run); _language_opts(run); _backend_opts(run)
+    _common(run)
+    _engine_opts(run)
+    _server_opts(run)
+    _locale_opts(run)
+    _language_opts(run)
+    _backend_opts(run)
     run.add_argument("--listen-bin", default=None,
                      help="path to a pacenote-listen build (default: built from the bundled Swift source, cached)")
-    run.add_argument("--skip-speech-check", "--skip-yap-check", dest="skip_speech_check", action="store_true",
+    run.add_argument("--skip-speech-check", dest="skip_speech_check", action="store_true",
                      help="don't verify the spoken languages and the microphone before serving (not recommended)")
 
     rp = sub.add_parser("replay", help="same app, fed from saved SRT files instead of the mic")
-    _common(rp); _engine_opts(rp); _server_opts(rp); _language_opts(rp)
+    _common(rp)
+    _engine_opts(rp)
+    _server_opts(rp)
+    _language_opts(rp)
     rp.add_argument("--fr", type=Path, help="SRT from the fr-FR instance")
     rp.add_argument("--en", type=Path, help="SRT from the en-US instance")
     rp.add_argument("--srt", action="append", default=[], metavar="LOCALE=PATH",
@@ -117,7 +146,8 @@ def build_parser() -> argparse.ArgumentParser:
     rp.add_argument("--auto-start", action="store_true", help="skip the consent screen")
 
     fin = sub.add_parser("finalize", help="(re)generate the plan for a saved session")
-    _common(fin); _engine_opts(fin)
+    _common(fin)
+    _engine_opts(fin)
     fin.add_argument("--session", required=True, help="session id (folder name) or path")
     fin.add_argument("--wispr", type=Path, help="final Wispr Flow transcript (txt/md/srt) to merge")
     fin.add_argument("--keep-previous", action="store_true",
@@ -209,9 +239,11 @@ def build_parser() -> argparse.ArgumentParser:
     r_rec.add_argument("--clients-dir", type=Path, default=Path(os.environ.get("PACENOTE_CLIENTS_DIR", "clients")))
 
     ck = sub.add_parser("check", help="pre-flight: client files, speech models + microphone, Claude CLI login (or API key)")
-    _common(ck); _locale_opts(ck); _backend_opts(ck)
+    _common(ck)
+    _locale_opts(ck)
+    _backend_opts(ck)
     ck.add_argument("--listen-bin", default=None)
-    ck.add_argument("--no-speech-test", "--no-yap-test", dest="no_speech_test", action="store_true",
+    ck.add_argument("--no-speech-test", dest="no_speech_test", action="store_true",
                     help="only build/find the speech helper, don't start listening")
     ck.add_argument("--engine", choices=ENGINES, default=os.environ.get("PACENOTE_ENGINE", "cli"))
     ck.add_argument("--claude-bin", default=None)

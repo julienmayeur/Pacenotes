@@ -12,19 +12,18 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
-from pacenote.interview import lens
-from pacenote.people import personas
-from pacenote.web.admin import create_admin_app
-from pacenote.transcription.capture import ReplaySource
 from pacenote.clients.sheet import ClientInfo, Contact
-from pacenote.plan.finalize import render_plan_md
 from pacenote.copilot.engines import OfflineEngine, offline_plan_doc
 from pacenote.copilot.prompts import build_fast_system, build_plan_system, build_sync_system, lens_guide, state_snapshot
+from pacenote.interview import lens
 from pacenote.interview.preparation import load_client
-from pacenote.research.desk import RESEARCH_SYSTEM, ResearchOutput, build_research_prompt, write_outputs
 from pacenote.interview.session import Session, Settings
 from pacenote.interview.state import SessionState
-
+from pacenote.people import personas
+from pacenote.plan.finalize import render_plan_md
+from pacenote.research.desk import RESEARCH_SYSTEM, ResearchOutput, build_research_prompt, write_outputs
+from pacenote.transcription.capture import ReplaySource
+from pacenote.web.admin import create_admin_app
 from tests.conftest import CLIENTS, REAL_CLIENTS, fill, result
 from tests.web.test_admin import RESULT
 

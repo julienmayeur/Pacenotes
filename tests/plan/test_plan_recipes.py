@@ -8,14 +8,13 @@ import shutil
 
 import pytest
 
-from pacenote.knowledge import recipes as R
 from pacenote.copilot.contract import ContractError, PlanDoc, parse_plan_doc
-from pacenote.plan.finalize import apply_recipes, is_typical, ranked, recipe_rank, render_plan_md
 from pacenote.copilot.engines import offline_plan_doc
 from pacenote.copilot.prompts import build_plan_system
 from pacenote.interview.preparation import load_client
 from pacenote.interview.state import SessionState
-
+from pacenote.knowledge import recipes as R
+from pacenote.plan.finalize import apply_recipes, is_typical, ranked, recipe_rank, render_plan_md
 from tests.conftest import CLIENTS, plan_doc, plan_use_case, result
 
 

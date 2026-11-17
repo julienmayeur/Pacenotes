@@ -14,14 +14,15 @@ from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from pacenote.shared import i18n
-from pacenote.web.admin import admin_router
-from pacenote.research.autofill import DEFAULT_AUTOFILL_MODEL, AutofillManager, dead_links
-from pacenote.people.profiles import DEFAULT_PEOPLE_MODEL, PeopleManager
-from pacenote.transcription.capture import CaptureError
-from pacenote.research.desk import DEFAULT_MODEL as RESEARCH_MODEL, ResearchManager
 from pacenote.interview.session import Session
+from pacenote.people.profiles import DEFAULT_PEOPLE_MODEL, PeopleManager
+from pacenote.research.autofill import DEFAULT_AUTOFILL_MODEL, AutofillManager, dead_links
+from pacenote.research.desk import DEFAULT_MODEL as RESEARCH_MODEL
+from pacenote.research.desk import ResearchManager
+from pacenote.shared import i18n
+from pacenote.transcription.capture import CaptureError
 from pacenote.web import common
+from pacenote.web.admin import admin_router
 from pacenote.web.common import STATIC_DIR
 from pacenote.web.guard import SameOriginGuard
 

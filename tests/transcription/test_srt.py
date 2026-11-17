@@ -1,4 +1,4 @@
-from pacenote.transcription.srt import SrtTailer, format_clock, format_timestamp, parse_srt, parse_timestamp
+from pacenote.transcription.srt import format_clock, format_timestamp, parse_srt, parse_timestamp
 
 SAMPLE = """1
 00:00:01,200 --> 00:00:04,500
@@ -28,40 +28,3 @@ def test_parse_srt_joins_multiline_text_and_handles_crlf_and_bom():
 def test_parse_srt_skips_malformed_blocks():
     cues = parse_srt("garbage\n\n3\nnot a time --> nope\ntext\n\n" + SAMPLE)
     assert len(cues) == 2
-
-
-def test_tailer_only_emits_complete_cues(tmp_path):
-    p = tmp_path / "fr.srt"
-    t = SrtTailer(p)
-    assert t.poll() == []  # file does not exist yet
-    p.write_text("1\n00:00:01,000 --> 00:00:02,000\nPremière", encoding="utf-8")
-    assert t.poll() == []  # cue may still be growing
-    with p.open("a", encoding="utf-8") as fh:
-        fh.write(" phrase.\n\n2\n00:00:03,000 --> 00:00:04,000\nSeco")
-    cues = t.poll()
-    assert [c.text for c in cues] == ["Première phrase."]
-    with p.open("a", encoding="utf-8") as fh:
-        fh.write("nde.\n\n")
-    assert [c.text for c in t.poll()] == ["Seconde."]
-    assert t.poll() == []
-
-
-def test_tailer_handles_utf8_split_across_reads(tmp_path):
-    p = tmp_path / "fr.srt"
-    data = "1\n00:00:01,000 --> 00:00:02,000\nÉté réussi.\n\n".encode()
-    split = data.index("É".encode()) + 1  # cut in the middle of a multibyte char
-    p.write_bytes(data[:split])
-    t = SrtTailer(p)
-    assert t.poll() == []
-    with p.open("ab") as fh:
-        fh.write(data[split:])
-    assert [c.text for c in t.poll()] == ["Été réussi."]
-
-
-def test_tailer_final_flushes_last_unterminated_cue_and_dedupes(tmp_path):
-    p = tmp_path / "en.srt"
-    p.write_text("1\n00:00:01,000 --> 00:00:02,000\nHello\n\n1\n00:00:01,000 --> 00:00:02,000\nHello\n\n"
-                 "2\n00:00:03,000 --> 00:00:04,000\nLast one", encoding="utf-8")
-    t = SrtTailer(p)
-    assert [c.text for c in t.poll()] == ["Hello"]
-    assert [c.text for c in t.poll(final=True)] == ["Last one"]

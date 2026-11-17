@@ -1,12 +1,11 @@
 
 from fastapi.testclient import TestClient
 
-from pacenote.transcription.capture import ReplaySource
 from pacenote.cli import main
 from pacenote.copilot.engines import OfflineEngine
-from pacenote.web.server import create_app
 from pacenote.interview.session import Session, Settings, purge
-
+from pacenote.transcription.capture import ReplaySource
+from pacenote.web.server import create_app
 from tests.conftest import SAMPLES
 
 

@@ -9,12 +9,18 @@ import time
 
 import pytest
 
-from pacenote.transcription.capture import ReplaySource
 from pacenote.cli import main
 from pacenote.copilot.contract import PlanDoc, SyncResult
-from pacenote.copilot.engines import ClaudeCliEngine, ClaudeCliNotFound, ClaudeEngine, SyncFailed, find_claude, make_engine
+from pacenote.copilot.engines import (
+    ClaudeCliEngine,
+    ClaudeCliNotFound,
+    ClaudeEngine,
+    SyncFailed,
+    find_claude,
+    make_engine,
+)
 from pacenote.interview.session import Session, Settings
-
+from pacenote.transcription.capture import ReplaySource
 from tests.conftest import REAL_CLIENTS, SAMPLES, plan_doc, plan_use_case, result, upd
 from tests.copilot.test_contract import VALID
 
@@ -173,7 +179,7 @@ def test_check_pings_the_cli_instead_of_requiring_an_api_key(tmp_path, monkeypat
     assert calls(log)[0]["stdin"] == "reply ok"
 
     bad, _ = make_fake(tmp_path, ok_payload(is_error=True, result="Invalid API key · Please run /login"))
-    code = main(["check", "--client", "brioche-four", "--clients-dir", str(REAL_CLIENTS), "--listen-bin", str(helper), "--no-yap-test",
+    code = main(["check", "--client", "brioche-four", "--clients-dir", str(REAL_CLIENTS), "--listen-bin", str(helper), "--no-speech-test",
                  "--claude-bin", str(bad)])
     assert code == 1 and "not logged in" in capsys.readouterr().out
 

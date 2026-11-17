@@ -8,16 +8,15 @@ import json
 import re
 
 from pacenote import cli
-from pacenote.transcription.capture import ReplaySource
 from pacenote.copilot.contract import SLOT_KEYS, Fact, PlanDoc
-from pacenote.plan.finalize import archive_plan, clean_fact, open_items, ranked, render_plan_md
-from pacenote.plan.view import print_document
 from pacenote.copilot.engines import OfflineEngine, offline_plan_doc
 from pacenote.copilot.prompts import build_plan_system, build_plan_user
 from pacenote.interview.preparation import load_client
 from pacenote.interview.session import Session, Settings
 from pacenote.interview.state import SessionState
-
+from pacenote.plan.finalize import archive_plan, clean_fact, open_items, ranked, render_plan_md
+from pacenote.plan.view import print_document
+from pacenote.transcription.capture import ReplaySource
 from tests.conftest import CLIENTS, fill, plan_doc, plan_fact, plan_use_case, result
 
 QUIET = Settings(sync_interval=3600, first_sync_delay=3600, poll_interval=3600, fast_enabled=False)

@@ -36,17 +36,17 @@ import hashlib
 import json
 import math
 import re
+from collections.abc import Callable
 from datetime import date, datetime
 from pathlib import Path
-from typing import Callable
 
 import yaml
 from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
 
-from pacenote.shared import fsutil
 from pacenote.copilot.contract import Metric as PlanMetric
 from pacenote.copilot.contract import PlanUseCase, empty_freed
 from pacenote.plan.finalize import clean_measure
+from pacenote.shared import fsutil
 
 METRICS_FILE = "metrics.yaml"
 _SOURCE = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,39}$")

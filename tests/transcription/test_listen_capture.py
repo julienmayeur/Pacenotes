@@ -14,11 +14,17 @@ from pathlib import Path
 
 import pytest
 
-from pacenote.transcription import capture
-from pacenote.transcription.capture import CaptureError, HelperUnavailable, ListenCapture, ensure_helper, explain, preflight
 from pacenote.cli import main
 from pacenote.interview.session import Session, Settings
-
+from pacenote.transcription import capture
+from pacenote.transcription.capture import (
+    CaptureError,
+    HelperUnavailable,
+    ListenCapture,
+    ensure_helper,
+    explain,
+    preflight,
+)
 from tests.conftest import REAL_CLIENTS, result
 
 FAKE_LISTEN = r'''#!{python}

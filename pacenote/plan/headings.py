@@ -5,9 +5,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from pacenote.shared import i18n
 from pacenote.interview.state import SessionState
-
+from pacenote.shared import i18n
 
 PLAN_HEADING_KEYS = ("context", "priorities", "workflows", "quick_wins", "plan_30_60_90", "risks", "budget", "log",
                      "current_state", "bottlenecks", "metrics", "timeline",

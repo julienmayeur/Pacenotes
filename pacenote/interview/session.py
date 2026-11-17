@@ -16,23 +16,12 @@ import json
 import logging
 import shutil
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Callable
 
-from pacenote.people import pilots
-from pacenote.shared import fsutil, i18n
-from pacenote.interview import lens
-from pacenote.people import personas
-from pacenote.interview import translate
-from pacenote.people import attendees as attendees_lib
-from pacenote.interview import phases as P
-from pacenote.knowledge import recipes as recipe_lib
-from pacenote.people import viewpoints as viewpoints_lib
-from pacenote.transcription.capture import ReplaySource, Source
 from pacenote.copilot.contract import ContractError
-from pacenote.plan.finalize import apply_horizons, apply_recipes, assemble_plan, render_plan_md, write_plan_files
 from pacenote.copilot.engines import Engine, SyncFailed, offline_plan, offline_plan_doc
 from pacenote.copilot.prompts import (
     build_fast_system,
@@ -42,9 +31,18 @@ from pacenote.copilot.prompts import (
     build_sync_system,
     build_sync_user,
 )
+from pacenote.interview import lens, translate
+from pacenote.interview import phases as P
 from pacenote.interview.questionnaire import ClientConfig
-from pacenote.transcription.srt import format_clock
 from pacenote.interview.state import SessionState
+from pacenote.knowledge import recipes as recipe_lib
+from pacenote.people import attendees as attendees_lib
+from pacenote.people import personas, pilots
+from pacenote.people import viewpoints as viewpoints_lib
+from pacenote.plan.finalize import apply_horizons, apply_recipes, assemble_plan, render_plan_md, write_plan_files
+from pacenote.shared import fsutil, i18n
+from pacenote.transcription.capture import ReplaySource, Source
+from pacenote.transcription.srt import format_clock
 from pacenote.transcription.transcript import Transcript
 
 log = logging.getLogger(__name__)
@@ -163,9 +161,9 @@ class Session:
             configure(list(self.state.speech_locales))
         self._hook_progress(asyncio.get_running_loop())
         try:
-            # yap instances are started one after the other and confirmed alive (a few s)
+            # the speech helper starts and confirms each spoken language (a few s)
             await asyncio.to_thread(self.source.start)
-        except Exception as exc:  # yap missing, or an instance died right away
+        except Exception as exc:  # no speech helper, or it died right away
             self.state.capture_problems = [str(exc)]
             self.state.mode = "consent"
             self.state.started_at = None
@@ -847,7 +845,7 @@ class Session:
             fh.write(json.dumps(entry, ensure_ascii=False, default=str) + "\n")
 
     @classmethod
-    def resume(cls, client: ClientConfig, session_dir: Path, engine: Engine) -> "Session":
+    def resume(cls, client: ClientConfig, session_dir: Path, engine: Engine) -> Session:
         """Re-open a finished/interrupted session (for `pacenote finalize`)."""
         session_dir = Path(session_dir)
         state = SessionState.load(session_dir / "state.json")

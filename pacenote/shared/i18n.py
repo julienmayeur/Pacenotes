@@ -8,7 +8,7 @@ Three languages per session, persisted in the session state and resolved here:
   * interview - what the interviewer asks and reads: questions, follow-ups, "Ce qui manque" items,
                 summaries, plan notes and the final plan. Any language: questionnaire variants
                 are used when present, Claude translates the rest on the fly.
-  * speech    - the yap locales listening to the room (e.g. ["de-DE", "en-US"]).
+  * speech    - the speech locales listening to the room (e.g. ["de-DE", "en-US"]).
 
 Catalogs
   `pacenote/locales/<lang>.json`, nested JSON in the i18next format (the de-facto web
@@ -26,9 +26,10 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Iterable, Mapping
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any
 
 from babel import Locale, UnknownLocaleError
 from pydantic import BaseModel, Field, field_validator
@@ -37,7 +38,7 @@ LOCALES_DIR = Path(__file__).resolve().parent / "locales"
 FALLBACK = "en"  # last resort before the key itself
 DEFAULT_SPEECH = ["fr-FR", "en-US"]  # the example client's default; see capture.DEFAULT_LOCALES
 
-# A default yap locale for each language, used when only a language is given (`--locales de`).
+# A default speech locale for each language, used when only a language is given (`--locales de`).
 DEFAULT_REGION = {
     "fr": "fr-FR", "en": "en-US", "de": "de-DE", "es": "es-ES", "it": "it-IT", "pt": "pt-PT",
     "nl": "nl-NL", "ja": "ja-JP", "zh": "zh-CN", "ko": "ko-KR", "sv": "sv-SE", "da": "da-DK",
@@ -81,7 +82,7 @@ def language_of(tag: str) -> str:
 
 
 def speech_locale(tag: str) -> str:
-    """Canonical yap locale 'xx-YY' for 'de', 'de_de', 'de-DE'."""
+    """Canonical speech locale 'xx-YY' for 'de', 'de_de', 'de-DE'."""
     loc = parse(tag)
     if loc.territory:
         return f"{loc.language}-{loc.territory}"
@@ -154,17 +155,6 @@ def flatten(tree: Mapping, prefix: str = "") -> dict[str, Any]:
             out.update(flatten(v, key + "."))
         else:
             out[key] = v
-    return out
-
-
-def unflatten(flat: Mapping[str, Any]) -> dict:
-    out: dict = {}
-    for key, v in flat.items():
-        node = out
-        *parents, leaf = key.split(".")
-        for p in parents:
-            node = node.setdefault(p, {})
-        node[leaf] = v
     return out
 
 
@@ -265,11 +255,11 @@ def normalize_speech(locales: Iterable[str] | str) -> list[str]:
 
 
 def stream_ids(locales: Iterable[str]) -> dict[str, str]:
-    """yap stream id per locale: the language code ('de-DE' -> 'de'); the full locale in lower
+    """Stream id per speech locale: the language code ('de-DE' -> 'de'); the full locale in lower
     case when two locales share a language ('en-us', 'en-gb')."""
     locales = list(locales)
     langs = [language_of(x) for x in locales]
-    return {(lang if langs.count(lang) == 1 else loc.lower()): loc for lang, loc in zip(langs, locales)}
+    return {(lang if langs.count(lang) == 1 else loc.lower()): loc for lang, loc in zip(langs, locales, strict=True)}
 
 
 class LanguageState(BaseModel):
@@ -288,11 +278,6 @@ class LanguageState(BaseModel):
     @classmethod
     def _speech(cls, v: list[str]) -> list[str]:
         return normalize_speech(v)
-
-    @classmethod
-    def for_client(cls, language: str, speech: Iterable[str] | None = None, ui: str | None = None) -> "LanguageState":
-        """Defaults for a new session: interview and screen in the client's language."""
-        return cls(ui=resolve_ui(ui, language), interview=language, speech=list(speech or DEFAULT_SPEECH))
 
     def stream_ids(self) -> dict[str, str]:
         return stream_ids(self.speech)

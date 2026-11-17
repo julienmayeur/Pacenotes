@@ -15,14 +15,13 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
+from pacenote.copilot.engines import OfflineEngine
+from pacenote.interview.session import Session, Settings
+from pacenote.plan.finalize import md_to_html, safe_url
+from pacenote.transcription.capture import ListenCapture, ReplaySource
 from pacenote.web import guard
 from pacenote.web.admin import create_admin_app
-from pacenote.transcription.capture import ListenCapture, ReplaySource
-from pacenote.plan.finalize import md_to_html, safe_url
-from pacenote.copilot.engines import OfflineEngine
 from pacenote.web.server import create_app
-from pacenote.interview.session import Session, Settings
-
 from tests.conftest import REAL_CLIENTS, SAMPLES
 from tests.shared.test_i18n import _node_playwright
 from tests.transcription.test_listen_capture import _claude, fake_listen, runs

@@ -2,7 +2,6 @@
 queue edits only touch not-yet-answered questions."""
 
 from pacenote.interview.state import MAX_ADDS_PER_SYNC, NEXT_COUNT
-
 from tests.conftest import edit, result, upd
 
 

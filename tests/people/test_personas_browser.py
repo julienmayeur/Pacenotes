@@ -11,17 +11,16 @@ import asyncio
 import pytest
 import yaml
 
-from pacenote.web.admin import create_admin_app
-from pacenote.transcription.capture import ReplaySource
 from pacenote.copilot.engines import OfflineEngine
 from pacenote.interview.preparation import load_client
-from pacenote.web.server import create_app
 from pacenote.interview.session import Session
-
+from pacenote.transcription.capture import ReplaySource
+from pacenote.web.admin import create_admin_app
+from pacenote.web.server import create_app
 from tests.conftest import CLIENTS, fill, result, upd
+from tests.people.test_personas import DEFER, TEAM, _client
 from tests.research.test_horizons_browser import ADMIN_PORT, APP_PORT, PLAN_SCRIPT, QUIET, run_node, serve
 from tests.shared.test_i18n import _node_playwright
-from tests.people.test_personas import DEFER, TEAM, _client
 
 pytestmark = pytest.mark.skipif(not _node_playwright(), reason="needs node + playwright")
 

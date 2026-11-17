@@ -8,7 +8,7 @@
 // ONE display language at a time, everywhere: the selector top right (<language-select bind="ui">)
 // sets the labels here AND, on the server, the language of the question texts, follow-ups, ladder
 // and missing items in the state (S.ui_language). It never touches the interview language
-// (prompts, generated follow-ups, plan) nor the spoken languages (yap capture). The switch is
+// (prompts, generated follow-ups, plan) nor the spoken languages (speech capture). The switch is
 // instant (the cached state is re-rendered), then the server sends the texts in the new language.
 const t = (key, params, opts) => i18n.t(key, params, opts);
 

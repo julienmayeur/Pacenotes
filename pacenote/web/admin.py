@@ -29,19 +29,25 @@ from pacenote.clients.sheet import (
     set_next_client,
     slug_from_name,
 )
-from pacenote.people import pilots
-from pacenote.shared import fsutil, i18n
-from pacenote.people import personas
-from pacenote.plan import view as plan_view
-from pacenote.research import horizons as horizons_lib
-from pacenote.plan import metrics as metrics_lib
-from pacenote.research.autofill import (DEFAULT_AUTOFILL_MODEL, FIELDS as AUTOFILL_FIELDS, RELATIONS, AutofillManager, dead_links,
-                       mark_manual_edits, merge_into_sheet)
-from pacenote.people.profiles import (DEFAULT_PEOPLE_MODEL, CATEGORIES as PERSON_CATEGORIES, PeopleManager, contact_slug,
-                     load_profile, save_profile_edit)
-from pacenote.plan.finalize import md_to_html
 from pacenote.copilot.engines import DEFAULT_MODEL
+from pacenote.people import personas, pilots
+from pacenote.people.profiles import CATEGORIES as PERSON_CATEGORIES
+from pacenote.people.profiles import DEFAULT_PEOPLE_MODEL, PeopleManager, contact_slug, load_profile, save_profile_edit
+from pacenote.plan import metrics as metrics_lib
+from pacenote.plan import view as plan_view
+from pacenote.plan.finalize import md_to_html
+from pacenote.research import horizons as horizons_lib
+from pacenote.research.autofill import (
+    DEFAULT_AUTOFILL_MODEL,
+    RELATIONS,
+    AutofillManager,
+    dead_links,
+    mark_manual_edits,
+    merge_into_sheet,
+)
+from pacenote.research.autofill import FIELDS as AUTOFILL_FIELDS
 from pacenote.research.desk import ResearchManager, list_history, restore_version
+from pacenote.shared import fsutil, i18n
 from pacenote.web import common
 from pacenote.web.common import STATIC_DIR
 from pacenote.web.guard import SameOriginGuard

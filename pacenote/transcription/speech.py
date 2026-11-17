@@ -26,9 +26,10 @@ import subprocess
 import sys
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, ClassVar
+from typing import ClassVar
 
 from pacenote.shared import i18n
 from pacenote.transcription.capture import (

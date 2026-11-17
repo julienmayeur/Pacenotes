@@ -37,16 +37,17 @@ import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from typing import Callable, Literal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from pacenote.shared import i18n
 from pacenote.clients.sheet import LinkedEntity
 from pacenote.copilot.engines import find_claude, kill_group
 from pacenote.copilot.web_agent import AgentJob, run_claude_stream
+from pacenote.shared import i18n
 
 log = logging.getLogger(__name__)
 
@@ -506,7 +507,7 @@ def dead_links(urls: list[str], timeout: float = 6.0, allow_private: bool = Fals
     if not urls:
         return set()
     with ThreadPoolExecutor(max_workers=min(8, len(urls))) as pool:
-        return {u for u, d in zip(urls, pool.map(dead, urls)) if d}
+        return {u for u, d in zip(urls, pool.map(dead, urls), strict=True) if d}
 
 
 def mark_dead_sources(result: dict, dead: set[str]) -> dict:

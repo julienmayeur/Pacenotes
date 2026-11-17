@@ -8,10 +8,10 @@ from typing import Any, Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, model_validator
 
-from pacenote.shared import i18n
-from pacenote.interview import phases as _phases
 from pacenote.copilot.contract import SLOT_KEYS
+from pacenote.interview import phases as _phases
 from pacenote.people.personas import PERSONAS
+from pacenote.shared import i18n
 
 Lang = str  # any language tag (fr, en, de, es…); validated with i18n.is_language
 
@@ -271,7 +271,7 @@ class Questionnaire(BaseModel):
         return i18n.normalize_speech(v) if v else None
 
     @model_validator(mode="after")
-    def _unique_ids(self) -> "Questionnaire":
+    def _unique_ids(self) -> Questionnaire:
         theme_ids = [t.id for t in self.themes]
         if len(theme_ids) != len(set(theme_ids)):
             raise ValueError("duplicate theme ids")

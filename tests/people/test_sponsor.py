@@ -14,19 +14,18 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
-from pacenote.people import pilots as pilots_lib
-from pacenote.people import sponsor as sponsor_lib
-from pacenote.web.admin import create_admin_app
 from pacenote.copilot.contract import SponsorProbe, parse_plan_doc
-from pacenote.plan.finalize import apply_horizons, render_plan_md
-from pacenote.shared.i18n import catalog as load_locale
 from pacenote.copilot.prompts import build_plan_system, build_sync_system, state_snapshot
 from pacenote.interview.preparation import load_client
 from pacenote.interview.state import SessionState
-
-from tests.conftest import CLIENTS, REAL_CLIENTS, plan_doc, plan_use_case, result, fill
-from tests.web.test_admin import RESULT
+from pacenote.people import pilots as pilots_lib
+from pacenote.people import sponsor as sponsor_lib
+from pacenote.plan.finalize import apply_horizons, render_plan_md
+from pacenote.shared.i18n import catalog as load_locale
+from pacenote.web.admin import create_admin_app
+from tests.conftest import CLIENTS, REAL_CLIENTS, fill, plan_doc, plan_use_case, result
 from tests.interview.test_phases import maps, org
+from tests.web.test_admin import RESULT
 
 BOSS = {"name": "Hélène Varenne", "role": "PDG", "persona": "executive", "origin": "rule"}
 CFO = {"name": "Paul Ardent", "role": "DAF", "persona": "function_leader", "origin": "rule"}

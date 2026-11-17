@@ -12,13 +12,12 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from pacenote.interview import session as session_mod
-from pacenote.web.admin import create_admin_app
-from pacenote.transcription.capture import ReplaySource
 from pacenote.clients.sheet import ClientInfo, save_info
-from pacenote.web.server import create_app
+from pacenote.interview import session as session_mod
 from pacenote.interview.session import Session, Settings
-
+from pacenote.transcription.capture import ReplaySource
+from pacenote.web.admin import create_admin_app
+from pacenote.web.server import create_app
 from tests.conftest import REAL_CLIENTS, result
 
 # --- live loops: an unexpected error is reported and backed off, never swallowed -------------------
@@ -192,9 +191,8 @@ def test_session_files_are_written_atomically(tmp_path, client_cfg, monkeypatch,
 
 
 def test_research_admin_and_client_sheet_writes_are_atomic(tmp_path, monkeypatch):
-    from pacenote.shared import fsutil
     from pacenote.research.desk import ResearchOutput, write_outputs
-
+    from pacenote.shared import fsutil
     from tests.web.test_admin import RESULT
 
     PRESTUDY = RESULT["prestudy"]
@@ -245,7 +243,6 @@ def test_translation_cache_keeps_entries_saved_meanwhile(tmp_path, state):
 
 def test_people_rerun_keeps_an_edit_made_while_it_ran(tmp_path):
     from pacenote.people.profiles import PeopleManager, load_profile, save_profile_edit
-
     from tests.people.test_profiles import fake_claude, sheet
 
     clients = tmp_path / "clients"

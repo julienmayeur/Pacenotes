@@ -12,13 +12,12 @@ import json
 
 import pytest
 
-from pacenote.people import viewpoints
 from pacenote.copilot.contract import Viewpoint, parse_plan_doc, parse_sync_result
-from pacenote.plan.finalize import render_plan_md
 from pacenote.copilot.engines import offline_plan_doc
 from pacenote.copilot.prompts import build_fast_system, build_plan_system, build_sync_system, state_snapshot
 from pacenote.interview.state import SessionState
-
+from pacenote.people import viewpoints
+from pacenote.plan.finalize import render_plan_md
 from tests.conftest import plan_doc, plan_use_case, result
 from tests.people.test_attendees import CLERK, EXEC, HEAD, _session, _state
 

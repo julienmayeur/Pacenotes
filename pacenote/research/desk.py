@@ -24,12 +24,12 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from pacenote.shared import fsutil, i18n
 from pacenote.clients.sheet import ClientInfo, client_dir, linked_summary, load_info
-from pacenote.research.horizons import HORIZON_GUIDE, Horizon, PreStudy, preplan_horizon, score_prestudy
 from pacenote.copilot.engines import DEFAULT_MODEL, find_claude, kill_group
-from pacenote.interview.questionnaire import load_questionnaire
 from pacenote.copilot.web_agent import AgentJob, run_claude_stream
+from pacenote.interview.questionnaire import load_questionnaire
+from pacenote.research.horizons import HORIZON_GUIDE, Horizon, PreStudy, preplan_horizon, score_prestudy
+from pacenote.shared import fsutil, i18n
 
 log = logging.getLogger(__name__)
 

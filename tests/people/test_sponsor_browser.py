@@ -13,19 +13,18 @@ import shutil
 import pytest
 import yaml
 
-from pacenote.web.admin import create_admin_app
-from pacenote.transcription.capture import ReplaySource
 from pacenote.copilot.contract import parse_plan_doc
 from pacenote.copilot.engines import OfflineEngine
 from pacenote.interview.preparation import load_client
-from pacenote.web.server import create_app
 from pacenote.interview.session import Session, Settings
-
+from pacenote.transcription.capture import ReplaySource
+from pacenote.web.admin import create_admin_app
+from pacenote.web.server import create_app
 from tests.conftest import CLIENTS, REAL_CLIENTS, fill, plan_doc, plan_use_case, result
-from tests.web.test_admin import RESULT
+from tests.interview.test_phases import maps, org
 from tests.research.test_horizons_browser import ADMIN_PORT, APP_PORT, run_node, serve
 from tests.shared.test_i18n import _node_playwright
-from tests.interview.test_phases import maps, org
+from tests.web.test_admin import RESULT
 
 QUIET = Settings(sync_interval=3600, first_sync_delay=3600, poll_interval=3600, fast_enabled=False)
 pytestmark = pytest.mark.skipif(not _node_playwright(), reason="needs node + playwright")

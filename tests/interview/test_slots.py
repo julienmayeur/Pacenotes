@@ -7,16 +7,15 @@ import json
 
 import pytest
 
-from pacenote.shared import i18n
 from pacenote.copilot.contract import SLOT_KEYS, SLOT_RUNG, FastResult
 from pacenote.copilot.engines import OfflineEngine
 from pacenote.copilot.prompts import build_fast_system, build_fast_user, build_sync_system, build_sync_user
-from pacenote.interview.questionnaire import load_questionnaire
 from pacenote.interview.preparation import load_client
-from pacenote.transcription.capture import ReplaySource
+from pacenote.interview.questionnaire import load_questionnaire
 from pacenote.interview.session import Session, Settings
 from pacenote.interview.state import SessionState
-
+from pacenote.shared import i18n
+from pacenote.transcription.capture import ReplaySource
 from tests.conftest import CLIENTS, edit, fill, result, upd
 
 SLOTS_CLIENT = "brioche-four-slots"  # frozen copy of the slot-driven questionnaire

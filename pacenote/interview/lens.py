@@ -198,14 +198,6 @@ def metric_ask_for(state, qid: str | None = None, lang: str | None = None) -> di
             "question": state.tr()(f"focus.metric.{side}.{kind}"), "source": "template"}
 
 
-def metric_kind(state, use_case: str) -> str:
-    """The kind of metric the interview aimed at for a use case ("" when none)."""
-    for side in SIDES:
-        if (m := state.metric_questions.get(f"{use_case}:{side}")) and m.get("kind") in KINDS:
-            return m["kind"]
-    return ""
-
-
 # --- what the screen showed, recorded when the focus leaves a question ----------------------------------
 
 

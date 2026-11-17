@@ -36,9 +36,9 @@ import unicodedata
 from datetime import datetime
 from pathlib import Path
 
-from pacenote.shared import fsutil
 from pacenote.interview import phases as P
 from pacenote.people import sponsor
+from pacenote.shared import fsutil
 
 FILE = "ambassadors.json"
 MAX_LEN = 300
@@ -169,9 +169,6 @@ def sponsor_needed(state) -> bool:
     """A leader is in the meeting (pilots.can_sponsor): they sponsor the first wave whatever the pilots,
     and what they would do themself is still to find out (the sponsor question is not closed)."""
     return sponsor.can_sponsor(state) and state.sponsor_probe.get("timing") != "done"
-
-
-FIRST_TO_TRY = "core-first-to-try"  # the core question: who tried the last new software first
 
 
 def _sponsor_template_ready(state, q) -> bool:

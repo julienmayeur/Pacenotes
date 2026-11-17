@@ -4,21 +4,26 @@ metrics, typed opportunities, timeline), the offline map drawing, and the dated 
 
 from __future__ import annotations
 
-import json
 from datetime import date
 
 import pytest
-from fastapi.testclient import TestClient
 
-from pacenote.knowledge import briefs, refresh
 from pacenote.cli import main
-from pacenote.copilot.contract import PlanDoc, empty_maps, parse_plan_doc
-from pacenote.plan.finalize import assemble_plan, comm_map_mermaid, md_to_html, mermaid_svg, open_items, ranked, render_plan_md
+from pacenote.copilot.contract import PlanDoc, parse_plan_doc
 from pacenote.copilot.engines import offline_plan_doc
-from pacenote.plan.view import plan_payload, print_document
 from pacenote.copilot.prompts import build_plan_system, build_plan_user
 from pacenote.interview.state import SessionState
-
+from pacenote.knowledge import briefs, refresh
+from pacenote.plan.finalize import (
+    assemble_plan,
+    comm_map_mermaid,
+    md_to_html,
+    mermaid_svg,
+    open_items,
+    ranked,
+    render_plan_md,
+)
+from pacenote.plan.view import plan_payload, print_document
 from tests.conftest import plan_doc, plan_fact, plan_use_case, real_client
 from tests.interview.test_phases import fast, flow, org
 from tests.interview.test_questions import jargon
@@ -203,7 +208,7 @@ def test_plan_view_warns_when_the_brief_is_old(tmp_path, monkeypatch):
 def test_capabilities_refresh_rewrites_the_brief_with_sources(tmp_path, monkeypatch):
     k = tmp_path / "k"
     k.mkdir()
-    for name, fname in briefs.BRIEFS.items():
+    for fname in briefs.BRIEFS.values():
         (k / fname).write_text((briefs.KNOWLEDGE_DIR / fname).read_text(encoding="utf-8"), encoding="utf-8")
     monkeypatch.setenv("PACENOTE_KNOWLEDGE_DIR", str(k))
     seen = {}

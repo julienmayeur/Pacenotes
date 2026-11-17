@@ -12,14 +12,19 @@ import re
 
 import pytest
 
-from pacenote.shared import i18n
 from pacenote.clients.sheet import create_client
 from pacenote.copilot.contract import SLOT_KEYS
-from pacenote.copilot.prompts import QUESTION_STYLE, build_fast_system, build_fast_user, build_sync_system, build_sync_user
-from pacenote.interview.questionnaire import Questionnaire
+from pacenote.copilot.prompts import (
+    QUESTION_STYLE,
+    build_fast_system,
+    build_fast_user,
+    build_sync_system,
+    build_sync_user,
+)
 from pacenote.interview.preparation import load_client
+from pacenote.interview.questionnaire import Questionnaire
 from pacenote.interview.state import SessionState
-
+from pacenote.shared import i18n
 from tests.conftest import CLIENTS, real_client
 
 # Words a CEO new to AI should never hear in a question (FR and EN).

@@ -4,13 +4,12 @@ same optimistic versioning as the slots and maps; the prompts carry the catalogu
 
 from __future__ import annotations
 
-from pacenote.transcription.capture import ReplaySource
 from pacenote.copilot.engines import OfflineEngine
 from pacenote.copilot.prompts import build_fast_system, build_sync_system, build_sync_user, state_snapshot
 from pacenote.interview.preparation import load_client
 from pacenote.interview.session import Session, Settings
 from pacenote.interview.state import SessionState
-
+from pacenote.transcription.capture import ReplaySource
 from tests.conftest import CLIENTS, SAMPLES, edit, result
 
 ORDERS = "orders arrive by email or PDF and someone re-keys them into the ERP"

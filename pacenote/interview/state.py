@@ -62,17 +62,27 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-from pacenote.people import pilots
-from pacenote.shared import fsutil, i18n
+from pacenote.copilot.contract import (
+    MAP_KINDS,
+    PLAN_SECTIONS,
+    RUNGS,
+    SLOT_KEYS,
+    SLOT_RUNG,
+    FastResult,
+    MapsUpdate,
+    QuestionUpdate,
+    RecipeMatch,
+    SlotFill,
+    SyncResult,
+)
 from pacenote.interview import lens
-from pacenote.people import personas
-from pacenote.people import attendees as attendees_lib
-from pacenote.people import viewpoints as viewpoints_lib
 from pacenote.interview import phases as P
-from pacenote.knowledge import recipes as recipe_lib
-from pacenote.copilot.contract import (CATALOG_CATEGORIES, MAP_KINDS, PLAN_SECTIONS, RUNGS, SLOT_KEYS, SLOT_RUNG, FastResult,
-                       MapsUpdate, QuestionUpdate, RecipeMatch, SlotFill, SyncResult)
 from pacenote.interview.questionnaire import Questionnaire
+from pacenote.knowledge import recipes as recipe_lib
+from pacenote.people import attendees as attendees_lib
+from pacenote.people import personas, pilots
+from pacenote.people import viewpoints as viewpoints_lib
+from pacenote.shared import fsutil, i18n
 
 Status = Literal["pending", "partial", "answered", "removed"]
 Mode = Literal["consent", "interview", "finalize", "generating", "done"]
@@ -163,7 +173,7 @@ class QuestionState(BaseModel):
         return self.status in ("pending", "partial")
 
     @model_validator(mode="after")
-    def _mirror_fr_en(self) -> "QuestionState":
+    def _mirror_fr_en(self) -> QuestionState:
         for lang in ("fr", "en"):
             own = getattr(self, f"text_{lang}")
             if own:
@@ -369,7 +379,7 @@ class SessionState(BaseModel):
     consent: dict[str, str] = Field(default_factory=dict)  # every language (fr/en mirrored)
     source_language: str = ""  # language the questionnaire was written in (expect items)
     ui_language: str = ""  # interviewer screen language ("" = same as `language` when it has a locale file)
-    speech_locales: list[str] = Field(default_factory=lambda: list(i18n.DEFAULT_SPEECH))  # yap locales
+    speech_locales: list[str] = Field(default_factory=lambda: list(i18n.DEFAULT_SPEECH))  # speech locales
     i18n_overlay: dict[str, dict[str, str]] = Field(default_factory=dict)  # lang -> machine-translated keys
     translation: dict = Field(default_factory=dict)  # {lang, status: running|done|error, count, error}
     themes: list[ThemeState]
@@ -456,7 +466,7 @@ class SessionState(BaseModel):
 
     # --- construction / persistence ---------------------------------------
     @classmethod
-    def from_questionnaire(cls, q: Questionnaire) -> "SessionState":
+    def from_questionnaire(cls, q: Questionnaire) -> SessionState:
         lang = q.language
         st = cls(
             client=q.client,
@@ -487,7 +497,7 @@ class SessionState(BaseModel):
         fsutil.atomic_write_text(path, self.model_dump_json(indent=2))
 
     @classmethod
-    def load(cls, path: Path) -> "SessionState":
+    def load(cls, path: Path) -> SessionState:
         return cls.model_validate(json.loads(path.read_text(encoding="utf-8")))
 
     # --- languages (rules in i18n.py) ------------------------------------------

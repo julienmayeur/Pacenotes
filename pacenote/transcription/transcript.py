@@ -86,10 +86,6 @@ class Transcript:
                 out.append(s)
         return out
 
-    def readable_tail(self, n: int, primary: str = "fr") -> list[Segment]:
-        recent = self.merged()[-4 * n :]
-        return self.readable(recent, primary)[-n:]
-
     # --- persistence ------------------------------------------------------
     def save_jsonl(self, path: Path) -> None:
         tmp = path.with_suffix(".tmp")
@@ -99,7 +95,7 @@ class Transcript:
         tmp.replace(path)
 
     @classmethod
-    def load_jsonl(cls, path: Path) -> "Transcript":
+    def load_jsonl(cls, path: Path) -> Transcript:
         t = cls()
         if path.exists():
             for line in path.read_text(encoding="utf-8").splitlines():

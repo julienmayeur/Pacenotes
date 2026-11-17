@@ -12,15 +12,14 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
+from pacenote.cli import main
+from pacenote.copilot.engines import OfflineEngine
+from pacenote.interview.session import Session, Settings
 from pacenote.shared import i18n
 from pacenote.transcription import speech
 from pacenote.transcription.capture import CaptureError, Health, ListenCapture, ReplaySource
-from pacenote.cli import main
-from pacenote.copilot.engines import OfflineEngine
-from pacenote.web.server import create_app
-from pacenote.interview.session import Session, Settings
 from pacenote.transcription.speech import FallbackSource, Plan, WhisperStreamBackend, parse_whisper_stream
-
+from pacenote.web.server import create_app
 from tests.conftest import REAL_CLIENTS, SAMPLES
 from tests.interview.test_degraded_start import BOTH_FAIL
 from tests.transcription.test_listen_capture import _claude, _wait, fake_listen, runs

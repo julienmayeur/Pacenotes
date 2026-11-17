@@ -16,15 +16,14 @@ import time
 import pytest
 import uvicorn
 
-from pacenote.web.common import STATIC_DIR
-from pacenote.shared import i18n
-from pacenote.web.server import create_app
 from pacenote.interview.session import Session
 from pacenote.interview.state import SessionState
-
+from pacenote.shared import i18n
+from pacenote.web.common import STATIC_DIR
+from pacenote.web.server import create_app
 from tests.conftest import real_client
-from tests.shared.test_i18n import TranslatingEngine, _node_playwright
 from tests.interview.test_interview_layout import _session as layout_session
+from tests.shared.test_i18n import TranslatingEngine, _node_playwright
 
 STATIC = STATIC_DIR
 

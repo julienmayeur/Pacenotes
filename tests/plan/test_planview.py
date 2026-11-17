@@ -15,15 +15,14 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from pacenote.shared import i18n
-from pacenote.plan import view as plan_view
-from pacenote.web.admin import create_admin_app
-from pacenote.transcription.capture import ReplaySource
 from pacenote.copilot.engines import OfflineEngine
 from pacenote.interview.preparation import load_client
-from pacenote.web.server import STATIC_DIR, create_app
 from pacenote.interview.session import Session, Settings
-
+from pacenote.plan import view as plan_view
+from pacenote.shared import i18n
+from pacenote.transcription.capture import ReplaySource
+from pacenote.web.admin import create_admin_app
+from pacenote.web.server import STATIC_DIR, create_app
 from tests.conftest import CLIENTS, fill, result
 
 QUIET = Settings(sync_interval=3600, first_sync_delay=3600, poll_interval=3600, fast_enabled=False)

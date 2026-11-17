@@ -14,13 +14,12 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from pacenote.shared import i18n
-from pacenote.transcription.capture import CaptureError, ListenCapture
 from pacenote.cli import main
 from pacenote.copilot.engines import OfflineEngine
-from pacenote.web.server import create_app
 from pacenote.interview.session import Session, Settings
-
+from pacenote.shared import i18n
+from pacenote.transcription.capture import CaptureError, ListenCapture
+from pacenote.web.server import create_app
 from tests.conftest import REAL_CLIENTS
 from tests.shared.test_i18n import _node_playwright
 from tests.transcription.test_listen_capture import _claude, _wait, fake_listen, runs

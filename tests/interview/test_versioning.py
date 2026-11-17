@@ -8,14 +8,12 @@ import threading
 
 from fastapi.testclient import TestClient
 
-from pacenote.transcription.capture import ReplaySource
 from pacenote.copilot.contract import FastResult, empty_maps
-from pacenote.web.server import create_app
+from pacenote.interview.preparation import load_client
 from pacenote.interview.session import Session, Settings
 from pacenote.interview.state import SessionState
-
-from pacenote.interview.preparation import load_client
-
+from pacenote.transcription.capture import ReplaySource
+from pacenote.web.server import create_app
 from tests.conftest import CLIENTS, edit, fill, result, upd
 
 QUIET = Settings(sync_interval=3600, first_sync_delay=3600, poll_interval=3600, fast_enabled=True)

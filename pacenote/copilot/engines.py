@@ -11,14 +11,14 @@ from __future__ import annotations
 
 import json
 import logging
-import queue
-import threading
 import os
+import queue
 import re
 import shutil
 import signal
 import subprocess
 import tempfile
+import threading
 import time
 import unicodedata
 import weakref
@@ -30,44 +30,44 @@ import anthropic
 from pacenote.copilot.contract import (
     PLAN_SECTIONS,
     SLOT_KEYS,
+    Bottleneck,
     ContractError,
+    CurrentState,
     Fact,
     FastResult,
+    FirstWin,
+    Measure,
+    Metric,
     ModelChoice,
     Passage,
+    PlanDecision,
     PlanDelta,
     PlanDoc,
+    PlanFlow,
+    PlanPerson,
     PlanSlots,
+    PlanStore,
+    PlanSystem,
     PlanUseCase,
     QuestionUpdate,
     Recipe,
     Score,
-    SyncResult,
-    empty_read,
-    TimeFreed,
-    Bottleneck,
-    CurrentState,
-    FirstWin,
-    Measure,
-    Metric,
-    PlanDecision,
-    PlanFlow,
-    PlanPerson,
-    PlanStore,
-    PlanSystem,
     Success,
+    SyncResult,
+    ThemeCoverage,
+    TimeFreed,
     empty_adoption,
     empty_maps,
-    ThemeCoverage,
+    empty_read,
     loads_lenient,
     parse_fast_result,
     parse_plan_doc,
     parse_sync_result,
 )
+from pacenote.interview.state import NEXT_COUNT, SessionState
 from pacenote.plan.finalize import apply_horizons, render_plan_md
 from pacenote.research.horizons import offline_horizon
 from pacenote.transcription.srt import format_clock
-from pacenote.interview.state import NEXT_COUNT, SessionState
 from pacenote.transcription.transcript import Segment
 
 log = logging.getLogger(__name__)

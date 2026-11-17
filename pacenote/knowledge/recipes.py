@@ -107,7 +107,7 @@ class LibraryRecipe(_Strict):
         return v
 
     @model_validator(mode="after")
-    def _consistent(self) -> "LibraryRecipe":
+    def _consistent(self) -> LibraryRecipe:
         if len([s for s in self.signals if s.strip()]) < 2:
             raise ValueError("at least two signals")
         if not any(p.strip() for p in self.preconditions):

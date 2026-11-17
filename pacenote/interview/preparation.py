@@ -12,12 +12,20 @@ from pathlib import Path
 
 import yaml
 
-from pacenote.shared import i18n
 from pacenote.clients.sheet import ClientInfo, linked_summary, load_preplan, slug_from_name
-from pacenote.research.horizons import effective_posture, posture_theme, preplan_horizon
-from pacenote.people.profiles import compact_profile, load_profiles
+from pacenote.interview.questionnaire import (
+    ClientConfig,
+    LadderDef,
+    QuestionDef,
+    Questionnaire,
+    Texts,
+    ThemeDef,
+    load_questionnaire,
+)
 from pacenote.people.personas import interviewees
-from pacenote.interview.questionnaire import ClientConfig, LadderDef, QuestionDef, Questionnaire, Texts, ThemeDef, load_questionnaire
+from pacenote.people.profiles import compact_profile, load_profiles
+from pacenote.research.horizons import effective_posture, posture_theme, preplan_horizon
+from pacenote.shared import i18n
 
 RUNG_KEYS = ("business", "workflow", "implementation")
 PREPLAN_THEME = "pistes-ia"

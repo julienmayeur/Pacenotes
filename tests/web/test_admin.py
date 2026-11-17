@@ -10,20 +10,24 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
-from pacenote.web.admin import create_admin_app
-from pacenote.transcription.capture import ReplaySource
 from pacenote.cli import main
 from pacenote.clients.sheet import ClientError, get_next_client, resolve_client, slug_from_name
-from pacenote.interview.preparation import load_core_themes, PREPLAN_THEME, TEMPLATE_CONTEXT, client_context
 from pacenote.copilot.engines import OfflineEngine
 from pacenote.copilot.prompts import build_fast_system, build_sync_system
-from pacenote.interview.preparation import load_client
-from pacenote.research.desk import ResearchManager
 from pacenote.copilot.web_agent import AgentJob, progress
-from pacenote.web.server import create_app
+from pacenote.interview.preparation import (
+    PREPLAN_THEME,
+    TEMPLATE_CONTEXT,
+    client_context,
+    load_client,
+    load_core_themes,
+)
 from pacenote.interview.session import Session, Settings
 from pacenote.interview.state import SessionState
-
+from pacenote.research.desk import ResearchManager
+from pacenote.transcription.capture import ReplaySource
+from pacenote.web.admin import create_admin_app
+from pacenote.web.server import create_app
 from tests.conftest import REAL_CLIENTS, SAMPLES
 
 

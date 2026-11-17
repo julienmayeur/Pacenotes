@@ -7,10 +7,9 @@ import shutil
 
 import pytest
 
-from pacenote.plan import metrics as M
-from pacenote.knowledge import recipes as R
 from pacenote.cli import main
-
+from pacenote.knowledge import recipes as R
+from pacenote.plan import metrics as M
 from tests.conftest import REAL_CLIENTS
 from tests.plan.test_metrics import plan_metric, write_plan
 

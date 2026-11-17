@@ -7,9 +7,8 @@ import shutil
 import pytest
 import yaml
 
-from pacenote.knowledge import recipes as R
 from pacenote.copilot.contract import PATTERNS
-
+from pacenote.knowledge import recipes as R
 from tests.interview.test_questions import jargon
 
 SEED_IDS = {"customer-order-intake", "stock-availability-answers", "supplier-update-distil", "carrier-quote-outreach",

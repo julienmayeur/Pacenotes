@@ -9,13 +9,12 @@ import time
 
 import pytest
 
-from pacenote.transcription.capture import ReplaySource
 from pacenote.copilot.contract import FastResult, empty_maps
 from pacenote.copilot.engines import ClaudeCliEngine, ClaudeStreamSession, SyncFailed
 from pacenote.interview.session import Session, Settings
+from pacenote.transcription.capture import ReplaySource
 from pacenote.transcription.srt import load_srt
 from pacenote.transcription.transcript import Transcript
-
 from tests.conftest import SAMPLES, edit, result, upd
 
 FILES = {"fr": SAMPLES / "fr.srt", "en": SAMPLES / "en.srt"}

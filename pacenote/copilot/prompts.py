@@ -3,22 +3,20 @@
 from __future__ import annotations
 
 import json
-from typing import Mapping
+from collections.abc import Mapping
 
-from pacenote.people import pilots
+from pacenote.copilot.contract import CATALOG_DESCRIPTIONS, SLOT_DESCRIPTIONS, SLOT_KEYS, SLOT_RUNG
+from pacenote.interview import lens
+from pacenote.interview import phases as P
+from pacenote.interview.state import SessionState
 from pacenote.knowledge import briefs
+from pacenote.knowledge import recipes as recipe_lib
+from pacenote.people import attendees as attendees_lib
+from pacenote.people import personas, pilots, sponsor
+from pacenote.people import viewpoints as viewpoints_lib
 from pacenote.research import horizons
 from pacenote.shared import i18n
-from pacenote.interview import lens
-from pacenote.people import personas
-from pacenote.people import attendees as attendees_lib
-from pacenote.people import viewpoints as viewpoints_lib
-from pacenote.people import sponsor
-from pacenote.interview import phases as P
-from pacenote.knowledge import recipes as recipe_lib
-from pacenote.copilot.contract import CATALOG_DESCRIPTIONS, SLOT_DESCRIPTIONS, SLOT_KEYS, SLOT_RUNG
 from pacenote.transcription.srt import format_clock
-from pacenote.interview.state import SessionState
 from pacenote.transcription.transcript import Segment, render_lines
 
 

@@ -16,11 +16,8 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
-from pacenote.web.common import STATIC_DIR
-from pacenote.shared import i18n
-from pacenote.web.admin import create_admin_app
-from pacenote.research.autofill import AutofillManager
 from pacenote.clients.sheet import ClientInfo, Contact, save_info
+from pacenote.interview.preparation import load_client
 from pacenote.people.profiles import (
     CATEGORIES,
     DEFAULT_PEOPLE_MODEL,
@@ -33,8 +30,10 @@ from pacenote.people.profiles import (
     privacy_filter,
     sensitive_reason,
 )
-from pacenote.interview.preparation import load_client
-
+from pacenote.research.autofill import AutofillManager
+from pacenote.shared import i18n
+from pacenote.web.admin import create_admin_app
+from pacenote.web.common import STATIC_DIR
 from tests.research.test_autofill import _node_playwright, _serve, calls, clients  # noqa: F401  (the clients fixture)
 
 SRC = "https://www.brioche-four.example/equipe"

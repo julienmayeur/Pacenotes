@@ -33,16 +33,17 @@ import secrets
 import threading
 import time
 import unicodedata
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Literal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from pacenote.shared import fsutil, i18n
 from pacenote.copilot.engines import find_claude, kill_group
 from pacenote.copilot.web_agent import AgentJob, run_claude_stream
+from pacenote.shared import fsutil, i18n
 
 log = logging.getLogger(__name__)
 

@@ -4,12 +4,11 @@ gibberish, with a short English passage where it flips) through the session: ing
 import asyncio
 import json
 
-from pacenote.transcription.capture import ReplaySource
 from pacenote.copilot.contract import PLAN_SECTIONS
 from pacenote.copilot.engines import OfflineEngine
-from pacenote.plan.headings import plan_headings
 from pacenote.interview.session import Session, Settings
-
+from pacenote.plan.headings import plan_headings
+from pacenote.transcription.capture import ReplaySource
 from tests.conftest import SAMPLES, edit, result, upd
 
 FILES = {"fr": SAMPLES / "fr.srt", "en": SAMPLES / "en.srt"}

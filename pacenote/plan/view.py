@@ -23,8 +23,8 @@ from datetime import datetime
 from pathlib import Path
 
 from pacenote.knowledge import briefs
-from pacenote.shared import i18n
 from pacenote.plan.finalize import md_to_html
+from pacenote.shared import i18n
 
 PDF_TIMEOUT = 60.0
 _SESSION_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")

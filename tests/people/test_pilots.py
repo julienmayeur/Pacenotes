@@ -13,20 +13,18 @@ import subprocess
 import pytest
 from fastapi.testclient import TestClient
 
-from pacenote.people import pilots
-from pacenote.web.admin import create_admin_app
-from pacenote.transcription.capture import ReplaySource
-from pacenote.interview.preparation import load_core_themes
 from pacenote.copilot.contract import parse_plan_doc
 from pacenote.copilot.engines import OfflineEngine
 from pacenote.copilot.prompts import build_fast_system, build_sync_system, state_snapshot
-from pacenote.interview.preparation import load_client
+from pacenote.interview.preparation import load_client, load_core_themes
 from pacenote.interview.session import Session, Settings
 from pacenote.interview.state import SessionState
-
+from pacenote.people import pilots
+from pacenote.transcription.capture import ReplaySource
+from pacenote.web.admin import create_admin_app
 from tests.conftest import CLIENTS, REAL_CLIENTS, ROOT, fill, result
-from tests.web.test_admin import RESULT
 from tests.interview.test_phases import maps, org
+from tests.web.test_admin import RESULT
 
 QUIET = Settings(sync_interval=3600, first_sync_delay=3600, poll_interval=3600, fast_enabled=False)
 

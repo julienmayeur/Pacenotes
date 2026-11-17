@@ -28,8 +28,8 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from pacenote.shared import fsutil, i18n
 from pacenote.interview.state import SessionState
+from pacenote.shared import fsutil, i18n
 
 CHUNK = 30  # texts per `claude -p` call
 PARALLEL = 4  # calls at once (~116 texts for the example client: ~8 s instead of ~30 s in one call)

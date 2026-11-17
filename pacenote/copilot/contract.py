@@ -120,8 +120,6 @@ YesNo = Literal["yes", "no", "unknown"]
 CeoPattern = Literal["waits_on_ceo", "ceo_asks_status", "none"]
 CatalogCategory = Literal["internal_messaging", "external_channels", "shared_storage", "spreadsheets",
                           "core_systems", "task_tracking", "reporting"]
-CATALOG_CATEGORIES = ("internal_messaging", "external_channels", "shared_storage", "spreadsheets", "core_systems",
-                      "task_tracking", "reporting")
 CATALOG_DESCRIPTIONS = {
     "internal_messaging": "internal messaging: Slack, Teams, WhatsApp groups, SMS, internal email",
     "external_channels": "external channels: email with customers and suppliers, phone, fax, customer or supplier "
@@ -722,10 +720,6 @@ class PlanDoc(_Strict):
     adoption: AdoptionPlan  # the lighthouse, the leader as sponsor, the pilots, demo -> proven value -> spread
     open_items: list[OpenItem]  # open items not tied to one slot (budget, sponsor, security rules...)
     recipe_candidates: list[RecipeCandidate]  # drafts for the opportunities no library recipe fits
-
-
-def empty_current_state() -> CurrentState:
-    return CurrentState(people=[], flows=[], systems=[], stores=[], decisions=[])
 
 
 def empty_wave() -> AdoptionWave:

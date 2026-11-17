@@ -4,26 +4,22 @@ merged into every client questionnaire (old files included), and map facts merge
 
 from __future__ import annotations
 
-import asyncio
 import time
-from pathlib import Path
 
 import pytest
 import yaml
 from fastapi.testclient import TestClient
 
-from pacenote.web.common import STATIC_DIR
-from pacenote.interview import phases as P
-from pacenote.interview.preparation import load_core_themes, merge_core
 from pacenote.copilot.contract import FastResult, MapsUpdate, empty_maps, parse_sync_result
 from pacenote.copilot.engines import OfflineEngine
-from pacenote.transcription.capture import ReplaySource
+from pacenote.interview import phases as P
+from pacenote.interview.preparation import load_client, load_core_themes, merge_core
 from pacenote.interview.questionnaire import load_questionnaire
-from pacenote.interview.preparation import load_client
-from pacenote.web.server import create_app
 from pacenote.interview.session import Session, Settings
 from pacenote.interview.state import SessionState
-
+from pacenote.transcription.capture import ReplaySource
+from pacenote.web.common import STATIC_DIR
+from pacenote.web.server import create_app
 from tests.conftest import ROOT, SAMPLES, edit, real_client, result, upd
 from tests.interview.test_questions import _texts, jargon
 
