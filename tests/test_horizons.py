@@ -113,7 +113,7 @@ def test_research_prompt_studies_the_sector_and_its_adoption_of_ai():
     system = " ".join(RESEARCH_SYSTEM.format(lang_name="French", horizons=horizons.HORIZON_GUIDE).split())
     for phrase in ("official statistics", "Keep a signal only with its URL and its publication date",
                    "never shown to the client", "each with its horizon: h1 = execution now",
-                   "Le secteur face à l'IA"):
+                   "The sector and AI", "headings in French"):
         assert phrase in system, phrase
 
 

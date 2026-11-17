@@ -27,12 +27,13 @@ DEFAULT_MINUTES = {"wealth": 1.5, "signal-carriers": 1.5, "signal-flow": 3.0, "k
 PHASE_GOALS = {
     "wealth": "where the company makes and loses money, and what limits its growth today (capacity: who would "
               "be swamped first if volume doubled, what eats the team's time)",
-    "signal-carriers": "who carries the signal: the people around the CEO, who reports to him, how many people "
-                       "come to him each week and for what, who holds the keys to the business",
+    "signal-carriers": "who carries the signal: the people around the lead (the CEO, or the leader in the "
+                       "meeting), who reports to them, how many people come to them each week and for what, who "
+                       "holds the keys to the business",
     "signal-flow": "how the signal travels between people and departments: what passes, through which channel "
                    "(messaging, email, phone, fax, meetings, paper), how often, who waits on whom and how long; "
-                   "the two CEO patterns: work waiting on the CEO (approvals, prices, answers), and the CEO "
-                   "having to ask someone who opens a spreadsheet to know where things stand",
+                   "the two boss patterns: work waiting on the CEO or the leader (approvals, prices, answers), "
+                   "and the leader having to ask someone who opens a spreadsheet to know where things stand",
     "knowledge": "where knowledge lives and how it is reused: where the document or figure was the last time it "
                  "was needed (inbox, shared drive, Excel, ERP, someone's head), who found it, how long it took; "
                  "what is confidential and what extract others need; unwritten rules and expertise that live in "
