@@ -15,7 +15,13 @@ const t = (key, params, opts) => i18n.t(key, params, opts);
 const $ = (id) => document.getElementById(id);
 let S = null;
 let lastCurrentId = null;
-let showTail = true;
+// The interviewee sees this screen too: interviewer details (timings, transcript, coverage by theme, follow-ups
+// already asked...) are hidden until the "Détails" toggle (d) shows them, styled apart. Both choices are kept
+// on this browser (localStorage). The transcript alone also toggles with t.
+const stored = (k) => { try { return localStorage.getItem(k); } catch (_) { return null; } };
+const store = (k, v) => { try { localStorage.setItem(k, v); } catch (_) {} };
+let showDetails = stored("pacenote.details") === "1";
+let showTail = stored("pacenote.tail") === "1";
 let busy = false;
 let lastSeq = null;  // last transcript line seen (drives the level meter)
 let level = 0;       // 0..1, decays
@@ -297,7 +303,8 @@ function renderCurrent(swap = false) {
   const phaseHint = ph && ph.next ? (ph.over ? t("phases.overHint", { next: ph.next })
     : ph.done ? t("phases.doneHint", { next: ph.next }) : "") : "";
   setText(hint, cur && S.mode === "interview" ? (phaseHint || (ready ? t("focus.moveReady") : t("focus.moveHint"))) : "");
-  setText($("phase-label"), ph ? `${t("phases.step", { n: ph.index, m: ph.count })} · ${ph.title} ·` : "");
+  setText($("phase-label"), ph ? `${t("phases.step", { n: ph.index, m: ph.count })} · ${ph.title}` : "");
+  setClass($("theme-word"), "hidden", !!ph);
   // the phase's hidden checklist, quiet: what its maps still miss, to aim the next follow-up
   setText($("phase-gaps"), ph && ph.gaps && ph.gaps.length && cur && S.mode === "interview"
     ? `${t("phases.toCapture")} : ${ph.gaps.slice(0, 3).join(" · ")}` : "");
@@ -479,7 +486,7 @@ function fillRung(li, r, names) {
 
 function renderUpcoming() {
   syncList($("next"), S.next || [], (q) => q.id,
-    (q) => { const li = document.createElement("li"); li.innerHTML = `<span class="q"></span><span class="draft"></span>`; fillUpcoming(li, q); return li; },
+    (q) => { const li = document.createElement("li"); li.innerHTML = `<span class="q"></span><span class="draft debug"></span>`; fillUpcoming(li, q); return li; },
     fillUpcoming);
 }
 function fillUpcoming(li, q) {
@@ -524,7 +531,7 @@ function renderWhere() {
 function renderPhases() {
   const P = S.phases || { items: [], maps: {} };
   syncList($("phases"), P.items || [], (p) => p.id,
-    (p) => { const li = document.createElement("li"); li.innerHTML = `<span class="name"></span><span class="time"></span>`; fillPhase(li, p); return li; },
+    (p) => { const li = document.createElement("li"); li.innerHTML = `<span class="mark" aria-hidden="true"></span><span class="name"></span><span class="time"></span>`; fillPhase(li, p); return li; },
     fillPhase);
   const m = P.maps || {};
   setText($("maps-line"), Object.keys(m).length ? t("phases.maps", { org: m.org || 0, flows: m.flows || 0,
@@ -532,10 +539,13 @@ function renderPhases() {
 }
 function fillPhase(li, p) {
   li.className = `phase ${p.state}`;
+  setText(li.querySelector(".mark"), p.state === "done" ? "✓" : p.state === "current" ? "▸" : "");
   setText(li.querySelector(".name"), p.title);
   const over = p.state === "current" && p.budget && p.spent >= p.budget;
+  // time stays discreet (small, faint): the planned minutes ahead, time spent / planned once a step has started
   setText(li.querySelector(".time"), p.state === "todo" ? clock(p.budget) : `${clock(p.spent)} / ${clock(p.budget)}`);
   setClass(li, "over", over);
+  li.setAttribute("aria-current", p.state === "current" ? "step" : "false");
 }
 
 function fillTheme(li, th) {
@@ -548,7 +558,7 @@ function fillTheme(li, th) {
 }
 
 function renderStrip() {
-  setClass($("live-wrap"), "hidden", !showTail);
+  setClass($("live-wrap"), "hidden", !(showTail || showDetails));
   setClass($("live-wrap"), "on", S.mode === "interview");
   syncList($("tail"), S.tail || [], (l) => l.seq,
     (l) => {
@@ -600,9 +610,10 @@ function fillChip(s, x) {
 
 function renderChrome() {
   const F = S.fast || {};
+  // what the two timings are: the fast pass's speech -> screen delay, and how long the last full analysis took
   const parts = [];
-  if (F.enabled && F.latency != null) parts.push(`⚡ ${F.latency.toFixed(1)} s`);
-  if (S.last_sync_seconds != null) parts.push(`↻ ${Math.round(S.last_sync_seconds)} s`);
+  if (F.enabled && F.latency != null) parts.push(t("details.fast", { s: F.latency.toFixed(1) }));
+  if (S.last_sync_seconds != null) parts.push(t("details.sync", { s: S.last_sync_seconds.toFixed(1) }));
   setText($("latency"), parts.join(" · "));
   $("latency").title = t("console.latency", { model: F.model || "-", latency: F.latency ?? "-", call: F.seconds ?? "-",
                                               sync: S.last_sync_seconds ?? "-" });
@@ -878,6 +889,19 @@ $("start").addEventListener("click", async () => {
 });
 document.querySelectorAll("[data-action]").forEach((b) => b.addEventListener("click", () => act(b.dataset.action)));
 $("console-toggle").addEventListener("click", () => $("console").classList.toggle("hidden"));
+$("details-toggle").addEventListener("click", () => toggleDetails());
+
+function applyDetails() {
+  setClass(document.body, "details-open", showDetails);
+  $("details-toggle").setAttribute("aria-pressed", String(showDetails));
+  if (S) renderStrip();
+}
+function toggleDetails() {
+  showDetails = !showDetails;
+  store("pacenote.details", showDetails ? "1" : "0");
+  applyDetails();
+}
+applyDetails();
 $("interview").addEventListener("scroll", onPanelScroll, { passive: true });
 $("jump").addEventListener("click", () => scrollToCurrent(true));
 
@@ -890,7 +914,8 @@ document.addEventListener("keydown", (e) => {
   else if (k === "a") act("answered");
   else if (k === "k") act("skip");
   else if (k === "p") act("phase");
-  else if (k === "t") { showTail = !showTail; if (S) renderStrip(); }
+  else if (k === "d") toggleDetails();
+  else if (k === "t") { showTail = !showTail; store("pacenote.tail", showTail ? "1" : "0"); if (S) renderStrip(); }
   else if (k === "l") cycleUiLanguage();
   else if (k === "f") {
     if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen?.();

@@ -330,23 +330,28 @@ def test_strip_picks_the_spoken_language_on_the_noisy_sample():
     assert any(s.text.startswith("On est dix-huit") for s in kept)  # not "On a dees wheat…"
 
 
-def test_missing_block_sits_right_under_the_question_before_the_captured_thread():
+def test_what_we_heard_and_what_is_missing_hang_under_the_question_and_details_stay_apart():
     from pacenote.web.server import STATIC_DIR
 
     html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
-    # one panel: the thread of past questions, then the current card (inline controls, the theme header
-    # with its own ladder, THE question to ask now, then the quiet "Ce qui manque" and live summary +
-    # follow-ups), then the upcoming questions; no separate recent block
-    order = [html.index(x) for x in ('id="interview"', 'id="history"', 'id="current-card"', 'id="controls"',
+    # one panel: the thread of past questions, then the current card (the step, the theme question as small
+    # context with its own ladder, THE question to ask now, what we heard, what is still missing, then the
+    # interviewer details and the discreet controls), then the upcoming questions; no separate recent block
+    order = [html.index(x) for x in ('id="interview"', 'id="history"', 'id="current-card"', 'id="phase-label"',
                                      'id="theme-head"', 'id="current"', 'id="ladder"', 'id="ask-now"',
-                                     'id="missing-card"', 'id="got-row"', 'id="summary-card"', 'id="thread"',
-                                     'id="next"')]
+                                     'id="summary-card"', 'id="missing-card"', 'id="got-row"', 'id="thread"',
+                                     'id="controls"', 'id="next"')]
     assert order == sorted(order)
     assert 'id="recent"' not in html
-    # "ask now" is not nested in "Ce qui manque": it closes before the missing block opens
-    assert html.index("</section>", html.index('id="ask-now"')) < html.index('id="missing-card"')
+    # "ask now" is not nested in "Ce qui manque": it closes before the answer block opens
+    assert html.index("</section>", html.index('id="ask-now"')) < html.index('id="summary-card"')
+    # the follow-ups already asked and how fresh the answer is are interviewer details (hidden until d)
+    details = html.index('class="debug card-debug"')
+    assert details < html.index('id="thread"') and details < html.index('id="summary-meta"')
+    assert details > html.index('id="missing-card"')
     css = (STATIC_DIR / "app.css").read_text(encoding="utf-8")
-    for rule in (".missing-box", ".missing-chips li.filled", ".missing-chips li.leaving", ".missing-chips li.fresh"):
+    for rule in (".missing-box", ".missing-chips li.filled", ".missing-chips li.leaving", ".missing-chips li.fresh",
+                 ".debug { display: none !important; }", "body.details-open .debug"):
         assert rule in css, rule
 
 

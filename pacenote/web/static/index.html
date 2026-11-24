@@ -13,8 +13,6 @@
     <header class="top">
       <div class="brand">
         <span id="client"></span>
-        <!-- who we interview: their role and persona (personas.py), picked on the consent screen -->
-        <span id="who-chip" class="who-chip hidden"></span>
         <span id="listen" class="listen idle" title="">
           <span class="meter" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
           <span id="listen-label" class="listen-label"></span>
@@ -23,10 +21,12 @@
       </div>
       <div class="meta">
         <!-- THE display language (labels, questions, follow-ups, missing items): one at a time.
-             Not the spoken languages, which are the FR / EN chips of the listening indicator. -->
+             Not the spoken languages, which are the quiet FR / EN tags of the listening indicator. -->
         <language-select id="ui-switch" bind="ui" compact segmented label="lang.display"
                          data-i18n-attr="title:lang.display"></language-select>
-        <span id="latency" class="latency muted" title=""></span>
+        <!-- the interviewer's details (timings, transcript, coverage by theme, follow-ups asked...): one toggle, d -->
+        <button id="details-toggle" class="details-toggle" type="button" aria-pressed="false"
+                data-i18n-attr="title:details.toggleTitle"><span data-i18n="details.toggle"></span><kbd>d</kbd></button>
         <span id="sync-dot" class="dot" title=""></span>
       </div>
     </header>
@@ -34,8 +34,8 @@
     <div id="alerts" class="alerts" role="alert"></div>
 
     <main class="stage">
-      <!-- ONE scrolling panel = the interview thread: past questions (compact, collapsible) above,
-           the current question card, then the upcoming questions (smaller) -->
+      <!-- ONE panel = the interview thread: past questions (compact, collapsible) above,
+           the current card, then the upcoming questions (smaller); it scrolls only when they no longer fit -->
       <section id="interview" class="focus interview">
         <div class="thread-head label small-label" id="history-head"><span data-i18n="thread.title"></span></div>
         <ol id="history" class="history"></ol>
@@ -45,21 +45,17 @@
           <div class="card-body" id="card-body">
             <!-- the theme under study: a calm header (the seed question and its own
                  Business > Workflow > Implementation ladder), not the focal point -->
+            <!-- the step (phase) the interview is in: a calm title -->
             <div class="card-top">
               <div class="label theme-label">
                 <span id="phase-label" class="phase-label"></span>
-                <span data-i18n="focus.theme"></span>
+                <span id="theme-word" data-i18n="focus.theme"></span>
                 <span id="current-origin" class="origin"></span>
                 <span id="analysing" class="analysing" aria-live="polite"></span>
               </div>
-              <div class="controls" id="controls">
-                <button data-action="next" class="ctl primary-ctl" data-i18n-attr="title:controls.nextTitle"><span data-i18n="controls.next"></span><kbd>n</kbd></button>
-                <button data-action="answered" class="ctl" data-i18n-attr="title:controls.answeredTitle"><span data-i18n="controls.answered"></span><kbd>a</kbd></button>
-                <button data-action="skip" class="ctl" id="ctl-skip" data-i18n-attr="title:controls.skipTitle"><span data-i18n="controls.skip"></span><kbd>k</kbd></button>
-                <button data-action="phase" class="ctl subtle" data-i18n-attr="title:controls.nextPhaseTitle"><span data-i18n="controls.nextPhase"></span><kbd>p</kbd></button>
-                <button data-action="sync" class="ctl subtle" data-i18n-attr="title:controls.syncTitle"><span data-i18n="controls.sync"></span><kbd>s</kbd></button>
-              </div>
             </div>
+            <!-- the theme question, as small context under a follow-up (with none yet it IS the question to ask,
+                 shown once, at focal size), and its own Business > Workflow > Implementation ladder -->
             <header id="theme-head" class="theme-head">
               <h2 id="current" class="current"></h2>
               <ol id="ladder" class="ladder" data-i18n-attr="aria-label:focus.ladder"></ol>
@@ -73,6 +69,32 @@
               <!-- with several attendees: who to address it to (attendees.py) -->
               <p id="ask-to" class="ask-to hidden"></p>
             </section>
+
+            <!-- attached to the question: what we heard so far, then what is still missing -->
+            <div class="answer" id="answer">
+              <section id="summary-card" class="summary-box" aria-live="polite">
+                <div class="block-label"><span data-i18n="focus.summary"></span>
+                  <span id="current-pill" class="pill"></span><span id="vague" class="vague"></span></div>
+                <p id="summary-text" class="summary-text"></p>
+                <p id="thread-empty" class="thread-empty"></p>
+              </section>
+
+              <section id="missing-card" class="missing-box" aria-live="polite">
+                <div class="missing-head">
+                  <span class="missing-title" data-i18n="focus.missing"></span>
+                  <span id="missing-rung" class="missing-rung"></span>
+                  <span id="missing-usecase" class="missing-usecase"></span>
+                  <span id="missing-count" class="missing-count"></span>
+                </div>
+                <ul id="missing" class="missing-chips"></ul>
+                <p id="missing-empty" class="missing-empty"></p>
+                <div id="got-row" class="got-row">
+                  <span class="got-label" data-i18n="focus.got"></span>
+                  <ul id="got" class="got-chips"></ul>
+                </div>
+              </section>
+            </div>
+
             <!-- the executive lens (lens.py): a talking point about this workflow's manual work; why now stays
                  in the interviewer console -->
             <p id="framing-say" class="ambassador-ask hidden" aria-live="polite">
@@ -93,42 +115,31 @@
               <span id="to-check-text" class="amb-text"></span>
             </p>
 
-            <!-- secondary, quiet: what is still missing / already heard, the answer so far -->
-            <div class="details">
-              <section id="missing-card" class="missing-box" aria-live="polite">
-                <div class="missing-head">
-                  <span class="missing-title" data-i18n="focus.missing"></span>
-                  <span id="missing-rung" class="missing-rung"></span>
-                  <span id="missing-usecase" class="missing-usecase"></span>
-                  <span id="missing-count" class="missing-count"></span>
-                </div>
-                <ul id="missing" class="missing-chips"></ul>
-                <p id="missing-empty" class="missing-empty"></p>
-                <p id="phase-gaps" class="phase-gaps"></p>
-                <div id="got-row" class="got-row">
-                  <span class="got-label" data-i18n="focus.got"></span>
-                  <ul id="got" class="got-chips"></ul>
-                </div>
-              </section>
-
-              <section id="summary-card" class="summary-box" aria-live="polite">
-                <div class="block-label"><span data-i18n="focus.summary"></span>
-                  <span id="current-pill" class="pill"></span><span id="vague" class="vague"></span>
-                  <span id="summary-meta" class="summary-meta"></span></div>
-                <p id="summary-text" class="summary-text"></p>
-                <p id="thread-empty" class="thread-empty"></p>
-                <div id="followups" class="followups">
-                  <div class="block-label sub" data-i18n="focus.followups"></div>
-                  <ol id="thread" class="thread"></ol>
-                </div>
-              </section>
+            <!-- interviewer details (d): the follow-ups already asked, how fresh the answer is, what the step's
+                 maps still miss, where n / Enter goes -->
+            <div class="debug card-debug">
+              <div id="followups" class="followups">
+                <div class="block-label sub" data-i18n="focus.followups"></div>
+                <ol id="thread" class="thread"></ol>
+              </div>
+              <p id="summary-meta" class="summary-meta"></p>
+              <p id="phase-gaps" class="phase-gaps"></p>
+              <div class="move-hint" id="move-hint"></div>
             </div>
-            <div class="move-hint" id="move-hint"></div>
+
+            <!-- the interviewer's controls: discreet (same endpoints and keys as the console) -->
+            <div class="controls" id="controls">
+              <button data-action="next" class="ctl primary-ctl" data-i18n-attr="title:controls.nextTitle"><span data-i18n="controls.next"></span><kbd>n</kbd></button>
+              <button data-action="answered" class="ctl" data-i18n-attr="title:controls.answeredTitle"><span data-i18n="controls.answered"></span><kbd>a</kbd></button>
+              <button data-action="skip" class="ctl" id="ctl-skip" data-i18n-attr="title:controls.skipTitle"><span data-i18n="controls.skip"></span><kbd>k</kbd></button>
+              <button data-action="phase" class="ctl" data-i18n-attr="title:controls.nextPhaseTitle"><span data-i18n="controls.nextPhase"></span><kbd>p</kbd></button>
+              <button data-action="sync" class="ctl" data-i18n-attr="title:controls.syncTitle"><span data-i18n="controls.sync"></span><kbd>s</kbd></button>
+            </div>
           </div>
         </article>
 
         <div class="upcoming">
-          <div class="label small-label"><span data-i18n="focus.next"></span><span id="where-line" class="where-line"></span></div>
+          <div class="label small-label"><span data-i18n="focus.next"></span><span id="where-line" class="where-line debug"></span></div>
           <ol id="next" class="next"></ol>
         </div>
         <div class="interview-end" aria-hidden="true"></div>
@@ -136,22 +147,32 @@
       <button id="jump" class="jump hidden" data-i18n="focus.jump"></button>
 
       <aside class="side">
+        <!-- what the interviewee may see: time left, coverage, and the steps of the conversation -->
         <div class="where">
-          <div class="label" data-i18n="where.title"></div>
+          <div class="label small-label" data-i18n="where.title"></div>
           <div class="where-row">
             <div class="big-num"><span id="time-left">15:00</span><small data-i18n="where.timeLeft"></small></div>
             <div class="big-num"><span id="coverage-pct">0 %</span><small data-i18n="where.coverage"></small></div>
           </div>
-          <div class="must" id="must"></div>
           <div class="label small-label phases-title" data-i18n="phases.title"></div>
           <ol id="phases" class="phases"></ol>
-          <div id="maps-line" class="maps-line muted small"></div>
+        </div>
+        <!-- interviewer details (d): who is in the meeting, timings, priorities, the maps, coverage by theme -->
+        <div class="debug side-debug">
+          <div class="debug-title" data-i18n="details.title"></div>
+          <!-- who we interview: their role and persona (personas.py), picked on the consent screen -->
+          <div id="who-chip" class="who-chip hidden"></div>
+          <div id="latency" class="latency" title=""></div>
+          <div class="must" id="must"></div>
+          <div id="maps-line" class="maps-line"></div>
+          <div class="debug-sub" data-i18n="details.themes"></div>
           <ul id="themes" class="themes"></ul>
         </div>
       </aside>
     </main>
 
-    <footer class="live" id="live-wrap">
+    <!-- the live transcript: interviewer detail, hidden by default (d for every detail, t for this one alone) -->
+    <footer class="live hidden" id="live-wrap">
       <div class="live-label"><span class="rec"></span><span data-i18n="live.title"></span>
         <span id="noise" class="noise"></span></div>
       <div class="tail" id="tail" aria-live="off"></div>

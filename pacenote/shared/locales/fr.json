@@ -37,7 +37,7 @@
       "implementation": "Implémentation",
       "done": "Terminé"
     },
-    "summary": "Réponse en cours",
+    "summary": "Ce qu'on a entendu",
     "summaryBy": {
       "fast": "analyse rapide",
       "sync": "synthèse complète",
@@ -125,7 +125,7 @@
     "wisprPlaceholder": "Collez ici la transcription finale Wispr Flow…",
     "wisprMerge": "Fusionner la transcription Wispr",
     "wisprMerged": "✓ fusionnée",
-    "keys": "Touches : n / Entrée question suivante · p étape suivante · a répondu · k passer · s synchroniser · c console · t transcription · f plein écran · l langue de l'écran",
+    "keys": "Touches : n / Entrée question suivante · p étape suivante · a répondu · k passer · s synchroniser · d détails · c console · t transcription · f plein écran · l langue de l'écran",
     "languages": "Langues",
     "translating": "traduction du questionnaire en {{lang}}…",
     "translated": "{{count}} textes traduits automatiquement en {{lang}}",
@@ -906,5 +906,13 @@
       "opposed": "Opposé",
       "practical": "Question pratique"
     }
+  },
+  "details": {
+    "toggle": "Détails",
+    "toggleTitle": "Détails de l'interviewer : délais, transcription, couverture par thème, relances (d)",
+    "title": "Détails de l'interviewer",
+    "themes": "Couverture par thème",
+    "fast": "Analyse rapide : parole → écran {{s}} s",
+    "sync": "Dernière analyse complète : {{s}} s"
   }
 }

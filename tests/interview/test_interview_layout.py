@@ -85,8 +85,24 @@ const { chromium } = require('playwright');
         ladderInTop: document.querySelector('header.top').contains(document.querySelector('#ladder')),
         themeShown: visible(document.querySelector('#current')),
         currentText: document.querySelector('#current').textContent,
+        themePx: px(document.querySelector('#current')),
+        // question -> what we heard -> what is still missing, one block, top to bottom
+        answerOrder: ['#ask-now', '#summary-card', '#missing-card'].map((s) => document.querySelector(s).getBoundingClientRect().top),
+        // interviewer details are hidden until "d"
+        detailsShown: ['#latency', '#thread', '#summary-meta', '#themes', '#who-chip', '#live-wrap', '#must', '#where-line']
+          .filter((s) => visible(document.querySelector(s))),
+        // no inner scroll when everything fits
+        overflow: (() => { const el = document.querySelector('#interview'); return el.scrollHeight - el.clientHeight; })(),
+        cursor: document.querySelector('#phases .phase.current .mark')?.textContent || '',
       };
     });
+    await p.keyboard.press('d');
+    await p.waitForTimeout(150);
+    out[name].opened = await p.evaluate(() => ['#latency', '#themes', '#live-wrap', '#summary-meta']
+      .filter((s) => document.querySelector(s).getClientRects().length));
+    await p.keyboard.press('d');
+    await p.waitForTimeout(150);
+    out[name].closedAgain = await p.evaluate(() => !document.querySelector('#themes').getClientRects().length);
     out[name].errors = errors;
     await p.close();
   }
@@ -140,8 +156,15 @@ def test_ask_now_is_the_focal_point_and_the_card_uses_a_small_type_scale(tmp_pat
         assert v["askLabel"] == "à demander maintenant"
         assert v["askPx"] == v["largest"], (name, v["largestEl"])
         assert not v["askInMissing"]
-        # the theme question stays visible, as a modest header
-        assert v["themeShown"] and v["currentText"] == theme
+        # the theme question stays visible, as small context only
+        assert v["themeShown"] and v["currentText"] == theme and v["themePx"] < v["askPx"] / 1.5
+        assert v["answerOrder"] == sorted(v["answerOrder"])
+        # what only the interviewer needs is hidden by default, shown with d, hidden again with d
+        assert v["detailsShown"] == [], (name, v["detailsShown"])
+        assert v["opened"] == ["#latency", "#themes", "#live-wrap", "#summary-meta"], (name, v["opened"])
+        assert v["closedAgain"]
+        assert v["overflow"] <= 1, (name, v["overflow"])  # no inner scroll when the card fits
+        assert v["cursor"] == "▸"
         # 4 type sizes at most inside the interview card
         assert len(v["cardSizes"]) <= 4, (name, v["cardSizes"])
         # the breadcrumb is the question's own ladder: attached to the theme header, above "ask now"

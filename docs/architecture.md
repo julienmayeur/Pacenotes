@@ -357,16 +357,26 @@ opens the microphone itself. `--offline` makes no network call.
 ### The interview screen
 
 `web/static/index.html` + `app.js` render the view pushed over SSE with keyed in-place DOM updates, so
-nothing jumps. One scrolling panel holds the thread: questions already asked (compact, with a
-summary), then the current card, then the next questions. The current card reads in three levels:
-the theme question as a calm header with its ladder (`Business 1/3 › Workflow 0/2 › Implémentation
-0/2`) and inline controls; « À demander maintenant », the single follow-up to ask, the largest text
-on screen; then the quiet details: « Ce qui manque » (items still missing on the current rung, or
-the use case's unfilled slots), « Déjà capté », the live answer summary and the follow-ups already
-asked. The upcoming list never reorders while someone talks (2.5 s of silence first). The side
-panel shows time left, coverage, phases with time spent and map counts. The bottom strip shows the
-readable stream only, without lines flagged as noise. The interviewer console (`c`) holds languages, the
-Wispr paste box, possible recipes, call durations and errors, and Stop & generate plan.
+nothing jumps. The interviewee sees the screen too, so it shows only what helps the conversation and the
+interviewer's details stay hidden until « Détails » (`d`) opens them, small, monospace, on a dashed rule.
+
+One panel holds the thread: questions already asked (compact, with a summary), then the current card,
+then a short « Ensuite » list (one line each). It scrolls only when the thread no longer fits. The
+current card reads top to bottom: the step (`Étape 2/7 · Qui porte l'information`); the theme question
+as small context with its ladder (`Business 1/3 › Workflow 0/2 › Implémentation 0/2`); « À demander
+maintenant », the single thing to ask, the largest text on screen (with no follow-up yet, the theme
+question itself, shown once); then, attached to it, « Ce qu'on a entendu » (the live answer) and « Ce qui
+manque » (items still missing on the current rung, or the use case's unfilled slots) with « Déjà capté »;
+the controls sit quietly at the foot of the card. The upcoming list never reorders while someone talks
+(2.5 s of silence first). The side panel shows time left, coverage and the steps of the conversation (a
+cursor on the current one, a check on those done, the planned minutes in small).
+
+Behind `d`: the follow-ups already asked, how fresh the answer is, what the step's maps still miss, where
+n / Enter goes, who is in the meeting, the fast pass's speech → screen delay and the last full analysis's
+duration, the priority questions and missing details, the map counts, coverage by theme, and the live
+transcript (the readable stream only, without lines flagged as noise; `t` shows it alone). The
+interviewer console (`c`) holds languages, the Wispr paste box, possible recipes, call durations and
+errors, and Stop & generate plan.
 
 ### Web safety
 

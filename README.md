@@ -207,7 +207,8 @@ pacenote replay --client brioche-four --srt fr-FR=sessions/brioche-four/<id>/fr.
 | `k` | Skip the current question |
 | `s` | Sync now |
 | `c` | Console (who is in the meeting, the views heard, languages, transcript paste, possible recipes, potential pilots, Stop & generate plan) |
-| `t` | Transcript tail |
+| `d` | Interviewer details (hidden by default, since the interviewee sees the screen too): timings, the live transcript, follow-ups already asked, coverage by theme, who is in the meeting |
+| `t` | Live transcript alone |
 | `f` | Full screen |
 | `l` | Next screen language |
 

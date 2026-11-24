@@ -37,7 +37,7 @@
       "implementation": "Implementation",
       "done": "Done"
     },
-    "summary": "Answer so far",
+    "summary": "What we heard",
     "summaryBy": {
       "fast": "fast pass",
       "sync": "full sync",
@@ -125,7 +125,7 @@
     "wisprPlaceholder": "Paste the final Wispr Flow transcript here…",
     "wisprMerge": "Merge Wispr transcript",
     "wisprMerged": "✓ merged",
-    "keys": "Keys: n / Enter next question · p next phase · a answered · k skip · s sync · c console · t transcript · f fullscreen · l screen language",
+    "keys": "Keys: n / Enter next question · p next phase · a answered · k skip · s sync · d details · c console · t transcript · f fullscreen · l screen language",
     "languages": "Languages",
     "translating": "translating the questionnaire into {{lang}}…",
     "translated": "{{count}} texts machine-translated into {{lang}}",
@@ -906,5 +906,13 @@
       "opposed": "Opposed",
       "practical": "Practical concern"
     }
+  },
+  "details": {
+    "toggle": "Details",
+    "toggleTitle": "Interviewer details: timings, transcript, coverage by theme, follow-ups (d)",
+    "title": "Interviewer details",
+    "themes": "Coverage by theme",
+    "fast": "Fast pass: speech → screen {{s}} s",
+    "sync": "Last full analysis: {{s}} s"
   }
 }
