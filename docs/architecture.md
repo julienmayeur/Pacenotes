@@ -271,9 +271,17 @@ retires only on an "answer over" signal (`Session._answer_over`, checked every p
 | Signal | How it is read | Then |
 |---|---|---|
 | The interviewer reads a queued question | A line that starts a turn (≥ 0.6 s gap on the speech clock, not the first lines after the pin; for a follow-up, said after it appeared) holds ≥ 60 % of the question's content words, and they make up ≥ ⅓ of the words heard; the turn's first lines up to its next gap (a long question comes as several ~60-character lines) | That item is asked now, at once (earlier queued ones are dropped) |
+| The question is complete | An analysis (fast pass or full sync) turns the focus question from open to answered: the existing gate, every slot item plus half of the other expected details (`QuestionState.sufficient`), from an answer given after what is asked now went up (a turn starts after it in the lines it read; a pending completion is dropped when the interviewer reads or clicks a follow-up) | The focus moves to the next question at once, even while the interviewee goes on |
 | The interviewee answers the next question | The fast pass gives the queued next question an answer piece and none to the current one | The focus moves there |
 | A real pause after the answer | Something was said since the pin; the fast pass read every line; then a pause on the speech clock of 3.5 s after a line ending in . ? ! (7 s after any other line: the recogniser cuts long sentences into ~60-character lines) | The first queued item moves up (the next question if the focus is answered) |
 | The interviewer | `n` / Enter, `a`, `k`, `p`, or a click on a queued question | As before (`n` and `a` go to the « Question suivante » shown); a click asks that item |
+
+Completion moves at most once per stretch of speech. After it, what the interviewee still says is the
+tail of the old answer, not the answer to the new question: the tail ends when the interviewer asks the
+new question (a turn holding 4 of its content words, half of the turn's: a paraphrase of a long question),
+at a gap in the line timestamps as long as the pause above (exact even when lines arrive in batches), or
+on a sure pause. Until then nothing moves: a question completed by the tail, or a follow-up drawn from it,
+waits; the answer to the new question counts from the end of the tail.
 
 The pause is counted on the speech clock (segment `end`), beyond how long speech can stay unseen: a
 line arrives only once it ends, so the delay is the longest, over the recent lines, of speech clock at

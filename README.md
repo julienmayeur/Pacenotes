@@ -28,7 +28,9 @@ prepare (admin) ─► consent ─► interview: capture + follow-ups ─► sto
   finished talking, so a new follow-up never replaces the question being answered: it is queued
   underneath (two at most, then the next question once this one is answered). It moves up only when
   the answer is over: you read it aloud, the interviewee is already answering the next question, or
-  there is a real pause after a complete sentence. Click a queued question to ask it at once.
+  there is a real pause after a complete sentence. As soon as the analysis has enough for the question
+  (every required detail heard), it is marked answered and the next question comes up at once, even
+  while the interviewee goes on. Click a queued question to ask it at once.
 - **Admin auto-fill.** Before the interview, the admin panel fills the client sheet from public web
   sources (with provenance per field; your own edits are never overwritten) and prepares profile
   cards of the people you will meet (professional, publicly self-published facts only).

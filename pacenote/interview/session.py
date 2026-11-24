@@ -142,6 +142,13 @@ class Session:
         self.ask_changes: list[dict] = []  # every change of what is asked now (follow-up promoted, focus moved)
         self._lags: list[float] = []  # speech clock at ingest - line start, recent lines: how long speech stays unseen
         self._moved_to: str | None = None  # the fast pass heard the answer to the queued next question
+        # completion: the focus question seen open at the last check, the one an analysis then marked
+        # answered (retired at once), and whether the speech after such a retirement is still the tail
+        # of that answer (no pause yet: it must not count as the answer to the new question)
+        self._open_focus: str | None = None
+        self._completed: str | None = None
+        self._tail = False
+        self._tail_seq = 0  # the transcript version when the completed question was retired
         self._t0_mono: float | None = None
         self._translate_task: asyncio.Task | None = None
         self._display_task: asyncio.Task | None = None  # translations for the display language only
@@ -445,15 +452,48 @@ class Session:
 
     ASK_TURN_GAP = 0.6  # s of speech gap before a line that may be the interviewer reading a queued question
 
+    def _lines(self) -> list:
+        """The readable lines in the interview language, noise left out, in speech order."""
+        st = self.state
+        primary = next((sid for sid in sorted({s.stream for s in self.transcript.segments})
+                        if sid.split("-")[0] == st.language), st.language)
+        return [s for s in self.transcript.readable(self.transcript.merged(), primary=primary)
+                if s.seq not in self.noise_seqs]
+
+    def _turn_since(self, since: int, upto: int) -> bool:
+        """A turn starts among the lines after `since`, up to `upto` (a gap before it, or the first line):
+        an answer to what was asked, not the rest of the question being read aloud."""
+        lines = self._lines()
+        return any(since < s.seq <= upto and (not i or s.start - lines[i - 1].end >= self.ASK_TURN_GAP)
+                   for i, s in enumerate(lines))
+
+    def _tail_end(self) -> int | None:
+        """The end of the answer still going on after a completion move: the last line before the
+        interviewer reads the new question aloud, or before a real gap in the speech timestamps (`answer_pause` after a sentence end, `answer_pause_open` otherwise;
+        exact even when lines arrive in batches), else, once a real pause is sure, the last line. None
+        while it goes on."""
+        cur = self.state.current_question
+        if cur is not None and (read := self._read_aloud(
+                [{"kind": "question", "source": cur.text(self.state.language)}], self._tail_seq, loose=True)):
+            return read[1]  # the interviewer asks the new question (in their words): the answer before is over
+        lines = self._lines()
+        for i in range(1, len(lines)):
+            prev = lines[i - 1]
+            if lines[i].seq > self._tail_seq and lines[i].start - prev.end >= (
+                    self.settings.answer_pause_open if self.line_open(prev.text) else self.settings.answer_pause):
+                return prev.seq
+        return self.transcript.last_seq if self.speech_pause() >= self.settings.answer_pause else None
+
     def _asked(self) -> dict | None:
         """The interviewer reads a queued question aloud: lines since the pinned one went up hold most
         of its words. Returns that queued item."""
-        st = self.state
-        since = st.ask_seq or 0
-        primary = next((sid for sid in sorted({s.stream for s in self.transcript.segments})
-                        if sid.split("-")[0] == st.language), st.language)
-        lines = [s for s in self.transcript.readable(self.transcript.merged(), primary=primary)
-                 if s.seq not in self.noise_seqs]
+        hit = self._read_aloud(self.ask_queue(), self.state.ask_seq or 0)
+        return hit[0] if hit else None
+
+    def _read_aloud(self, items: list[dict], since: int, loose: bool = False) -> tuple[dict, int] | None:
+        """The first of `items` read aloud in a turn after line `since`: (item, seq of the line before that
+        turn). `loose`: a paraphrase is enough (4 of its words, half of the turn's), for a long question."""
+        lines = self._lines()
         # a question read aloud starts a turn (after a gap in the speech; the first lines after the pin are
         # the answer) and is mostly made of its own words: the turn's first lines, up to its next gap (a long
         # question takes several ~60-character lines)
@@ -467,17 +507,18 @@ class Session:
                 j += 1
             windows.append((i, _content_words(" ".join(s.text for s in lines[i:j]))))
         clock, now = self.speech_clock(), time.time()
-        for item in self.ask_queue():
+        for item in items:
             words = _content_words(item["source"])
             if len(words) < 2:
                 continue
             need = max(2, math.ceil(0.6 * len(words)))
+            need, share = (min(need, 4), 2) if loose else (need, 3)
             # a follow-up can only be read once it is on screen; its own wording often echoes the answer
             # it was drawn from, which must not count
             shown = clock - (now - item["at"]) if item["kind"] == "followup" else -1e9
-            if any(lines[i].start >= shown and len(words & w) >= need and len(words & w) * 3 >= len(w)
-                   for i, w in windows):
-                return item
+            for i, w in windows:
+                if lines[i].start >= shown and len(words & w) >= need and len(words & w) * share >= len(w):
+                    return item, lines[i - 1].seq
         return None
 
     def ask_queue(self) -> list[dict]:
@@ -506,6 +547,15 @@ class Session:
         queue = self.ask_queue()
         if st.ask_seq is None:
             st.ask_seq = self.transcript.last_seq
+        if (self._open_focus == cur.id and cur.status == "answered" and cur.updated_by in ("fast", "sync")
+                and (self._tail or self._turn_since(st.ask_seq, cur.read))):
+            # an analysis just found it sufficiently covered, from an answer given after what is asked now
+            # went up (a late result on lines said before the interviewer's follow-up, or on the rest of
+            # that follow-up read aloud, must not yank it); one completed by a tail moves after its pause
+            self._completed = cur.id
+        self._open_focus = cur.id if cur.open else None
+        if self._tail and (end := self._tail_end()) is not None:
+            self._tail, st.ask_seq = False, end  # the old answer is over: what follows answers the new one
         if (hit := self._asked()) is not None:
             return hit, "the interviewer asked it"
         if self._moved_to is not None:
@@ -513,6 +563,14 @@ class Session:
             hit = next((i for i in queue if i.get("qid") == moved), None)
             if hit is not None:
                 return hit, "the interviewee answers the next question"
+        if self._completed == cur.id and not self._tail:
+            # complete: retire it now, even while the interviewee goes on (one per stretch of speech:
+            # a question completed by the tail of the same answer waits for the pause after it)
+            self._completed = None
+            nxt = next((i for i in queue if i["kind"] == "question"), None)
+            return nxt, f"complete, {len(cur.covered)} of {len(cur.all_expect())} details"
+        if self._tail:
+            return None  # still the tail of the answer just completed: the new question was not asked yet
         if not queue and cur.status != "answered":
             return None  # nothing to move to: the question stays
         said = sum(len(s.text) for s in self.transcript.segments if s.seq > st.ask_seq)
@@ -538,9 +596,13 @@ class Session:
         if item is not None and item["kind"] == "followup":
             self.state.promote(item["at"], reason=why)
             self._ask_changed("followup", why)
+            self._tail, self._completed = False, None  # the interviewer digs on: a pending completion is moot
             self.persist()
             return True
+        talking = self.speech_pause() < self.settings.answer_pause
         self._advance(why, to=item["qid"] if item else None)
+        self._tail = why.startswith("complete") and talking  # moved while the old answer goes on
+        self._tail_seq = self.transcript.last_seq
         return True
 
     def _ask_changed(self, kind: str, reason: str) -> None:
@@ -557,6 +619,7 @@ class Session:
         if item["kind"] == "followup":
             self.state.promote(item["at"], reason="clicked by the interviewer")
             self._ask_changed("followup", "clicked by the interviewer")
+            self._tail, self._completed = False, None
             self.persist()
         else:
             self._advance("next question clicked by the interviewer", to=item["qid"])
@@ -566,6 +629,7 @@ class Session:
     def _advance(self, reason: str, to: str | None = None) -> None:
         old = self.state.focus_id
         new = self.state.advance(reason, to=to)
+        self._tail = False  # moved by the interviewer or a signal: nothing left of the old answer to wait for
         self.focus_changes.append({"t": time.time(), "from": old, "to": new, "reason": reason})
         self._log_sync({"kind": "focus", "from": old, "to": new, "reason": reason})
         self._ask_changed("question", reason)

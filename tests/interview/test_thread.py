@@ -324,6 +324,158 @@ def test_once_answered_the_next_question_is_queued_and_taken_when_the_answer_is_
     assert st.focus_id == nxt["qid"] and s.focus_changes[-1]["reason"].startswith("answered")
 
 
+def test_a_question_the_analysis_finds_complete_retires_at_once_even_while_speech_goes_on(tmp_path):
+    """Completion: once the analysis has enough (the "answered" gate: every slot, half the other details),
+    the question is marked answered and the next one comes up, without waiting for the end of the speech."""
+    s = _talking(tmp_path)
+    st = s.state
+    first = st.focus_id
+    s.view()
+    st.ask_seq = 0
+    q = st.current_question
+    assert not s._maybe_retire()  # seen open
+    _say(s, 90, 93, "Le service commandes, Lucie et Marc, et")
+    st.apply_fast_result(fast(upd(first, "partial", "x", piece="commandes", covered=q.all_expect()[:1],
+                                  follow_up="Combien de commandes par jour ?")))
+    s.source.t = 93.5
+    assert not s._maybe_retire()  # partly covered, mid-sentence: it stays
+    _say(s, 93.5, 96, "quatre-vingts commandes par jour, c'est la saisie qui coince et")
+    st.apply_fast_result(fast(upd(first, "answered", "x", piece="saisie", covered=q.all_expect())), read=s.transcript.last_seq)
+    s.transcript.add("fr", 96.1, 98, "on a aussi les devis", received_at=time.time())  # not analysed yet: no matter
+    s.source.t = 96.3
+    nxt = st.next_qid()
+    assert s._maybe_retire()
+    assert st.focus_id == nxt and s.focus_changes[-1]["reason"].startswith("complete")
+    assert s.view()["current"]["ask"]["kind"] == "question"
+
+
+def test_a_question_completed_by_the_tail_of_the_previous_answer_waits_for_the_pause(tmp_path):
+    """One completion move per stretch of speech: if the interviewee goes on and the tail completes the new
+    question too, it waits for the pause after it. A completion after a pause moves at once."""
+    s = _talking(tmp_path)
+    st = s.state
+    first = st.focus_id
+    s.view()
+    st.ask_seq = 0
+    assert not s._maybe_retire()
+    _say(s, 90, 93, "C'est la saisie des commandes, voilà.")
+    st.apply_fast_result(fast(upd(first, "answered", "x", piece="saisie", covered=st.get(first).all_expect())), read=s.transcript.last_seq)
+    s.source.t = 93.2
+    assert s._maybe_retire()
+    second = st.focus_id
+    assert not s._maybe_retire()  # the new focus is seen open
+    _say(s, 93.4, 97, "Et puis en période de fêtes c'est pire, on fait des heures sup.")
+    st.apply_fast_result(fast(upd(second, "answered", "x", piece="heures sup",
+                                  covered=st.get(second).all_expect())), read=s.transcript.last_seq)
+    s.source.t = 97.5
+    assert not s._maybe_retire() and st.focus_id == second
+    s.source.t = 97 + 3.6
+    assert s._maybe_retire()  # the pause after the tail
+    third = st.focus_id
+    assert third not in (first, second) and s.focus_changes[-1]["reason"].startswith("complete")
+    assert not s._maybe_retire()
+    _say(s, 101, 104, "Ah et aussi les devis, Paul les relance à la main.")  # the answer to the third
+    st.apply_fast_result(fast(upd(third, "answered", "x", piece="devis", covered=st.get(third).all_expect())), read=s.transcript.last_seq)
+    s.source.t = 104.2
+    assert s._maybe_retire() and st.focus_id not in (first, second, third)
+
+
+def test_live_batches_the_tail_ends_at_a_gap_in_the_speech_timestamps(tmp_path):
+    """Live, batches hide the last ~11 s, so a pause is sure only late; the gap between the tail and the
+    next turn is exact in the line timestamps, so the new question's answer counts from there."""
+    s = _talking(tmp_path)
+    st = s.state
+    first = st.focus_id
+    s.view()
+    st.ask_seq = 0
+    s._lags = [11.0] * 10
+    assert not s._maybe_retire()
+    _say(s, 90, 93, "C'est la saisie des commandes, voilà.")
+    st.apply_fast_result(fast(upd(first, "answered", "x", piece="saisie", covered=st.get(first).all_expect())),
+                         read=s.transcript.last_seq)
+    s.source.t = 93.2
+    assert s._maybe_retire()
+    second = st.focus_id
+    assert not s._maybe_retire()
+    _say(s, 93.4, 96, "Et en période de fêtes c'est pire.")  # the tail
+    _say(s, 100, 103, "Sur quelle tâche avez-vous passé le plus de temps ?")  # 4 s later: the next turn
+    _say(s, 104, 107, "Les relances de devis, deux jours pour Paul.")
+    st.apply_fast_result(fast(upd(second, "answered", "x", piece="relances", covered=st.get(second).all_expect())),
+                         read=s.transcript.last_seq)
+    s.source.t = 107.5  # no pause can be sure yet (11 s batches)
+    assert s._maybe_retire() and st.focus_id not in (first, second)
+
+
+def test_the_tail_of_a_completed_answer_is_not_the_answer_to_the_new_question(tmp_path):
+    """A follow-up drawn from the tail is queued under the new question; the pause that ends the tail does
+    not promote it (the new question was not asked yet)."""
+    s = _talking(tmp_path)
+    st = s.state
+    first = st.focus_id
+    s.view()
+    st.ask_seq = 0
+    assert not s._maybe_retire()
+    _say(s, 90, 93, "C'est la saisie des commandes, voilà.")
+    st.apply_fast_result(fast(upd(first, "answered", "x", piece="saisie", covered=st.get(first).all_expect())), read=s.transcript.last_seq)
+    s.source.t = 93.2
+    assert s._maybe_retire()
+    second = st.focus_id
+    _say(s, 93.4, 97, "Et puis en période de fêtes c'est pire, on fait des heures sup.")
+    st.apply_fast_result(fast(upd(second, "partial", "x", piece="heures sup", follow_up="Combien d'heures sup ?")))
+    for t in (97.5, 97 + 3.6, 97 + 8):
+        s.source.t = t
+        assert not s._maybe_retire()
+    v = s.view()["current"]
+    assert v["id"] == second and v["ask"]["kind"] == "question"
+    assert [x["text"] for x in v["ask_next"]] == ["Combien d'heures sup ?"]
+
+
+def test_a_late_completion_on_lines_said_before_the_follow_up_was_asked_does_not_yank_it(tmp_path):
+    """Live, one batch can hold the end of the answer and the interviewer reading a queued follow-up: the
+    follow-up goes up at once, and the result that completes the question from the earlier lines then
+    comes late. It waits for the pause, as an answered question does."""
+    s = _talking(tmp_path)
+    st = s.state
+    first = st.focus_id
+    s.view()
+    st.ask_seq = 0
+    assert not s._maybe_retire()
+    _say(s, 80, 83, "Voilà, c'est surtout les devis.")
+    st.apply_fast_result(fast(upd(first, "partial", "x", piece="devis", follow_up="Et les devis, qui les prépare ?")))
+    st.ask_next[0].at = time.time() - 30
+    _say(s, 85, 87, "Et les devis, qui les prépare aujourd'hui ?")
+    s.source.t = 87.2
+    assert s._maybe_retire() and st.ask_pin is not None  # the follow-up read aloud is asked now
+    read = s.transcript.last_seq
+    assert not s._maybe_retire()
+    st.apply_fast_result(fast(upd(first, "answered", "x", piece="devis", covered=st.get(first).all_expect())),
+                         read=read)  # read nothing said after the follow-up
+    _say(s, 88, 91, "C'est Paul, notre commercial, et")
+    s.source.t = 91.2
+    assert not s._maybe_retire() and st.focus_id == first
+
+
+def test_a_completion_landing_with_the_follow_up_read_aloud_lets_the_follow_up_stand(tmp_path):
+    """Same batch: the result completing the question and the interviewer reading a follow-up land on the
+    same check. The follow-up read aloud wins; the completion does not move the question a moment later."""
+    s = _talking(tmp_path)
+    st = s.state
+    first = st.focus_id
+    s.view()
+    st.ask_seq = 0
+    assert not s._maybe_retire()
+    _say(s, 80, 83, "Voilà, c'est surtout les devis.")
+    st.apply_fast_result(fast(upd(first, "partial", "x", piece="devis", follow_up="Et les devis, qui les prépare ?")))
+    st.ask_next[0].at = time.time() - 30
+    _say(s, 85, 87, "Et les devis, qui les prépare aujourd'hui ?")
+    st.apply_fast_result(fast(upd(first, "answered", "x", piece="devis", covered=st.get(first).all_expect())),
+                         read=s.transcript.last_seq)
+    s.source.t = 87.2
+    assert s._maybe_retire() and st.ask_pin is not None and st.focus_id == first
+    s.source.t = 87.6
+    assert not s._maybe_retire() and st.focus_id == first
+
+
 def test_a_long_next_question_read_aloud_is_recognised(tmp_path):
     """Theme questions run to ~300 characters: read aloud they come as several ~60-character lines."""
     s = _talking(tmp_path)
