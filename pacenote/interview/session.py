@@ -468,14 +468,14 @@ class Session:
                    for i, s in enumerate(lines))
 
     def _tail_end(self) -> int | None:
-        """The end of the answer still going on after a completion move: the last line before the
-        interviewer reads the new question aloud, or before a real gap in the speech timestamps (`answer_pause` after a sentence end, `answer_pause_open` otherwise;
+        """The end of the answer still going on after a completion move: the interviewer asking the new
+        question aloud (its last line), or the last line before a real gap in the speech timestamps (`answer_pause` after a sentence end, `answer_pause_open` otherwise;
         exact even when lines arrive in batches), else, once a real pause is sure, the last line. None
         while it goes on."""
         cur = self.state.current_question
         if cur is not None and (read := self._read_aloud(
                 [{"kind": "question", "source": cur.text(self.state.language)}], self._tail_seq, loose=True)):
-            return read[1]  # the interviewer asks the new question (in their words): the answer before is over
+            return read[2]  # the interviewer asks the new question (in their words): its answer comes next
         lines = self._lines()
         for i in range(1, len(lines)):
             prev = lines[i - 1]
@@ -490,9 +490,9 @@ class Session:
         hit = self._read_aloud(self.ask_queue(), self.state.ask_seq or 0)
         return hit[0] if hit else None
 
-    def _read_aloud(self, items: list[dict], since: int, loose: bool = False) -> tuple[dict, int] | None:
+    def _read_aloud(self, items: list[dict], since: int, loose: bool = False) -> tuple[dict, int, int] | None:
         """The first of `items` read aloud in a turn after line `since`: (item, seq of the line before that
-        turn). `loose`: a paraphrase is enough (4 of its words, half of the turn's), for a long question."""
+        turn, seq of its last line read). `loose`: a paraphrase is enough (4 of its words, half of the turn's), for a long question."""
         lines = self._lines()
         # a question read aloud starts a turn (after a gap in the speech; the first lines after the pin are
         # the answer) and is mostly made of its own words: the turn's first lines, up to its next gap (a long
@@ -503,9 +503,9 @@ class Session:
         for i in starts:
             j = i + 1
             while j < len(lines) and j - i < 8 and lines[j].start - lines[j - 1].end < self.ASK_TURN_GAP:
-                windows.append((i, _content_words(" ".join(s.text for s in lines[i:j]))))
+                windows.append((i, j, _content_words(" ".join(s.text for s in lines[i:j]))))
                 j += 1
-            windows.append((i, _content_words(" ".join(s.text for s in lines[i:j]))))
+            windows.append((i, j, _content_words(" ".join(s.text for s in lines[i:j]))))
         clock, now = self.speech_clock(), time.time()
         for item in items:
             words = _content_words(item["source"])
@@ -516,9 +516,9 @@ class Session:
             # a follow-up can only be read once it is on screen; its own wording often echoes the answer
             # it was drawn from, which must not count
             shown = clock - (now - item["at"]) if item["kind"] == "followup" else -1e9
-            for i, w in windows:
+            for i, j, w in windows:
                 if lines[i].start >= shown and len(words & w) >= need and len(words & w) * share >= len(w):
-                    return item, lines[i - 1].seq
+                    return item, lines[i - 1].seq, lines[j - 1].seq
         return None
 
     def ask_queue(self) -> list[dict]:

@@ -406,6 +406,46 @@ def test_live_batches_the_tail_ends_at_a_gap_in_the_speech_timestamps(tmp_path):
     assert s._maybe_retire() and st.focus_id not in (first, second)
 
 
+def _paraphrase(text):
+    """A short spoken version of a long question: five of its content words."""
+    from pacenote.interview.session import _content_words
+    return " ".join(sorted(_content_words(text))[:5]) + " ?"
+
+
+def test_the_tail_ends_when_the_interviewer_asks_the_new_question_in_their_own_words(tmp_path):
+    s = _talking(tmp_path)
+    st = s.state
+    first = st.focus_id
+    s.view()
+    st.ask_seq = 0
+    assert not s._maybe_retire()
+    _say(s, 90, 93, "C'est la saisie des commandes, voilà.")
+    st.apply_fast_result(fast(upd(first, "answered", "x", piece="saisie", covered=st.get(first).all_expect())),
+                         read=s.transcript.last_seq)
+    s.source.t = 93.2
+    assert s._maybe_retire()
+    second = st.focus_id
+    assert not s._maybe_retire()
+    _say(s, 93.4, 96, "Et en période de fêtes c'est encore pire.")  # the tail
+    st.apply_fast_result(fast(upd(second, "partial", "x", piece="fêtes", follow_up="Combien d'heures sup ?")))
+    # 1.2 s later: neither a pause nor a gap, a turn that is not the new question: still the tail
+    _say(s, 97.2, 99, "Bon, et les livraisons aussi.")
+    s.source.t = 99.2
+    assert not s._maybe_retire() and s._tail
+    _say(s, 100.2, 103, _paraphrase(st.get(second).text("fr")))  # 1.2 s later: the new question, paraphrased
+    asked_at = s.transcript.last_seq
+    s.source.t = 103.2
+    assert not s._maybe_retire() and not s._tail and st.ask_seq == asked_at
+    s.source.t = 103 + 3.6  # a thinking pause after the question: the tail's follow-up is not promoted
+    assert not s._maybe_retire()
+    assert st.ask_pin is None and [e.text for e in st.ask_next] == ["Combien d'heures sup ?"]
+    _say(s, 107, 110, "Les relances de devis, deux jours pour Paul.")
+    st.apply_fast_result(fast(upd(second, "answered", "x", piece="relances", covered=st.get(second).all_expect())),
+                         read=s.transcript.last_seq)
+    s.source.t = 110.2
+    assert s._maybe_retire() and st.focus_id not in (first, second)
+
+
 def test_the_tail_of_a_completed_answer_is_not_the_answer_to_the_new_question(tmp_path):
     """A follow-up drawn from the tail is queued under the new question; the pause that ends the tail does
     not promote it (the new question was not asked yet)."""
