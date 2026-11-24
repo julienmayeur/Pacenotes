@@ -170,11 +170,6 @@ def create_app(session: Session, auto_start: bool = False, research: ResearchMan
             raise HTTPException(status_code=409, detail="only pending questions can be skipped")
         return session.view()
 
-    @app.post("/api/enough")
-    async def enough() -> dict:
-        await session.force_enough()
-        return session.view()
-
     @app.post("/api/wispr")
     async def wispr(body: WisprBody) -> dict:
         await session.set_wispr(body.text)
@@ -189,6 +184,13 @@ def create_app(session: Session, auto_start: bool = False, research: ResearchMan
             raise HTTPException(status_code=409, detail="already generating")
         finalize_task[:] = [asyncio.create_task(session.finalize(), name="finalize")]
         return {"ok": True}
+
+    @app.post("/api/enough")
+    async def enough() -> dict:
+        """The interviewer has enough: the interview ends and the plan is written (as /api/finalize)."""
+        await session.force_enough()
+        await finalize()
+        return session.view()
 
     # the Plan view of this session (static/plan.html), its data and its PDF export
     @app.get("/plan", response_class=HTMLResponse)

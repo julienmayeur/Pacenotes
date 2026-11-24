@@ -116,7 +116,7 @@ async def _run_session(tmp_path, client_cfg):
     assert st.get("import-flow").text_fr.startswith("Comment se passe")  # reword after lock was rejected
     assert st.get("roi-expectation").status == "answered"
     assert st.get("import-delays").origin == "added"
-    assert st.enough_data and st.mode == "finalize"
+    assert st.enough_data and st.mode == "interview"  # advice for the interviewer, never an end
 
     # Wispr Flow transcript merged before generating the plan
     await session.set_wispr("Transcript Wispr final : dix à douze semaines entre commande et arrivée.")

@@ -113,6 +113,9 @@ def _server_opts(p: argparse.ArgumentParser) -> None:
                    help="fast pass this many seconds after the last new transcript line (default 2.5)")
     p.add_argument("--no-fast", action="store_true", help="disable the fast incremental pass")
     p.add_argument("--no-browser", action="store_true")
+    p.add_argument("--minutes", type=float, default=_env_float("PACENOTE_MINUTES", 0.0) or None,
+                   help="the interview's length in minutes (default: the questionnaire's target_minutes, else 20); "
+                        "the steps and questions share it")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -143,6 +146,12 @@ def build_parser() -> argparse.ArgumentParser:
     rp.add_argument("--srt", action="append", default=[], metavar="LOCALE=PATH",
                     help="SRT of any speech locale, e.g. --srt de-DE=de.srt (repeatable)")
     rp.add_argument("--speed", type=float, default=1.0, help="1 = real time, 10 = 10x, 0 = all at once")
+    rp.add_argument("--batch", type=float, default=0.0,
+                    help="deliver the lines in batches every N seconds, like live listening (11.5); default per line")
+    rp.add_argument("--transcript", type=Path,
+                    help="a recorded session's transcript.jsonl, each line delivered when it arrived live "
+                         "(instead of --fr/--en/--srt)")
+    rp.add_argument("--until", type=float, help="with --transcript: only the lines said before this many seconds")
     rp.add_argument("--auto-start", action="store_true", help="skip the consent screen")
 
     fin = sub.add_parser("finalize", help="(re)generate the plan for a saved session")
@@ -447,11 +456,20 @@ def cmd_run(args) -> int:
         settings=_settings(args),
     )
     _apply_languages(session, args, locales)
+    _apply_minutes(session, args)
     return _serve(session, args, auto_start=False)
+
+
+def _apply_minutes(session: Session, args) -> None:
+    if getattr(args, "minutes", None):
+        session.state.set_target_minutes(args.minutes)
+        session.persist()
 
 
 def cmd_replay(args) -> int:
     client = load_client(args.clients_dir, args.client)
+    if args.transcript:
+        return _replay_transcript(args, client)
     try:
         locs = {"fr-FR": args.fr, "en-US": args.en} | {
             i18n.speech_locale(k): Path(v) for k, _, v in (x.partition("=") for x in args.srt)}
@@ -473,11 +491,28 @@ def cmd_replay(args) -> int:
         # keep a copy of the input SRTs alongside the session, like a live run would
         for stream, src in files.items():
             shutil.copyfile(src, d / f"{stream}.srt")
-        return ReplaySource(files, speed=args.speed)
+        return ReplaySource(files, speed=args.speed, batch=args.batch)
 
     session = Session(client=client, session_dir=sdir, engine=_engine(args), source_factory=factory,
                       settings=_settings(args))
     _apply_languages(session, args, list(locs))
+    _apply_minutes(session, args)
+    return _serve(session, args, auto_start=args.auto_start)
+
+
+def _replay_transcript(args, client) -> int:
+    """Replay a recorded session's transcript.jsonl with its own live delivery (batches, delays)."""
+    if not args.transcript.exists():
+        print(f"error: {args.transcript} not found", file=sys.stderr)
+        return 2
+    source = ReplaySource.from_transcript(args.transcript, speed=args.speed, until=args.until)
+    streams = sorted(source.files)
+    locales = [i18n.speech_locale(s) for s in streams]
+    sdir = new_session_dir(args.sessions_dir, args.client)
+    session = Session(client=client, session_dir=sdir, engine=_engine(args), source_factory=lambda d: source,
+                      settings=_settings(args))
+    _apply_languages(session, args, locales)
+    _apply_minutes(session, args)
     return _serve(session, args, auto_start=args.auto_start)
 
 

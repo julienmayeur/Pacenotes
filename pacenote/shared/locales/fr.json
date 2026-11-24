@@ -84,6 +84,8 @@
     "askNowTitle": "La poser maintenant"
   },
   "where": {
+    "timeLeftOf": "restant sur {{m}} min",
+    "timeOver": "au-delà des {{m}} min",
     "title": "Où on en est",
     "timeLeft": "restant",
     "coverage": "couverture",
@@ -793,6 +795,8 @@
     "toggle": "Afficher ou masquer le détail"
   },
   "controls": {
+    "end": "Terminer",
+    "endTitle": "Terminer l'entretien et rédiger le plan (e)",
     "next": "Suivante",
     "answered": "Répondu",
     "skip": "Passer",

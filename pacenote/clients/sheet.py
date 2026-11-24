@@ -32,11 +32,9 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from pacenote.shared import fsutil, i18n
-
-from pacenote.research.horizons import POSTURES
 from pacenote.people.personas import PERSONAS
-
+from pacenote.research.horizons import POSTURES
+from pacenote.shared import fsutil, i18n
 
 _SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
@@ -208,7 +206,7 @@ client: {name}
 slug: {slug}
 language: {language}          # interview language (questions, follow-ups, plan): fr, en, de, es…
 speech_locales: {speech}   # speech locales listening to the room, primary first
-target_minutes: 15
+target_minutes: 20          # the interview length; pacenote run --minutes overrides it
 consent:
   fr: >-
     Avec votre accord, cet échange est transcrit en direct sur cet ordinateur pour en tirer

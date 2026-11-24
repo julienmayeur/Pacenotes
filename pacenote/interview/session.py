@@ -34,7 +34,7 @@ from pacenote.copilot.prompts import (
     build_sync_system,
     build_sync_user,
 )
-from pacenote.interview import lens, translate
+from pacenote.interview import lens, timebox, translate
 from pacenote.interview import phases as P
 from pacenote.interview.questionnaire import ClientConfig
 from pacenote.interview.state import SessionState
@@ -70,6 +70,9 @@ class Settings:
     answer_pause: float = 3.5
     answer_pause_open: float = 7.0
     answer_min_chars: int = 12  # something was said since the pinned question went up
+    # once the question's time slot is over (timebox.py) the next question moves up at a shorter pause,
+    # or at the next line that ends a sentence once the slot is `timebox.GRACE` seconds over
+    slot_pause: float = 1.5
     freeze_silence: float = 2.5  # the upcoming list only re-orders after this much silence
 
 
@@ -149,6 +152,8 @@ class Session:
         self._completed: str | None = None
         self._tail = False
         self._tail_seq = 0  # the transcript version when the completed question was retired
+        self._grace_from: dict[str, int] = {}  # focus id -> the line its slot's grace started after
+        self._timing_at = 0.0
         self._t0_mono: float | None = None
         self._translate_task: asyncio.Task | None = None
         self._display_task: asyncio.Task | None = None  # translations for the display language only
@@ -191,9 +196,10 @@ class Session:
             return
         self.state.mode = "interview"
         self.state.started_at = time.time()
-        self.state.start_phase_clock(self.state.started_at)  # the first phase's time budget starts now
         self._t0_mono = time.monotonic()
         self.source = self.source_factory(self.session_dir)
+        self.state.set_clock(self.interview_clock)  # budgets and slots run on the speech clock (any replay speed)
+        self.state.start_phase_clock(self.state.started_at)  # the first phase's time budget starts now
         configure = getattr(self.source, "configure_locales", None)
         if callable(configure):  # the spoken languages picked for this session
             configure(list(self.state.speech_locales))
@@ -415,7 +421,31 @@ class Session:
             advanced = self.state.mode == "interview" and self._maybe_retire()
             if n or advanced or self.state.capture_problems != before:
                 await self.notify()
+            self._log_timing()
             await asyncio.sleep(self.settings.poll_interval)
+
+    TIMING_EVERY = 2.0  # s between two lines of timing.jsonl
+
+    def _log_timing(self) -> None:
+        """timing.jsonl (session folder, local): every few seconds, the speech clock, the last line's end, the
+        microphone level, the pause measured and the time slot. What a pause or a move
+        was based on can be read back after a real interview."""
+        now = time.monotonic()
+        if self.state.mode != "interview" or now - self._timing_at < self.TIMING_EVERY:
+            return
+        self._timing_at = now
+        st = self.state
+        level = getattr(self.source, "level", None)
+        row = {"clock": round(self.speech_clock(), 2),
+               "line_end": round(max((s.end for s in self.transcript.segments), default=0.0), 2),
+               "level": level() if callable(level) else None,
+               "pause": round(min(self.speech_pause(), 1e6), 2), "lines": self.transcript.last_seq,
+               "focus": st.focus_id, "slot_left": timebox.slot_left(st), "left": round(timebox.left(st))}
+        try:
+            with (self.session_dir / "timing.jsonl").open("a", encoding="utf-8") as fh:
+                fh.write(json.dumps(row) + "\n")
+        except OSError:
+            pass
 
     # --- focus (the question on screen) ---------------------------------------------
     def silence(self) -> float:
@@ -428,6 +458,15 @@ class Session:
         at any speed), else since Start (the live helper's clock starts with it)."""
         own = getattr(self.source, "elapsed", None)
         return float(own()) if callable(own) else self.elapsed
+
+    def interview_clock(self) -> float:
+        """Epoch seconds on the interview's clock: Start + the speech clock (wall time live; a replay's own
+        pace at any speed)."""
+        st = self.state
+        clock = self.speech_clock()
+        if st.started_at is None or not math.isfinite(clock):
+            return time.time()
+        return st.started_at + clock
 
     def speech_pause(self) -> float:
         """Seconds of silence we can be sure of: since the end of the last line on the speech clock, minus
@@ -571,6 +610,11 @@ class Session:
             return nxt, f"complete, {len(cur.covered)} of {len(cur.all_expect())} details"
         if self._tail:
             return None  # still the tail of the answer just completed: the new question was not asked yet
+        if timebox.slot_over(st) and (nxt := next((i for i in queue if i["kind"] == "question"), None)):
+            # the question's time is up (timebox.py): the next question moves up at the first boundary,
+            # before any queued follow-up (digging deeper is what the time no longer allows)
+            why = self._slot_boundary()
+            return (nxt, why) if why else None
         if not queue and cur.status != "answered":
             return None  # nothing to move to: the question stays
         said = sum(len(s.text) for s in self.transcript.segments if s.seq > st.ask_seq)
@@ -586,6 +630,25 @@ class Session:
             nxt = next((i for i in queue if i["kind"] == "question"), None)
             return nxt, f"answered, {wait:g} s pause"
         return queue[0], f"answer over, {wait:g} s pause"
+
+    def _slot_boundary(self) -> str | None:
+        """The slot of the question being asked is over: is now a boundary? Something was said since what is
+        asked went up, and a sure pause of `slot_pause` seconds; or, once the slot is `timebox.GRACE` seconds
+        over, a new line that ends a sentence (a live conversation can go minutes without a pause the
+        batched lines can show)."""
+        st = self.state
+        if sum(len(s.text) for s in self.transcript.segments if s.seq > (st.ask_seq or 0)) < self.settings.answer_min_chars:
+            return None
+        if self.speech_pause() >= self.settings.slot_pause:
+            return f"time slot over, {self.settings.slot_pause:g} s pause"
+        if -(timebox.slot_left(st) or 0.0) < timebox.GRACE:
+            return None
+        # live, the lines come in batches every ~11.5 s and a pause is rarely sure: the next line that ends a
+        # sentence (in the newest batch) is the boundary
+        mark = self._grace_from.setdefault(st.focus_id or "", self.transcript.last_seq)
+        if any(s.seq > mark and not self.line_open(s.text) for s in self._lines()):
+            return "time slot over, sentence end"
+        return None
 
     def _maybe_retire(self) -> bool:
         """What is asked now changes only once its answer is over (see _answer_over)."""
@@ -1201,7 +1264,6 @@ class Session:
         ]
         newest = max((s.received_at for s in self.transcript.segments), default=None)
         ov = st.overview()
-        elapsed = time.time() - st.started_at if st.started_at else 0.0
         return {
             "version": self._version,
             "client": st.client,
@@ -1249,8 +1311,10 @@ class Session:
                 "must_open": [st.get(i).text(shown) for i in ov["must_open"]][:4],
                 "must_open_count": len(ov["must_open"]),
                 "missing_details": ov["missing_details"],
-                "seconds_left": max(0, int(st.target_minutes * 60 - elapsed)) if st.started_at else st.target_minutes * 60,
+                "seconds_left": max(0, int(timebox.left(st))),
             },
+            # the time budget (timebox.py): elapsed / total for the screen; the slot for the details
+            "time": timebox.view(st),
             "themes": [
                 {
                     "id": t.id,

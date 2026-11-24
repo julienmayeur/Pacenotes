@@ -19,8 +19,8 @@ PHASE_INDEX = {p: i for i, p in enumerate(PHASE_IDS)}
 CORE_PHASES = ("signal-carriers", "signal-flow", "knowledge", "decisions")  # shipped with the app
 DEEP_DIVES = "deep-dives"
 
-# Default minutes for a 15-minute interview; scaled to target_minutes, overridable per questionnaire
-# (`phase_minutes:`).
+# The planned minutes per phase, as weights: scaled to target_minutes (20 by default), overridable per
+# questionnaire (`phase_minutes:`); timebox.py gives each phase its share of the time left when it starts.
 DEFAULT_MINUTES = {"wealth": 1.5, "signal-carriers": 1.5, "signal-flow": 3.0, "knowledge": 2.0,
                    "decisions": 2.0, "deep-dives": 4.0, "return": 1.0}
 

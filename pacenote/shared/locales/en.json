@@ -84,6 +84,8 @@
     "askNowTitle": "Ask it now"
   },
   "where": {
+    "timeLeftOf": "left of {{m}} min",
+    "timeOver": "past the {{m}} min",
     "title": "Where we are",
     "timeLeft": "left",
     "coverage": "coverage",
@@ -793,6 +795,8 @@
     "toggle": "Show or hide the details"
   },
   "controls": {
+    "end": "End",
+    "endTitle": "End the interview and write the plan (e)",
     "next": "Next",
     "answered": "Answered",
     "skip": "Skip",

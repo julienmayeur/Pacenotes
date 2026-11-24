@@ -77,19 +77,21 @@ def test_follow_ups_queue_under_the_question_being_asked_never_in_its_place():
     st.apply_fast_result(fast(upd(q.id, "partial", "Aller plus vite.", piece="Les commandes surtout.",
                                   rung="business", follow_up="Les commandes de qui ?")))
     assert [e.text for e in st.ask_next] == ["Plus vite sur quoi, concrètement ?", "Les commandes de qui ?"]
-    # the queue is capped: a third proposal is dropped (logged), nothing visible is replaced
+    # the queue is capped: a third proposal, drawn from the latest answer, replaces the oldest queued one
+    # (a full queue used to reject every new proposal: 14 minutes of stale follow-ups in a real interview)
     rep = st.apply_fast_result(fast(upd(q.id, "partial", "x", piece="Et les devis.", rung="business",
                                         follow_up="Et les devis ?")))
-    assert len(st.ask_next) == 2 and any(r.kind == "followup" for r in rep.rejected)
+    assert [e.text for e in st.ask_next] == ["Les commandes de qui ?", "Et les devis ?"]
+    assert not any(r.kind == "followup" for r in rep.rejected)
     # the answer is over: the first queued follow-up is asked now and joins the thread
     st.promote()
-    assert st.ask_pin.text == "Plus vite sur quoi, concrètement ?" and q.follow_up == st.ask_pin.text
-    assert [e.text for e in st.ask_next] == ["Les commandes de qui ?"]
+    assert st.ask_pin.text == "Les commandes de qui ?" and q.follow_up == st.ask_pin.text
+    assert [e.text for e in st.ask_next] == ["Et les devis ?"]
     assert [t.kind for t in q.thread] == ["answer", "answer", "answer", "followup"]
     # the same follow-up is never asked or queued twice
     rep = st.apply_fast_result(fast(upd(q.id, "partial", "x", piece="Six mois.", rung="business",
-                                        follow_up="Plus vite sur quoi, concrètement ?")))
-    assert [e.text for e in st.ask_next] == ["Les commandes de qui ?"]
+                                        follow_up="Les commandes de qui ?")))
+    assert [e.text for e in st.ask_next] == ["Et les devis ?"]
     # a focus change resets the ask: the new question is asked first, with nothing queued
     st.advance("n")
     st.ensure_ask()
@@ -215,7 +217,8 @@ def test_the_question_being_answered_stays_while_the_answer_goes_on(tmp_path):
         assert not s._maybe_retire()
         v = s.view()["current"]
         assert v["ask"] == asked  # never swapped under the interviewee
-        assert [x["text"] for x in v["ask_next"]] == ["Plus vite sur quoi ?", "Les commandes de qui ?"][:i + 1]
+        assert [x["text"] for x in v["ask_next"]] == [["Plus vite sur quoi ?"], ["Plus vite sur quoi ?", "Les commandes de qui ?"],
+                                                      ["Les commandes de qui ?", "Et les devis ?"]][i]
     # a pause mid-sentence (no final mark) is not the end of the answer…
     s.source.t = 98 + 5
     assert not s._maybe_retire()
@@ -226,8 +229,8 @@ def test_the_question_being_answered_stays_while_the_answer_goes_on(tmp_path):
     s.source.t = 106 + 3.6
     assert s._maybe_retire()
     v = s.view()["current"]
-    assert v["id"] == first and v["ask"]["text"] == "Plus vite sur quoi ?" and v["ask"]["kind"] == "followup"
-    assert [x["text"] for x in v["ask_next"]] == ["Les commandes de qui ?"]
+    assert v["id"] == first and v["ask"]["text"] == "Les commandes de qui ?" and v["ask"]["kind"] == "followup"
+    assert [x["text"] for x in v["ask_next"]] == ["Et les devis ?"]
     assert s.ask_changes[-1]["reason"].startswith("answer over")
     # the answer to the new one has not started: nothing moves until something is said
     s.source.t = 200

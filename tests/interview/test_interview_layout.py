@@ -102,6 +102,13 @@ const { chromium } = require('playwright');
         // no inner scroll when everything fits
         overflow: (() => { const el = document.querySelector('#interview'); return el.scrollHeight - el.clientHeight; })(),
         cursor: document.querySelector('#phases .phase.current .mark')?.textContent || '',
+        // the time budget, quiet; the End control at the end of the row, lit only when it is time
+        timeTotal: document.querySelector('#time-total').textContent,
+        timeLeft: document.querySelector('#time-left').textContent,
+        end: { shown: visible(document.querySelector('#ctl-end')),
+               text: document.querySelector('#ctl-end span').textContent,
+               ready: document.querySelector('#ctl-end').classList.contains('ready') },
+        banner: visible(document.querySelector('#banner')),
       };
     });
     await p.keyboard.press('d');
@@ -144,7 +151,7 @@ const { chromium } = require('playwright');
 """
 
 
-def _run(tmp_path, session):
+def _run(tmp_path, session, script_text=None):
     sock = socket.socket()
     sock.bind(("127.0.0.1", 0))
     port = sock.getsockname()[1]
@@ -157,7 +164,7 @@ def _run(tmp_path, session):
         while not server.started and time.time() < deadline:
             time.sleep(0.05)
         script = tmp_path / "layout.js"
-        script.write_text(LAYOUT_SCRIPT, encoding="utf-8")
+        script.write_text(script_text or LAYOUT_SCRIPT, encoding="utf-8")
         out = subprocess.run(["node", str(script), f"http://127.0.0.1:{port}/"], capture_output=True, text=True,
                              timeout=120, cwd=tmp_path)
         assert out.returncode == 0, out.stderr
@@ -193,6 +200,8 @@ def test_ask_now_is_the_focal_point_and_the_card_uses_a_small_type_scale(tmp_pat
         assert v["closedAgain"]
         assert v["overflow"] <= 1, (name, v["overflow"])  # no inner scroll when the card fits
         assert v["cursor"] == "▸"
+        assert v["timeTotal"] == "restant sur 15 min" and v["timeLeft"] == "15:00"
+        assert v["end"] == {"shown": True, "text": "Terminer", "ready": False} and not v["banner"]
         # 4 type sizes at most inside the interview card
         assert len(v["cardSizes"]) <= 4, (name, v["cardSizes"])
         # the breadcrumb is the question's own ladder: attached to the theme header, above "ask now"
@@ -213,3 +222,32 @@ def test_without_a_follow_up_the_theme_question_takes_the_focal_spot(tmp_path, c
         assert v["askPx"] == v["largest"]
         assert not v["themeShown"]  # shown once, at focal size; the header keeps its label and ladder
         assert len(v["cardSizes"]) <= 4, (name, v["cardSizes"])
+
+
+STAY_SCRIPT = r"""
+const { chromium } = require('playwright');
+(async () => {
+  const b = await chromium.launch();
+  const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
+  await p.goto(process.argv[2]);
+  await p.waitForTimeout(3000);
+  await p.keyboard.press('c');
+  await p.waitForTimeout(300);
+  const out = { path: new URL(p.url()).pathname,
+                console: await p.evaluate(() => !document.querySelector('#console').classList.contains('hidden')) };
+  await b.close();
+  console.log(JSON.stringify(out));
+})().catch(e => { console.error(e); process.exit(1); });
+"""
+
+
+@pytest.mark.skipif(not _node_playwright(), reason="needs node + playwright + chromium")
+def test_a_page_opened_after_the_plan_stays_on_the_interview_screen(tmp_path, client_cfg):
+    """The Plan view opens by itself only on a screen that followed the interview: a page loaded once the
+    plan is written stays, so the console (the after-meeting transcript box) is still reachable."""
+    session = _session(tmp_path, client_cfg, with_follow_up=False)
+    plan = tmp_path / "plan.md"
+    plan.write_text("# Plan\n", encoding="utf-8")
+    session.state.mode, session.state.plan_files = "done", {"md": str(plan)}
+    r = _run(tmp_path, session, STAY_SCRIPT)
+    assert r == {"path": "/", "console": True}

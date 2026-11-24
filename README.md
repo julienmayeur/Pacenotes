@@ -3,7 +3,7 @@
 Pace notes for your interviews.
 
 In a rally, the co-driver reads the pace notes so the driver keeps their eyes on the road. Pacenote
-is a live interview copilot for consulting and discovery kickoffs: during a 10–15 minute
+is a live interview copilot for consulting and discovery kickoffs: during a 15–20 minute
 conversation with someone at a client (its CEO, a function leader or a person who does the work), it listens, keeps the question on screen, captures the answer,
 proposes the next follow-up, and writes the integration plan when you stop. You keep your mind on
 the conversation.
@@ -31,6 +31,14 @@ prepare (admin) ─► consent ─► interview: capture + follow-ups ─► sto
   there is a real pause after a complete sentence. As soon as the analysis marks the question answered
   (its call, held back until the required details are heard), the next question comes up at once, even
   while the interviewee goes on. Click a queued question to ask it at once.
+- **Time keeps the interview moving.** The interview has a length (20 minutes by default, `--minutes 15`
+  to change it). Each step of the conversation gets its share of the time left and each question a slot
+  (priority 1 counts double, at least a minute). When a question's slot is over the copilot stops
+  digging: the next question is queued under it and moves up at the first pause or sentence end, never
+  mid-sentence. A step that runs long takes time from the steps after it, priority 2 and 3 questions
+  first, never from the closing questions, which always get their time at the end. The screen shows the
+  time left, quietly. When the time is up nothing stops: the copilot keeps listening and proposing, and
+  the End button lights up; ending writes the plan and opens it on screen.
 - **Admin auto-fill.** Before the interview, the admin panel fills the client sheet from public web
   sources (with provenance per field; your own edits are never overwritten) and prepares profile
   cards of the people you will meet (professional, publicly self-published facts only).
@@ -204,6 +212,9 @@ calls):
 pacenote replay --client brioche-four --srt fr-FR=sessions/brioche-four/<id>/fr.srt --speed 8 --offline
 ```
 
+`--batch 11.5` delivers the lines in batches like live listening; `--transcript sessions/<slug>/<id>/transcript.jsonl`
+replays a recorded session with its own live delivery. `--minutes N` sets the interview's length (run and replay).
+
 ### Keys during the interview
 
 | Key | Action |
@@ -211,6 +222,7 @@ pacenote replay --client brioche-four --srt fr-FR=sessions/brioche-four/<id>/fr.
 | `n` / Enter | Next question |
 | click a queued question | Ask it now (it moves up into « À demander maintenant ») |
 | `p` | Close the current phase |
+| `e` | End the interview: stop listening, write the plan and open it |
 | `a` | Mark the current question answered and move on |
 | `k` | Skip the current question |
 | `s` | Sync now |

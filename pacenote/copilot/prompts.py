@@ -6,7 +6,7 @@ import json
 from collections.abc import Mapping
 
 from pacenote.copilot.contract import CATALOG_DESCRIPTIONS, SLOT_DESCRIPTIONS, SLOT_KEYS, SLOT_RUNG
-from pacenote.interview import lens
+from pacenote.interview import lens, timebox
 from pacenote.interview import phases as P
 from pacenote.interview.state import SessionState
 from pacenote.knowledge import briefs
@@ -513,7 +513,9 @@ state.current_question is the original question on screen. It stays there until 
 on. Never reword, reorder or remove it, and never put it in next_questions. Under it, the screen \
 shows a thread: the answer pieces captured so far and the follow-up questions asked. `asking_now` is \
 what the interviewee is answering; `queued` are follow-ups already proposed, on screen under it and not \
-asked yet: your follow_up is queued after them, so never repeat one.
+asked yet: your follow_up is queued after them, so never repeat one. When `time_over` is true, the \
+question's time is used up and `next_question` is queued instead: still record what is said, but propose \
+no follow-up on it.
 
 # Dig down the ladder, one follow-up at a time
 For each question the interviewer digs down a ladder, rung by rung:
@@ -581,8 +583,8 @@ one item per speaker turn: start (mm:ss), speaker (fde = the interviewer, client
 noise, the room (TV, nearby voices) and unrelated chatter.
 - enough_data: true only when all priority-1 questions are answered and every theme has \
 coverage of at least about 0.6, or when the time budget is used up and the remaining gaps can \
-be listed as open points in the plan. Be conservative: once true, the interview ends and plan \
-writing starts. enough_data_reason: one sentence why (or why not yet).
+be listed as open points in the plan. Be conservative: once true, the interviewer is told they can \
+end the interview (it goes on until they do). enough_data_reason: one sentence why (or why not yet).
 - interviewee_read, ambassador_probes and sponsor_probe: see Reading the interviewee and People questions above.
 - viewpoints and ask_to: see The views heard and the ask_to rule above.
 - value_framings and metric_questions: see The executive lens above.
@@ -641,6 +643,7 @@ def phase_snapshot(state: SessionState) -> dict:
     budget = state.phase_budgets.get(cur or "", 0.0)
     return {"id": cur, "goal": P.PHASE_GOALS.get(cur or "", ""),
             "seconds_left": round(budget - state.phase_elapsed()) if state.phase_since is not None else round(budget),
+            "interview_seconds_left": round(timebox.left(state)),
             "map_gaps": [g.split(".", 1)[1] for g in state.map_gaps(cur)],
             "next_phase": P.next_phase(cur)}
 
@@ -1109,7 +1112,8 @@ covered too.
   - follow_up: ONE short natural follow-up question in {lang_name} for the interviewer to ask next, \
 digging into the original question on the current rung, aimed at its first missing item. `asking_now` \
 is what the interviewee is answering; `queued` are follow-ups already on screen, not asked yet: never \
-repeat one of them. When \
+repeat one of them. When `time_over` is true the question's time is used up and `next_question` is \
+queued: follow_up "" (still capture the answer piece). When \
 the answer is vague, ask for a concrete recent example, a number, a name or a tool, in the \
 interviewee's own words, following the wording rules above. Never repeat one from the thread. "" when the \
 ladder is done.
@@ -1137,8 +1141,12 @@ def ask_snapshot(state: SessionState) -> dict:
     state.ensure_ask()
     cur = state.current_question
     pin = state.ask_pin
+    nxt = state.get(state.next_qid()) if timebox.slot_over(state) else None
     return {"asking_now": pin.text if pin is not None else (cur.text(state.language) if cur else ""),
-            "queued": [e.text for e in state.ask_next]}
+            "queued": [e.text for e in state.ask_next],
+            # the question's time slot is over (timebox.py): the next question is queued, no more digging
+            "time_over": timebox.slot_over(state),
+            **({"next_question": nxt.text(state.language)} if nxt is not None else {})}
 
 
 def build_fast_system(state: SessionState, glossary: str, context: str = "") -> str:

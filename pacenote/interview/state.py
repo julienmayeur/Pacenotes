@@ -11,8 +11,9 @@ Focus (the question on screen):
 What is asked now (the "ask"): the question being answered stays on screen until the answer is over.
 `ask_pin` is the follow-up being answered (None = the focus question itself). A follow-up the model
 proposes meanwhile is never put in its place: it is queued under it in `ask_next` (at most
-STACK_CAP; a full queue drops new proposals) and, once the focus is answered, the next question is
-queued after them (`ask_next_qid`). Queued follow-ups are not in the thread (the thread and the prompts
+STACK_CAP; a new proposal on a full queue replaces the oldest queued one, the latest answer being the
+best guide) and, once the focus is answered or its time slot is over (timebox.py), the next question is
+queued after them (`ask_next_qid`). Once the slot is over no follow-up is queued any more. Queued follow-ups are not in the thread (the thread and the prompts
 hold what was asked); one joins the thread when it is promoted, i.e. when the session sees the answer
 is over (session.py) or the interviewer clicks it. A focus change resets the ask.
 
@@ -65,10 +66,11 @@ import math
 import re
 import time
 import unicodedata
+from collections.abc import Callable
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, PrivateAttr, model_validator
 
 from pacenote.copilot.contract import (
     MAP_KINDS,
@@ -83,7 +85,7 @@ from pacenote.copilot.contract import (
     SlotFill,
     SyncResult,
 )
-from pacenote.interview import lens
+from pacenote.interview import lens, timebox
 from pacenote.interview import phases as P
 from pacenote.interview.questionnaire import Questionnaire
 from pacenote.knowledge import recipes as recipe_lib
@@ -373,6 +375,16 @@ class PassageLog(BaseModel):
     text: str
 
 
+class _SharedClock:
+    """The interview clock a state reads; copies of the state (the snapshots sent to the engines) share it."""
+
+    def __init__(self, fn: Callable[[], float]):
+        self.fn = fn
+
+    def __deepcopy__(self, memo) -> _SharedClock:
+        return self
+
+
 class ApplyReport(BaseModel):
     applied: list[EditLogEntry] = Field(default_factory=list)
     rejected: list[EditLogEntry] = Field(default_factory=list)
@@ -434,10 +446,12 @@ class SessionState(BaseModel):
     phase: str | None = None
     phase_since: float | None = None
     phase_spent: dict[str, float] = Field(default_factory=dict)
-    phase_budgets: dict[str, float] = Field(default_factory=dict)  # seconds per phase
+    phase_budgets: dict[str, float] = Field(default_factory=dict)  # seconds per phase (its share, timebox.py)
+    phase_plan: dict[str, float] = Field(default_factory=dict)  # the planned seconds per phase (the weights)
     phases_skipped: list[str] = Field(default_factory=list)  # phases the interviewer ended with `p`
     focus_id: str | None = None  # the question being asked (locked while answered)
     focus_since: float | None = None
+    focus_slot: float | None = None  # seconds the focus question gets before time moves it on (timebox.py)
     # what is asked now on the focus question `ask_for` (see the module docstring): the follow-up being
     # answered (None = the focus question itself), the follow-ups queued under it, not asked yet, the
     # next question queued once the focus is answered, and when the pinned item went up (`ask_seq`: the
@@ -483,6 +497,25 @@ class SessionState(BaseModel):
     sync_read: int = 0
     coverage_read: dict[str, int] = Field(default_factory=dict)
 
+    # the interview's clock (epoch seconds): wall time live; the session sets it to its speech clock, so
+    # a replay at any speed keeps the same pace (time budgets, slots)
+    _clock: _SharedClock | None = PrivateAttr(default=None)
+
+    def now(self) -> float:
+        return self._clock.fn() if self._clock is not None else time.time()
+
+    def set_clock(self, clock: Callable[[], float] | None) -> None:
+        self._clock = _SharedClock(clock) if clock is not None else None
+
+    def set_target_minutes(self, minutes: float) -> None:
+        """Change the interview's length before it starts: the step budgets are scaled to it."""
+        if minutes <= 0 or self.started_at is not None:
+            return
+        scale = float(minutes) / float(self.target_minutes or minutes)
+        self.target_minutes = int(round(minutes))
+        self.phase_plan = {k: round(v * scale, 1) for k, v in (self.phase_plan or self.phase_budgets).items()}
+        self.phase_budgets = dict(self.phase_plan)
+
     # --- construction / persistence ---------------------------------------
     @classmethod
     def from_questionnaire(cls, q: Questionnaire) -> SessionState:
@@ -505,6 +538,7 @@ class SessionState(BaseModel):
                              key=lambda x: P.PHASE_INDEX[x.phase]),
             use_cases=[UseCaseState(id=u.id, titles=dict(u.title.root)) for u in q.use_cases],
             phase_budgets=P.budgets(q.target_minutes, q.phase_minutes),
+            phase_plan=P.budgets(q.target_minutes, q.phase_minutes),
             posture=q.posture,
             posture_rationale=q.posture_rationale,
         )
@@ -756,7 +790,7 @@ class SessionState(BaseModel):
     def phase_elapsed(self, now: float | None = None) -> float:
         if self.phase_since is None:
             return 0.0
-        return max(0.0, (now or time.time()) - self.phase_since)
+        return max(0.0, (now or self.now()) - self.phase_since)
 
     def phase_budget_spent(self, phase: str | None = None, now: float | None = None) -> bool:
         phase = phase or self.current_phase
@@ -766,9 +800,14 @@ class SessionState(BaseModel):
 
     def phase_done(self, phase: str | None, now: float | None = None) -> bool:
         """The phase can hand over: nothing left to ask in it, the interviewer skipped it, its time budget is
-        spent, or its maps hold enough facts once one of its questions was asked."""
+        spent, the closing is due (timebox.py), or its maps hold enough facts once one of its questions was
+        asked."""
         if phase is None:
             return True
+        if phase != timebox.CLOSING and timebox.closing_due(self, now):
+            return True
+        if timebox.phase_short(self, phase, now) and not timebox.must_left(self, phase):
+            return True  # not enough time for another question and no priority-1 one left: an overrun eats the rest
         if phase in self.phases_skipped:
             return True
         if not any(q.open and q.phase == phase for q in self.questions):
@@ -779,18 +818,26 @@ class SessionState(BaseModel):
         return asked and self.maps_enough(phase)
 
     def start_phase_clock(self, now: float | None = None) -> None:
-        """Called when the interview starts (consent given): the first phase's clock starts."""
+        """Called when the interview starts (consent given): the first phase's clock starts, with its share
+        of the time, and the first question's slot."""
+        now = now or self.now()
         self.phase = self.current_phase
-        self.phase_since = now or time.time()
+        self.phase_since = now
+        if self.phase is not None:
+            self.phase_budgets[self.phase] = round(timebox.phase_share(self, self.phase, now), 1)
+        self.focus_since = now
+        self.focus_slot = timebox.slot_for(self, self.focus_id, now)
 
     def _enter_phase(self, phase: str | None, reason: str) -> None:
         if phase == self.phase:
             return
-        now = time.time()
+        now = self.now()
         if self.phase is not None and self.phase_since is not None:
             self.phase_spent[self.phase] = round(self.phase_spent.get(self.phase, 0.0) + now - self.phase_since, 1)
         old, self.phase = self.phase, phase
         self.phase_since = now if self.phase_since is not None or self.started_at else None
+        if phase is not None and self.started_at is not None:  # its share of the time left (timebox.py)
+            self.phase_budgets[phase] = round(timebox.phase_share(self, phase, now), 1)
         self.edit_log.append(EditLogEntry(sync=self.sync_count, kind="phase", target=phase, applied=True,
                                           detail=f"{old} -> {phase} ({reason})"))
 
@@ -804,17 +851,22 @@ class SessionState(BaseModel):
         rank = {i: n for n, i in enumerate(self.next_questions)}
         cur_idx = P.PHASE_INDEX.get(current or "", 0)
         current_open = not self.phase_done(current)
+        closing = timebox.closing_due(self)  # the time left is the closing's: its questions come first
+        short = timebox.phase_short(self, current)  # little time left in the step: priority 1 first
 
         def key(q: QuestionState) -> tuple:
             idx = P.PHASE_INDEX[q.phase]
             seen = q.id in visited
-            if idx == cur_idx and current_open and not seen:
+            if closing and q.phase == timebox.CLOSING and not seen:
+                group = 0
+            elif idx == cur_idx and current_open and not seen:
                 group = 0  # the current phase, questions not asked yet
             elif idx > cur_idx and not seen:
                 group = 1  # the next phases, in order
             else:
                 group = 2  # left-overs (visited, earlier or ended phases): only at the very end
-            return (group, seen, idx if group else 0, rank.get(q.id, len(rank)) if group == 0 else 0)
+            return (group, seen, idx if group else 0, q.priority if short and group == 0 else 0,
+                    rank.get(q.id, len(rank)) if group == 0 else 0)
 
         order = sorted(cands, key=key)  # stable: queue order inside each group
         return [q.id for q in order]
@@ -1111,12 +1163,11 @@ class SessionState(BaseModel):
         viewpoints_lib.apply(self, result.viewpoints, read, ok, reject)
         attendees_lib.apply_ask_to(self, result.ask_to, read, ok, reject)
 
-        # 7. enough_data is sticky
+        # 7. enough_data is sticky. It is advice for the interviewer (the essentials are covered), never an
+        # end: listening, the analysis and the questions go on until the interviewer ends the interview
         if result.enough_data and not self.enough_data:
             self.enough_data = True
             self.enough_data_reason = result.enough_data_reason
-            if self.mode == "interview":
-                self.mode = "finalize"
 
         self.sync_count = sync_no
         self.sync_read = max(self.sync_read, read)
@@ -1285,18 +1336,21 @@ class SessionState(BaseModel):
         asked = [e.text for e in q.thread if e.kind == "followup"] + [e.text for e in self.ask_next]
         if any(_fold(t) == f for t in asked) or _fold(q.text(self.language)) == f:
             return "already asked or queued"
-        if len(self.ask_next) >= STACK_CAP:
-            return f"{STACK_CAP} follow-ups already queued under the question being asked"
+        if timebox.slot_over(self):
+            return "time slot over: the next question is queued instead"
+        if len(self.ask_next) >= STACK_CAP:  # the newest, drawn from the latest answer, replaces the oldest
+            self.ask_next = self.ask_next[len(self.ask_next) - STACK_CAP + 1:]
         self.ask_next.append(ThreadEntry(kind="followup", text=text, rung=q.rung if q.rung != "done" else "implementation",
                                          at=time.time(), by=by, lang=self.language))
         q.updated_at = time.time()
         return ""
 
     def next_qid(self) -> str | None:
-        """The next question, queued under the ask once the focus is answered (kept while it stays open)."""
+        """The next question, queued under the ask once the focus is answered or its time slot is over
+        (kept while it stays open)."""
         self.ensure_ask()
         q = self.get(self.focus_id)
-        if q is None or q.status != "answered":
+        if q is None or (q.status != "answered" and not timebox.slot_over(self)):
             return None
         nq = self.get(self.ask_next_qid)
         if nq is None or not nq.open:
@@ -1353,15 +1407,17 @@ class SessionState(BaseModel):
             candidates.remove(to)
             candidates.insert(0, to)
         self.focus_id = candidates[0] if candidates else None
-        self.focus_since = time.time()
+        self.focus_since = self.now()
         if self.focus_id:
             self.focus_history.append(self.focus_id)
             new_phase = self.get(self.focus_id).phase
             if new_phase != self.phase:
                 why = ("skipped by the interviewer" if self.phase in self.phases_skipped
+                       else "closing time" if new_phase == timebox.CLOSING and timebox.closing_due(self)
                        else "time budget spent" if self.phase_budget_spent(self.phase)
                        else "maps filled" if self.maps_enough(self.phase or "") else "questions done")
                 self._enter_phase(new_phase, why)
+        self.focus_slot = timebox.slot_for(self, self.focus_id)
         self.next_questions = [i for i in self.next_questions if i != self.focus_id]
         self._refill_next()
         self.edit_log.append(EditLogEntry(sync=self.sync_count, kind="focus", target=self.focus_id,
@@ -1416,11 +1472,14 @@ class SessionState(BaseModel):
             order = self.upcoming_order() if self.phase else [q.id for q in self.queue()]
             self.focus_id = order[0] if order else None
             if self.focus_id and self.focus_since is None:
-                self.focus_since = time.time()
+                self.focus_since = self.now()
             if self.focus_id and self.focus_id not in self.focus_history:
                 self.focus_history.append(self.focus_id)
             if self.phase is not None and self.focus_id and self.get(self.focus_id).phase != self.phase:
                 self._enter_phase(self.get(self.focus_id).phase, "questions done")
+            if self.focus_id and self.started_at is not None:
+                self.focus_since, self.focus_slot = self.now(), None
+                self.focus_slot = timebox.slot_for(self, self.focus_id)
         if self.phase is None and self.focus_id:
             self.phase = self.get(self.focus_id).phase
         phase = self.current_phase

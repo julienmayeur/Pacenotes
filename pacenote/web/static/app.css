@@ -141,6 +141,8 @@ body {
 .ctl kbd { margin-left: 5px; font-size: var(--fs-xs); border-color: var(--rule); color: var(--faint); }
 .ctl.primary-ctl { color: var(--accent); font-weight: 600; }
 .ctl:disabled { opacity: .4; cursor: not-allowed; }
+.ctl.end-ctl { margin-left: auto; }
+.ctl.end-ctl.ready { color: var(--accent); border-color: var(--accent); }  /* the essentials are in, or the time is up */
 
 /* the theme question under a follow-up: small context, never a second question competing with "ask now" */
 .theme-head { margin: 0 0 var(--sp-2); }
@@ -306,6 +308,7 @@ body {
 .big-num span { font-size: clamp(18px, 1.6vw, 26px); font-weight: 600; font-variant-numeric: tabular-nums; }
 .big-num small { font-size: 11px; color: var(--muted); letter-spacing: .06em; }
 .big-num.low span { color: var(--warn); }
+.big-num.over span { color: var(--muted); }  /* past the planned length: quiet, never an alarm on the shared screen */
 .must { line-height: 1.4; }
 .must:empty { display: none; }
 .must b { color: var(--ink); font-weight: 600; }

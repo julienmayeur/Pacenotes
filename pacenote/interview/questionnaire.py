@@ -238,7 +238,7 @@ class Questionnaire(BaseModel):
     language: Lang = "fr"  # interview language by default (questions, plan); any language code
     ui_language: str | None = None  # interviewer screen language by default (else `language`, else English)
     speech_locales: list[str] | None = None  # speech locales, e.g. [de-DE, en-US] (default fr-FR + en-US)
-    target_minutes: int = 15
+    target_minutes: int = 20  # timebox.DEFAULT_MINUTES (15 is short for ~20-30 questions)
     consent: Texts
     context: str = ""
     use_cases: list[UseCaseDef] = Field(default_factory=list)

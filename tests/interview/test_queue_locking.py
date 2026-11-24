@@ -175,12 +175,14 @@ def test_plan_delta_accumulates_without_duplicates(state):
     assert state.plan_notes["quick_wins"] == ["Portail"]
 
 
-def test_enough_data_is_sticky_and_switches_mode(state):
+def test_enough_data_is_sticky_and_never_ends_the_interview(state):
+    """A real interview froze at 15:30 when the model said "time is up": the mode switched to finalize and
+    listening, the analysis and the questions stopped for the 35 minutes that followed. It is advice now."""
     state.mode = "interview"
     state.apply_sync_result(result(enough_data=True, enough_data_reason="tout est couvert"))
-    assert state.enough_data and state.mode == "finalize"
+    assert state.enough_data and state.mode == "interview"
     state.apply_sync_result(result(enough_data=False))
-    assert state.enough_data and state.mode == "finalize"
+    assert state.enough_data and state.enough_data_reason == "tout est couvert" and state.mode == "interview"
 
 
 def test_manual_overrides(state):

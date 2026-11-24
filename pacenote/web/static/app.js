@@ -14,6 +14,8 @@ const t = (key, params, opts) => i18n.t(key, params, opts);
 
 const $ = (id) => document.getElementById(id);
 let S = null;
+let planShown = false;  // the Plan view opened once the plan was written
+let sawLive = false;  // this page saw the interview before the plan: only then does it open the Plan view
 let lastCurrentId = null;
 // The interviewee sees this screen too: interviewer details (timings, transcript, coverage by theme, follow-ups
 // already asked...) are hidden until the "Détails" toggle (d) shows them, styled apart. Both choices are kept
@@ -95,6 +97,7 @@ function render(state) {
   // before its translations land): never step back to an older version
   if (S && state !== S && state.version != null && S.version != null && state.version < S.version) state = S;
   S = state;
+  S._at = Date.now() / 1000;  // when this state arrived: the time indicator ticks from there
   const L = S.languages || {};
   if (L.overlay) i18n.extend(S.language, L.overlay);  // Claude's translations for the interview language
   if (S.ui_language && S.ui_language !== i18n.language && !uiPending) i18n.setLanguage(S.ui_language, { source: "server" });
@@ -526,15 +529,22 @@ function fillUpcoming(li, q) {
   setText(li.querySelector(".draft"), q.answer ? `◐ ${q.answer}` : "");
 }
 
+/** Seconds left in the interview's time budget (negative once over), on the server's interview clock. */
 function timeLeft() {
-  return S.started_at ? Math.max(0, S.target_minutes * 60 - (Date.now() / 1000 - S.started_at)) : S.target_minutes * 60;
+  const T = S.time;
+  if (!T) return S.target_minutes * 60;
+  return S.mode === "interview" && S.started_at ? T.left - (Date.now() / 1000 - S._at) : T.left;
 }
 
 function renderWhere() {
   const st = S.status || {};
   const left = timeLeft();
-  setText($("time-left"), clock(left));
-  setClass($("time-left").parentElement, "low", left < 180);
+  // discreet: the time left out of the planned length; past it, the time beyond it (no alarm, the
+  // interviewee sees this screen too)
+  setText($("time-left"), left >= 0 ? clock(left) : `+${clock(-left)}`);
+  setText($("time-total"), left >= 0 ? t("where.timeLeftOf", { m: S.target_minutes }) : t("where.timeOver", { m: S.target_minutes }));
+  setClass($("time-left").parentElement, "low", left < 180 && left >= 0);
+  setClass($("time-left").parentElement, "over", left < 0);
   setText($("coverage-pct"), `${Math.round((st.coverage || 0) * 100)} %`);
   // short "where we are" next to the upcoming questions
   setText($("where-line"), t("focus.whereLine", { answered: st.answered || 0, open: st.open || 0,
@@ -655,7 +665,18 @@ function renderChrome() {
   if (dot.className !== cls) dot.className = cls;
   dot.title = S.last_sync_error || (S.last_sync_at ? t("console.syncNo", { n: S.sync_count }) : t("console.waitingSync"));
 
-  const ending = S.enough_data || ["finalize", "generating", "done"].includes(S.mode);
+  // the end only once the interviewer ends the interview: "enough data" or the time being up is a hint for
+  // them (the End button lights up), never an end, and listening and the analysis go on
+  const ending = ["finalize", "generating", "done"].includes(S.mode);
+  const endBtn = $("ctl-end");
+  setClass(endBtn, "ready", !!(S.enough_data || (S.time && S.time.over)));
+  endBtn.title = S.enough_data ? `${t("controls.endTitle")} · ${S.enough_data_reason || ""}` : t("controls.endTitle");
+  // the plan is the end of the conversation: once written it opens on this screen (Plan view, PDF export)
+  if (S.mode !== "done") sawLive = true;
+  if (S.mode === "done" && S.plan_ready && sawLive && !planShown) {
+    planShown = true;
+    setTimeout(() => { window.location.href = "/plan"; }, 1500);
+  }
   setClass($("banner"), "hidden", !ending);
   setText($("banner-primary"), t("interview.bannerDone"));  // display language only
   setText($("banner-status"), S.mode === "generating" ? t("end.generating") : S.mode === "done" ? t("end.done") : "");
@@ -900,6 +921,9 @@ async function act(action) {
     if (action === "answered" && cur) render(await post(`/api/questions/${encodeURIComponent(cur)}/answered`));
     if (action === "skip" && cur) render(await post(`/api/questions/${encodeURIComponent(cur)}/skip`));
     if (action === "enough") await post("/api/enough");
+    if (action === "end") {
+      if (confirm(t("console.confirmFinalize"))) await post("/api/finalize");
+    }
     if (action === "wispr") await post("/api/wispr", { text: $("wispr").value });
     if (action === "finalize") {
       if (confirm(t("console.confirmFinalize"))) await post("/api/finalize");
@@ -946,6 +970,7 @@ document.addEventListener("keydown", (e) => {
   else if (k === "a") act("answered");
   else if (k === "k") act("skip");
   else if (k === "p") act("phase");
+  else if (k === "e") act("end");
   else if (k === "d") toggleDetails();
   else if (k === "t") { showTail = !showTail; store("pacenote.tail", showTail ? "1" : "0"); if (S) renderStrip(); }
   else if (k === "l") cycleUiLanguage();

@@ -90,6 +90,7 @@ pacenote/
 | `interview/session.py` | One interview: ingest loop, fast-pass loop, full-sync loop, focus moves, finalize, persistence, resume |
 | `interview/state.py` | `SessionState`: questions, thread, ladder, slots, maps, recipe matches, coverage, versions, every locking and phase rule |
 | `interview/phases.py` | The seven phases, their goals, maps and time budgets; assigns a phase to old-format questionnaires |
+| `interview/timebox.py` | The time budget: each step's share of the time left, each question's slot, the protected closing |
 | `interview/questionnaire.py`, `interview/preparation.py` | Questionnaire schema and loader; what an interview starts from for a client: core questions (`interview/core/questions.yaml`), the pre-plan's seed questions, the pace's questions, the model's background (`load_client`) |
 | `interview/lens.py` | The executive lens: talking points on manual work and metric questions per workflow (merge, wording guard, timing, template fallback for metric questions); what the plan may use of them |
 | `interview/translate.py` | On-the-fly translation of the questionnaire into the interview language through Claude, cached per client |
@@ -262,9 +263,9 @@ adds up to that much before the words even reach the fast pass.
 
 Nobody can tell when someone has finished: they may go on 5 or 10 s later. So the question being
 answered (`ask_pin`: the follow-up asked, else the focus question) never changes because a model
-result arrived. A new follow-up is queued under it (`ask_next`, at most 2; a full queue drops new
-proposals and logs it), and once the focus question is answered the next question is queued after
-them (`ask_next_qid`). Queued follow-ups are not in the thread, since the thread and the prompts hold
+result arrived. A new follow-up is queued under it (`ask_next`, at most 2; on a full queue the newest replaces
+the oldest, the latest answer being the best guide), and once the focus question is answered, or its
+time slot is over (below), the next question is queued after them (`ask_next_qid`). Queued follow-ups are not in the thread, since the thread and the prompts hold
 what was asked; the prompts get them as `queued` so they are never proposed twice. The pinned item
 retires only on an "answer over" signal (`Session._answer_over`, checked every poll):
 
@@ -273,6 +274,7 @@ retires only on an "answer over" signal (`Session._answer_over`, checked every p
 | The interviewer reads a queued question | A line that starts a turn (≥ 0.6 s gap on the speech clock, not the first lines after the pin; for a follow-up, said after it appeared) holds ≥ 60 % of the question's content words, and they make up ≥ ⅓ of the words heard; the turn's first lines up to its next gap (a long question comes as several ~60-character lines) | That item is asked now, at once (earlier queued ones are dropped) |
 | The question is complete | An analysis (fast pass or full sync) turns the focus question from open to answered: the model's call (the ladder done), accepted only past the existing gate, every slot item plus half of the other expected details (`QuestionState.sufficient`); from an answer given after what is asked now went up (a turn starts after it in the lines it read; a pending completion is dropped when the interviewer reads or clicks a follow-up) | The focus moves to the next question at once, even while the interviewee goes on |
 | The interviewee answers the next question | The fast pass gives the queued next question an answer piece and none to the current one | The focus moves there |
+| The question's time slot is over | `timebox.slot_over` (below), something said since the pin, then the first boundary: a sure pause of 1.5 s; once the slot is 30 s over, a new line ending in . ? ! | The next question moves up, before any queued follow-up |
 | A real pause after the answer | Something was said since the pin; the fast pass read every line; then a pause on the speech clock of 3.5 s after a line ending in . ? ! (7 s after any other line: the recogniser cuts long sentences into ~60-character lines) | The first queued item moves up (the next question if the focus is answered) |
 | The interviewer | `n` / Enter, `a`, `k`, `p`, or a click on a queued question | As before (`n` and `a` go to the « Question suivante » shown); a click asks that item |
 
@@ -286,11 +288,17 @@ waits; the answer to the new question counts from the end of the tail.
 
 The pause is counted on the speech clock (segment `end`), beyond how long speech can stay unseen: a
 line arrives only once it ends, so the delay is the longest, over the recent lines, of speech clock at
-arrival − line start, plus 25 % (live batches sometimes skip a period). A replay delivers each line as it
-ends (the delay is a line's length, a few seconds); live, Apple's batches add ~11.5 s or more, so a
-silence-based move needs ~25–30 s without a line: live, the pin mostly moves when a queued question is
-read aloud, or on a key or a click.
-Seconds without a new line are never taken as silence while they are shorter than that delay. The same measure freezes the upcoming list. Every change is logged
+arrival − line start, plus 25 % (live batches sometimes skip a period). Live, Apple's final results come
+in batches about every 11.5 s (often 23 s): in the first real interview that margin was ~36 s, a
+pause-based move was possible ~1 % of the time, and a live conversation rarely pauses long anyway (10
+pauses of 3.5 s after a sentence end in 47 minutes). That is why time, not a pause, moves the interview
+on (below). A real-time speech signal was tried and left out: the recogniser's volatile results come in
+the same 11.5 s batches; with `fastResults` they follow the voice (~1 s) but the final lines lose about a
+quarter of their words; Apple's `SpeechDetector` gave no result. `timing.jsonl` in the session folder logs
+the clock, the last line's end, the microphone level, the pause and the slot every 2 s, to calibrate one
+on real audio. `pacenote-listen listen --file X --realtime` feeds a file at its own pace to check live
+timing without the microphone. A replay with `--batch 11.5` delivers the lines like live; `--transcript`
+replays a recorded session with its own delivery. The same measure freezes the upcoming list. Every change is logged
 (`kind: ask` / `focus` in `sync_log.jsonl`, with its reason).
 
 ### Versioned analyses (optimistic locking per record)
@@ -336,9 +344,30 @@ form:
 | 5 | `deep-dives` | use-case walkthroughs through the nine slots | 4 | client questionnaire |
 | 6 | `return` | ROI, budget, sign-off | 1 | client questionnaire |
 
-Budgets scale with `target_minutes` (`phase_minutes:` overrides). A phase hands over at the next
-focus change once its questions are done, its maps hold enough facts (`MAP_ENOUGH`, after at least
-one of its questions was asked), or its budget is spent.
+Budgets scale with `target_minutes` (20 by default; `pacenote run --minutes`; `phase_minutes:` overrides
+the weights). A phase hands over at the next focus change once its questions are done, its maps hold
+enough facts (`MAP_ENOUGH`, after at least one of its questions was asked), or its budget is spent.
+
+### The time budget (`interview/timebox.py`)
+
+Time moves the interview on, on the interview's clock (`SessionState.now()`: Start + the speech clock,
+so a replay at any speed keeps the pace):
+
+- **Each step gets its share of the time left** when it starts: the time left minus the closing step's
+  reserve, split across the steps still to come by their planned minutes. A short step gives its time to
+  the next ones; a long one takes it from them, never from the closing.
+- **Each question gets a slot**: its share of what is left of its step, priority 1 counting double, at
+  least 60 s. Once the slot is over, no follow-up is queued on it (the prompts get `time_over`) and the
+  next question is queued under the one being answered; it moves up at the first boundary (table above),
+  never mid-sentence. A step with less than a slot left starts only a priority-1 question: an overrun eats
+  the priority 2 and 3 questions first.
+- **The closing is protected**: when the time left reaches the closing step's reserve, its questions come
+  next, wherever the interview is.
+
+The screen shows the time left out of the planned length (past it, the time beyond it, quietly).
+When the time is up, or the model says the essentials are covered (`enough_data`), nothing stops:
+listening, the analyses and the questions go on, and the End button (`e`) lights up for the interviewer.
+Ending (`e`, the console, or `/api/enough`) stops listening, writes the plan and opens the Plan view.
 
 The maps (`maps` in the contract, `state.maps`) are filled from the interviewee's stories: `org` (person,
 role, department, reports to, time on judgment vs glue), `flows` (sender, receiver, what, channel,
@@ -364,7 +393,7 @@ Each full sync returns exactly this JSON, enforced with `--json-schema` (CLI) or
 | `coverage[]` | per theme: `score` 0–1 and a `note` |
 | `plan_delta` | new bullets for `context`, `priorities`, `workflows`, `quick_wins`, `risks`, `budget`, `open_points` |
 | `clean_passages[]` | cleaned, glossary-corrected transcript by speaker turn (feeds the interview log) |
-| `enough_data`, `enough_data_reason` | switch to finalize mode (sticky) |
+| `enough_data`, `enough_data_reason` | the essentials are covered (sticky): a hint for the interviewer, never an end |
 
 The fast pass returns `question_updates`, `slots`, `maps` (usually empty), `coverage` and `noise`;
 its output is kept short because its latency grows with what it writes.
@@ -439,7 +468,7 @@ sequenceDiagram
     participant M as metrics.py (metrics.yaml)
     participant R as Recipe library
 
-    I->>S: Stop & generate plan (or enough_data then Stop)
+    I->>S: End (e) or Stop & generate plan
     S->>S: stop capture, last sync on the tail
     S->>O: state, maps, slots, recipe matches, clean passages, raw transcript, Wispr text, dated briefs, recipe library
     O-->>S: PlanDoc (strict schema)
@@ -593,6 +622,7 @@ same view.
 | `PACENOTE_SYNC_EFFORT` / `PACENOTE_PLAN_EFFORT` | `low` / `high` | effort of syncs / plan |
 | `PACENOTE_SYNC_INTERVAL` / `PACENOTE_FIRST_SYNC_DELAY` | `40` / `15` | seconds between full syncs / first sync after first speech |
 | `PACENOTE_FAST_DEBOUNCE` | `2.5` | seconds after the last new line before a fast pass |
+| `PACENOTE_MINUTES` | the questionnaire's `target_minutes` (20) | the interview's length (`--minutes`) |
 | `PACENOTE_LISTEN_BIN` / `PACENOTE_LISTEN_CACHE` | built / `~/Library/Caches/pacenote` | prebuilt helper / build cache |
 | `PACENOTE_SPEECH_BACKEND` | `auto` | `auto` · `apple` · `whisper` |
 | `PACENOTE_WHISPER_BIN` / `PACENOTE_WHISPER_MODEL` | `whisper-stream` / unset | optional whisper.cpp backend |
