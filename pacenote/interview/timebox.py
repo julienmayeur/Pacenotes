@@ -21,10 +21,12 @@ own clock, `SessionState.now()`, so a replay at any speed keeps the same pace):
 3. **The closing is protected.** When the time left reaches the closing step's reserve, the question
    on screen gives way at its next boundary and the next question is the closing step's, wherever the
    interview is: what matters for the plan (the return, the horizon) is never lost to time. Past the
-   time, the closing's questions still go first, then the ones left over, priority 1 first.
+   time (only with a `lifecycle.OVERRUN`), the closing's questions still go first, then the ones left
+   over, priority 1 first.
 
-When the time is up nothing stops: the copilot keeps listening, analysing and proposing the closing
-questions, and the interviewer ends the interview (which writes the plan) when they choose.
+When the time is up the interview ends (interview/lifecycle.py): listening stops at once and the plan is
+written. The closing's reserve (rule 3) is what makes sure its questions are asked before that. The
+model's "enough data" is only a hint: the End button lights up, nothing stops.
 """
 
 from __future__ import annotations

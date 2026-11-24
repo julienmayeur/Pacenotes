@@ -95,6 +95,15 @@
   "live": {
     "title": "Live",
     "listening": "Listening",
+    "listeningStopped": "Not listening",
+    "listeningTitle": "The microphone is on for this interview only. It turns off when the interview ends.",
+    "ended": {
+      "ended": "Listening stopped: the interview was ended.",
+      "time_up": "Listening stopped: the interview's time is up.",
+      "page_left": "Listening stopped: the interview screen was closed.",
+      "idle": "Listening stopped: nobody spoke for 5 minutes.",
+      "shutdown": "Listening stopped: the app was stopped."
+    },
     "noise": "noise ignored",
     "stopped": "Transcription stopped: {{lang}}",
     "restarting": "restarting",

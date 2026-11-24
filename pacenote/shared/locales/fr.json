@@ -95,6 +95,15 @@
   "live": {
     "title": "En direct",
     "listening": "En écoute",
+    "listeningStopped": "Micro coupé",
+    "listeningTitle": "Le micro n'est ouvert que pendant cet entretien. Il se coupe dès que l'entretien se termine.",
+    "ended": {
+      "ended": "Micro coupé : l'entretien a été terminé.",
+      "time_up": "Micro coupé : le temps de l'entretien est écoulé.",
+      "page_left": "Micro coupé : l'écran de l'entretien a été fermé.",
+      "idle": "Micro coupé : personne n'a parlé pendant 5 minutes.",
+      "shutdown": "Micro coupé : l'application a été arrêtée."
+    },
     "noise": "bruit ignoré",
     "stopped": "Transcription arrêtée : {{lang}}",
     "restarting": "redémarrage",

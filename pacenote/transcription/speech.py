@@ -194,6 +194,7 @@ class WhisperStreamBackend:
     _lock: threading.Lock = field(default_factory=threading.Lock)
     _offset: float = 0.0
     _stopping: bool = False
+    live = True  # the microphone: started by the Start button only (interview/lifecycle.py)
     _srt_n: int = 0
     error: str = ""
 
@@ -215,6 +216,8 @@ class WhisperStreamBackend:
         the backend reports alive once whisper says it listens."""
         if not self.binary or not self.model:
             raise CaptureError("whisper.cpp is not configured.\n\nFix:\n  - " + SETUP_WHISPER)
+        if self._stopping:  # stopped before it started (the interview ended): it never listens
+            return
         self.session_dir.mkdir(parents=True, exist_ok=True)
         self.t0 = time.monotonic() if self.t0 is None else self.t0
         log = (self.session_dir / "whisper.log").open("ab")
@@ -331,6 +334,8 @@ class FallbackSource:
     fails with no language ready, it gives up mid-interview, or no audio reached it for
     `stale_after` s. Nothing ever switches back during an interview."""
 
+    live = True  # the microphone: started by the Start button only (interview/lifecycle.py)
+
     def __init__(self, primary, fallback_factory: Callable[..., object], stale_after: float | None = None):
         self.primary = primary
         self.fallback_factory = fallback_factory
@@ -340,6 +345,7 @@ class FallbackSource:
         self.switched_reason = ""
         self._switching: threading.Thread | None = None
         self._on_progress = getattr(primary, "on_progress", None)
+        self._stopped = False  # stop() ran: no switch may open a microphone afterwards
 
     @property
     def name(self) -> str:
@@ -360,6 +366,8 @@ class FallbackSource:
         self.primary.configure_locales(locales)
 
     def _switch(self, reason: str, wait: bool) -> list[str]:
+        if self._stopped:  # the interview ended: nothing starts listening again
+            return []
         note = f"switching to the fallback speech backend: {reason}"
         self._log(note)
         try:
@@ -372,6 +380,8 @@ class FallbackSource:
         self.fallback, self.switched_reason = fallback, reason
         fallback.start(wait=wait)
         self.active = fallback
+        if self._stopped:  # stopped while the fallback was starting (a switch runs on its own thread)
+            fallback.stop()
         return [note]
 
     def _switch_quietly(self, reason: str) -> None:
@@ -387,6 +397,8 @@ class FallbackSource:
             self._switch(str(exc).splitlines()[0], wait=True)
 
     def maintain(self) -> list[str]:
+        if self._stopped:
+            return []
         if self._switching is not None and self._switching.is_alive():
             return []  # stopping the primary, starting the fallback (off the event loop)
         if self.active is self.primary and self._switching is None:
@@ -423,7 +435,8 @@ class FallbackSource:
         return self.active.problems()
 
     def stop(self, timeout: float | None = None) -> None:
-        for b in {id(self.primary): self.primary, id(self.active): self.active}.values():
+        self._stopped = True
+        for b in {id(x): x for x in (self.primary, self.active, self.fallback) if x is not None}.values():
             b.stop()
 
     @property

@@ -228,6 +228,15 @@ sequenceDiagram
 - `pacenote run` first runs `pacenote-listen prepare` (every locale's model reserved, installed and loaded,
   no microphone) and refuses to start with the real cause if that fails. The microphone opens only
   on Start, so small talk before consent is never transcribed.
+- **Listening belongs to the interview** (`interview/lifecycle.py`). It stops the moment the interview
+  ends: End / `e` / `/api/enough` / `/api/finalize`, the time is up (the planned length), no interview
+  screen open for 10 s (the page's `/api/events` stream; a reload comes back well within that), nobody
+  heard for 5 minutes, or the server stops. `Session._set_mode` is the only writer of `state.mode`:
+  leaving "interview" stops capture before the last analysis and the plan run, and only `Session.start`
+  enters it, from consent. `persist()` re-checks the rule on every save. Outside the interview nothing
+  reads the recogniser and the watchdog never restarts one; a live recogniser refuses `--auto-start`.
+  A replay stops hearing when stopped too: its last flush is what was said by then, never the rest of
+  the recording. The screen's listening mark follows `listening.on` (the recogniser open), not the mode.
 - One process captures once and feeds one transcriber per locale: separate recognisers per
   language would each release and re-reserve Apple's speech assets and fail at random. The helper
   reserves every expected locale and never releases one, installs missing models (progress on the
@@ -366,14 +375,17 @@ so a replay at any speed keeps the pace):
   the priority 2 and 3 questions first.
 - **The closing is protected**: when the time left reaches the closing step's reserve, the question on
   screen gives way at its next boundary (no grace) and the closing's questions come next, wherever the
-  interview is; past the time they still go first, then the questions left over, priority 1 first. Time
+  interview is; past the time (only with a `lifecycle.OVERRUN`) they still go first, then the questions
+  left over, priority 1 first. Time
   only moves to a question not asked yet: once every question went up, the one on screen stays until the
   interviewer moves on or ends.
 
 The screen shows the time left out of the planned length (past it, the time beyond it, quietly).
-When the time is up, or the model says the essentials are covered (`enough_data`), nothing stops:
-listening, the analyses and the questions go on, and the End button (`e`) lights up for the interviewer.
-Ending (`e`, the console, or `/api/enough`) stops listening, writes the plan and opens the Plan view.
+When the model says the essentials are covered (`enough_data`) nothing stops: listening, the analyses
+and the questions go on, and the End button (`e`) lights up for the interviewer. When the time is up
+(`lifecycle.OVERRUN` after the planned length, 0 by default) the interview ends: listening stops at once,
+the plan is written and opens in the Plan view, as when the interviewer ends it (`e`, the console, or
+`/api/enough`). See Capture for every other way it ends.
 
 ### Coverage first (`interview/coverage.py`)
 

@@ -34,7 +34,7 @@ from pacenote.copilot.prompts import (
     build_sync_system,
     build_sync_user,
 )
-from pacenote.interview import coverage, lens, timebox, translate
+from pacenote.interview import coverage, lens, lifecycle, timebox, translate
 from pacenote.interview import phases as P
 from pacenote.interview.questionnaire import ClientConfig
 from pacenote.interview.state import SessionState
@@ -75,6 +75,11 @@ class Settings:
     slot_pause: float = 1.5
     freeze_silence: float = 2.5  # the upcoming list only re-orders after this much silence
 
+
+# why the interview ended (lifecycle.REASONS), as the plan's "enough data" reason
+_END_TEXT = {"ended": "interviewer ended the interview", "time_up": "the interview's time is up",
+             "page_left": "the interview screen was closed", "idle": "nobody spoke for a while",
+             "shutdown": "the server stopped"}
 
 _STOP = frozenset((
     "vous nous elle elles ils sont cette votre notre leur leurs quoi quel quelle quels quelles comment "
@@ -160,6 +165,12 @@ class Session:
         self._display_again = False  # new texts arrived while it ran
         self._display_failed: set[tuple[str, str]] = set()  # (lang, item id) the engine could not translate
         self.capture_stopped = False  # stop_capture() ran: the recognisers ended on purpose
+        self._auto_source: Source | None = None  # start(auto=True): the replay source already made
+        self._plan_task: asyncio.Task | None = None  # the plan being written once the interview ended
+        # interview screens open (the SSE stream of /api/events): none for lifecycle.PAGE_GRACE s ends it
+        self._pages = 0
+        self._page_seen = False
+        self._page_gone_at: float | None = None
         self.persist()
 
     # --- notification for SSE ------------------------------------------------
@@ -189,15 +200,47 @@ class Session:
     def elapsed(self) -> float:
         return 0.0 if self._t0_mono is None else time.monotonic() - self._t0_mono
 
-    async def start(self) -> None:
-        """Called once consent has been given. Starts capture, ingest and sync loops."""
+    @property
+    def capture_open(self) -> bool:
+        """A recogniser was started and not stopped: the microphone may be open."""
+        return self.source is not None and not self.capture_stopped
+
+    @property
+    def listening(self) -> bool:
+        """What the screen says: listening, only ever in the interview (lifecycle.py)."""
+        return self.capture_open and self.state.mode == "interview"
+
+    def _set_mode(self, mode: str) -> None:
+        """THE writer of state.mode (lifecycle.py). Leaving the interview stops capture before anything
+        else; only start() enters it, from the consent screen."""
+        before = self.state.mode
+        if mode == before:
+            return
+        if mode == "interview" and before != "consent":
+            raise RuntimeError(f"an interview starts from the consent screen only, not from {before!r}")
+        if before == "interview":
+            self.stop_capture()
+        self.state.mode = mode
+
+    async def start(self, auto: bool = False) -> None:
+        """The Start button (consent given): the interview starts, and with it capture, ingest and sync.
+        The only way into the interview and the only place a recogniser starts (lifecycle.py).
+        auto=True (`pacenote replay --auto-start`): saved recordings only, a live recogniser refuses it."""
         self._ensure_async()
         if self.state.mode != "consent":
             return
-        self.state.mode = "interview"
+        if auto:
+            probe = self.source_factory(self.session_dir)
+            if getattr(probe, "live", False):
+                raise RuntimeError("a live interview starts on the Start button only, never automatically")
+            self._auto_source = probe
+        self._set_mode("interview")
         self.state.started_at = time.time()
+        self.state.ended_at, self.state.end_reason = None, ""
         self._t0_mono = time.monotonic()
-        self.source = self.source_factory(self.session_dir)
+        self.capture_stopped = False
+        self.source = self._auto_source or self.source_factory(self.session_dir)
+        self._auto_source = None
         self.state.set_clock(self.interview_clock)  # budgets and slots run on the speech clock (any replay speed)
         self.state.start_phase_clock(self.state.started_at)  # the first phase's time budget starts now
         configure = getattr(self.source, "configure_locales", None)
@@ -208,12 +251,22 @@ class Session:
             # the speech helper starts and confirms each spoken language (a few s)
             await asyncio.to_thread(self.source.start)
         except Exception as exc:  # no speech helper, or it died right away
-            self.state.capture_problems = [str(exc)]
-            self.state.mode = "consent"
+            if self.state.mode != "interview":  # it was ended while starting: stopped, not a failure
+                self.source.stop()
+                self.persist()
+                await self.notify()
+                return
+            self._set_mode("consent")  # back to the consent screen (Start can be pressed again); capture stops
             self.state.started_at = None
+            self.state.capture_problems = [str(exc)]
             self.persist()
             await self.notify()
             raise
+        if self.state.mode != "interview":  # ended while the speech helper was starting: it stops now
+            self.source.stop()  # (again: it may have come up after the first stop)
+            self.persist()
+            await self.notify()
+            return
         self.state.capture_problems = []
         self._stream_status = self._read_stream_status()
         self._tasks = [
@@ -361,6 +414,10 @@ class Session:
         return self.settings.fast_enabled and callable(getattr(self.engine, "fast", None))
 
     async def shutdown(self) -> None:
+        """The server stops (Ctrl-C): the interview ends and listening stops first, then everything else.
+        The plan is not written here: `pacenote finalize` writes it from the saved session."""
+        self.end_interview("shutdown")
+        self.stop_capture()
         cancel = getattr(self.engine, "cancel", None)
         if cancel is not None:
             cancel()  # kill in-flight `claude` calls and the persistent fast session
@@ -377,19 +434,69 @@ class Session:
         self.persist()
 
     def stop_capture(self) -> None:
-        """Intentional stop (interview ended, shutdown): no watchdog restart, no capture problem."""
-        if self.source is not None:
+        """Intentional stop (interview ended, shutdown): the recogniser is stopped, what it heard until
+        then is kept, no watchdog restart, no capture problem. Idempotent."""
+        if self.capture_open:
             self.capture_stopped = True
-            self.source.stop()
-            self.ingest_once(final=True)
-            self.state.capture_problems = []
+            try:
+                self.source.stop()
+            finally:
+                self.ingest_once(final=True)  # the last words said before the end (never after: capture.py)
+                self.state.capture_problems = []
+                self._log_sync({"kind": "listening", "on": False, "mode": self.state.mode,
+                                "elapsed": format_clock(timebox.elapsed(self.state)) if self.state.started_at else None})
+
+    def end_interview(self, reason: str) -> bool:
+        """The interview ends now (lifecycle.REASONS): listening stops first, then the session waits in
+        "finalize" for its plan. Synchronous, cannot fail; False when no interview was running."""
+        if self.state.mode != "interview":
+            return False
+        self._set_mode("finalize")  # stops capture
+        self.state.ended_at, self.state.end_reason = time.time(), reason
+        self.state.force_enough(_END_TEXT.get(reason, reason))
+        self._log_sync({"kind": "end", "reason": reason,
+                        "elapsed": format_clock(timebox.elapsed(self.state)) if self.state.started_at else None})
+        self.persist()
+        return True
+
+    def request_finalize(self, reason: str = "ended") -> bool:
+        """End the interview (if it runs) and write the plan in the background, one run at a time.
+        False when a plan is already being written."""
+        self._ensure_async()
+        self.end_interview(reason)
+        running = self._plan_task is not None and not self._plan_task.done()
+        if running or self._finalizing or self.state.mode == "generating":
+            return False
+        self._plan_task = asyncio.create_task(self.finalize(), name="finalize")
+        return True
+
+    # interview screens: the SSE stream of /api/events opens and closes with the page
+    def page_opened(self) -> None:
+        self._pages += 1
+        self._page_seen = True
+        self._page_gone_at = None
+
+    def page_closed(self) -> None:
+        self._pages = max(0, self._pages - 1)
+        if self._pages == 0:
+            self._page_gone_at = time.monotonic()
+
+    def _end_due(self) -> str | None:
+        """lifecycle.end_reason on this session's clocks."""
+        if self.state.mode != "interview":
+            return None
+        last = max((s.end for s in self.transcript.segments), default=0.0)
+        gone = None if self._pages or self._page_gone_at is None else time.monotonic() - self._page_gone_at
+        return lifecycle.end_reason(self.state, speech_now=self.speech_clock(), last_heard=last,
+                                    page_seen=self._page_seen, page_gone_for=gone)
 
     # --- ingest ----------------------------------------------------------------
     def ingest_once(self, final: bool = False) -> int:
-        if self.source is None:
+        """Read what the recogniser heard. Only in the interview (and its last words when it stops)."""
+        if self.source is None or (not final and (self.state.mode != "interview" or self.capture_stopped)):
             return 0
         maintain = getattr(self.source, "maintain", None)
-        if callable(maintain) and not final and not self.capture_stopped:
+        if callable(maintain) and not final:  # interview only: a recogniser is never restarted after the end
             for note in maintain() or []:  # watchdog: restart a dead recogniser
                 self._log_sync({"kind": "capture", "note": note})
         cues = self.source.poll(final=final)
@@ -416,6 +523,10 @@ class Session:
 
     async def _ingest_loop(self) -> None:
         while True:
+            reason = self._end_due()
+            if reason:  # the time is up, the screen is gone or nobody speaks: listening stops, the plan is written
+                self.request_finalize(reason)
+                await self.notify()
             before = list(self.state.capture_problems)
             n = self.ingest_once()
             moved_on = self.state.mode == "interview" and self._maybe_move_on()
@@ -1056,11 +1167,6 @@ class Session:
         await self.notify()
         return ok
 
-    async def force_enough(self) -> None:
-        self.state.force_enough()
-        self.persist()
-        await self.notify()
-
     async def set_wispr(self, text: str) -> None:
         self.wispr_text = text.strip() or None
         if self.wispr_text:
@@ -1097,27 +1203,23 @@ class Session:
             self._finalizing = False
 
     async def _finalize(self) -> dict[str, str]:
+        self.end_interview("ended")  # listening stops before anything else (lifecycle.py)
+        self.stop_capture()
+        current = asyncio.current_task()
         for t in self._tasks:
-            t.cancel()
+            if t is not current:
+                t.cancel()
         for task in (self._fast_task, self._sync_task):  # let in-flight calls land first
             if task is not None and not task.done():
                 try:
                     await task
                 except Exception:
                     pass
-        self.stop_capture()
-        if self.state.mode == "interview":
-            self.state.force_enough("interviewer ended the interview")
         if self.transcript.since(self.last_synced_seq):
-            prev = self.state.mode
-            self.state.mode = "finalize"
-            try:
-                await self.sync_once(force=True)
-            finally:
-                self.state.mode = prev
+            await self.sync_once(force=True)
         self.record_ambassadors()
         before = self.state.mode
-        self.state.mode = "generating"
+        self._set_mode("generating")
         self.persist()
         await self.notify()
         try:
@@ -1130,14 +1232,14 @@ class Session:
                                          self.state, doc=offline_plan_doc(self.state))
         except Exception as exc:  # not even the offline draft: back to "finalize", error shown, retry
             log.exception("offline plan draft failed")
-            self.state.mode = before
+            self._set_mode(before)
             self.state.last_sync_error = f"plan not written: {exc}; try again"
             self._report_unexpected({"kind": "plan", "error": self.state.last_sync_error})
             await self.notify()
             return {}
         self.state.plan_files = {k: str(Path(v).resolve()) for k, v in files.items()}
         files = dict(self.state.plan_files)
-        self.state.mode = "done"
+        self._set_mode("done")
         self.persist()
         self._log_sync({"kind": "plan", "files": files})
         if self.on_plan_written is not None:
@@ -1171,6 +1273,10 @@ class Session:
 
     # --- persistence -----------------------------------------------------------------
     def persist(self) -> None:
+        if self.state.mode != "interview" and self.capture_open:  # never listening outside the interview
+            log.error("listening outside the interview (mode %s): stopping it", self.state.mode)
+            self._log_sync({"kind": "listening-invariant", "mode": self.state.mode})
+            self.stop_capture()
         self.state.save(self.session_dir / "state.json")
         meta = {"last_synced_seq": self.last_synced_seq}
         fsutil.atomic_write_text(self.session_dir / "session.json", json.dumps(meta))
@@ -1376,7 +1482,10 @@ class Session:
             "last_sync_at": st.last_sync_at,
             "last_sync_error": st.last_sync_error,
             "capture_problems": st.capture_problems,
-            "listening": {"streams": streams, "line_seq": self.transcript.last_seq, "last_line_at": newest,
+            # on: the recogniser is open, which only ever happens in the interview (lifecycle.py); the
+            # screen shows it from this, never from the mode. ended: why it stopped (lifecycle.REASONS)
+            "listening": {"on": self.listening, "ended": st.end_reason if st.ended_at else "",
+                          "streams": streams, "line_seq": self.transcript.last_seq, "last_line_at": newest,
                           "stopped": self.capture_stopped,
                           # which speech backend listens (speech.py), and why it switched to the fallback
                           "backend": getattr(self.source, "name", None) if self.source is not None else None,

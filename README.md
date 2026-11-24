@@ -17,6 +17,11 @@ prepare (admin) ─► consent ─► interview: capture + follow-ups ─► sto
 - **Capture.** A small Swift helper transcribes the microphone on the Mac with Apple's on-device
   speech recognition, in every spoken language at once (e.g. French and English). The microphone
   opens only when you click Start on the consent screen. Audio is never stored or sent anywhere.
+- **It never listens outside the interview.** Listening starts with the interview and stops the moment
+  it ends, whatever ends it: you end it (`e`), its time is up, the interview screen is closed for 10 s,
+  nobody has spoken for 5 minutes, or the app is stopped. The plan is written after the microphone is
+  off. The top of the screen says it quietly: a small red dot and "Listening" while the microphone is
+  on, a hollow dot and "Not listening" once it is off.
 - **Question ladder.** The original question stays on screen; the answer is captured under it,
   piece by piece. Follow-ups dig down a ladder: from the business case (cost, target) to the
   workflow (trigger, people, steps, handoffs) to the implementation (tools by name, access,
@@ -38,8 +43,9 @@ prepare (admin) ─► consent ─► interview: capture + follow-ups ─► sto
   the end of a sentence (live, the transcript arrives in batches, so that sentence end is seen 10–20 s
   late and the interviewee may already have gone on). A step that runs long takes time from the steps after it, priority 2 and 3 questions
   first, never from the closing questions, which always get their time at the end. The screen shows the
-  time left, quietly. When the time is up nothing stops: the copilot keeps listening and proposing, and
-  the End button lights up; ending writes the plan and opens it on screen.
+  time left, quietly. The model saying the essentials are covered is a hint (the End button lights up),
+  never an end. When the time is up the interview ends: listening stops, the plan is written and opens on
+  screen. The closing questions get their reserved time before that.
 - **The whole company before one point.** People dig in to understand and do not feel the time pass, so the
   copilot watches the coverage too. Claude labels what each stretch of the conversation is about, as an area
   of the company (sales, customer service, after-sales, purchasing, logistics, marketing, finance, people,

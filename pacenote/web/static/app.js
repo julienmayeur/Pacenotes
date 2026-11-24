@@ -646,8 +646,15 @@ function renderStrip() {
 function renderListening() {
   const L = S.listening || { streams: [] };
   const interviewing = S.mode === "interview";
-  setClass($("listen"), "off", !interviewing);
-  setText($("listen-label"), interviewing ? t("live.listening") : "");
+  // the server's truth, never the mode: on = the recogniser is open (only ever in the interview,
+  // interview/lifecycle.py); ended = it stopped with the interview. Quiet: a small dot and one word.
+  const on = !!L.on;
+  const ended = !on && !!L.ended;
+  setClass($("listen"), "on", on);
+  setClass($("listen"), "ended", ended);
+  setClass($("listen"), "off", !on);
+  setText($("listen-label"), on ? t("live.listening") : ended ? t("live.listeningStopped") : "");
+  $("listen").title = on ? t("live.listeningTitle") : ended ? t(`live.ended.${L.ended}`) : "";
   syncList($("langs"), interviewing ? L.streams : [], (x) => x.stream,
     (x) => { const s = document.createElement("span"); fillChip(s, x); return s; }, fillChip);
   if (lastSeq !== null && L.line_seq > lastSeq) bump(Math.min(1, 0.45 + 0.15 * (L.line_seq - lastSeq)));
@@ -709,6 +716,10 @@ function renderChrome() {
   setClass($("banner"), "hidden", !ending);
   setText($("banner-primary"), t("interview.bannerDone"));  // display language only
   setText($("banner-status"), S.mode === "generating" ? t("end.generating") : S.mode === "done" ? t("end.done") : "");
+  const micOff = ending && S.listening && !S.listening.on;  // the banner hides the top bar: say it here too
+  setClass($("banner-mic"), "hidden", !micOff);
+  setText($("banner-mic-label"), micOff ? t("live.listeningStopped") : "");
+  $("banner-mic").title = micOff && S.listening.ended ? t(`live.ended.${S.listening.ended}`) : "";
   // the plan opens in the app's Plan view (/plan: read it, Export PDF); plan.md stays the source
   const links = S.plan_ready ? `<a href="/plan" target="_blank">${esc(t("planView.open"))}</a><a href="/plan.md" target="_blank">plan.md</a>` : "";
   if ($("banner-links").innerHTML !== links) $("banner-links").innerHTML = links;
@@ -910,8 +921,9 @@ function cycleUiLanguage() {
 function bump(v) { level = Math.max(level, v); }
 function animateMeter() {
   const bars = document.querySelectorAll("#listen .meter i");
-  const active = level > 0.04 && S && S.mode === "interview";
-  $("listen").classList.toggle("idle", !active && !!(S && S.mode === "interview"));
+  const on = !!(S && S.listening && S.listening.on);
+  const active = level > 0.04 && on;
+  $("listen").classList.toggle("idle", !active && on);
   bars.forEach((b, i) => {
     const shape = [0.55, 0.85, 1, 0.75, 0.5][i];
     b.style.height = active ? `${4 + 12 * level * shape * (0.65 + Math.random() * 0.35)}px` : "";

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import os
@@ -51,12 +50,13 @@ class AskBody(BaseModel):
 def create_app(session: Session, auto_start: bool = False, research: ResearchManager | None = None,
                bind_host: str | None = None, claude_bin: str | None = None) -> FastAPI:
     """The interview app. Listening starts ONLY on POST /api/start (the Start button): never at
-    server start, page load or consent (auto_start is `pacenote replay --auto-start`, saved SRTs)."""
+    server start, page load or consent (auto_start is `pacenote replay --auto-start`, saved SRTs; a
+    live recogniser refuses it). It stops the moment the interview ends (interview/lifecycle.py)."""
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         session.prepare_languages()  # translate the questionnaire if the interview language needs it
         if auto_start:
-            await session.start()
+            await session.start(auto=True)
         try:
             yield
         finally:
@@ -88,19 +88,26 @@ def create_app(session: Session, auto_start: bool = False, research: ResearchMan
 
     @app.get("/api/events")
     async def events(request: Request) -> StreamingResponse:
+        """The interview screen's live state. While it is open the session knows a screen is there: with
+        none for lifecycle.PAGE_GRACE s (closed, navigated away) the interview ends and listening stops.
+        A closed page is noticed within about a second (checked every second, not only at the keep-alive)."""
         async def stream():
-            last = -1
-            yield f"event: state\ndata: {json.dumps(session.view(), ensure_ascii=False)}\n\n"
-            last = session._version
-            while True:
-                if await request.is_disconnected():
-                    break
-                v = await session.wait_for_change(last, timeout=15.0)
-                if v != last:
-                    last = v
-                    yield f"event: state\ndata: {json.dumps(session.view(), ensure_ascii=False)}\n\n"
-                else:
-                    yield ": keep-alive\n\n"
+            session.page_opened()
+            try:
+                yield f"event: state\ndata: {json.dumps(session.view(), ensure_ascii=False)}\n\n"
+                last, quiet = session._version, 0
+                while True:
+                    if await request.is_disconnected():
+                        break
+                    v = await session.wait_for_change(last, timeout=1.0)
+                    if v != last:
+                        last, quiet = v, 0
+                        yield f"event: state\ndata: {json.dumps(session.view(), ensure_ascii=False)}\n\n"
+                    elif (quiet := quiet + 1) >= 15:
+                        quiet = 0
+                        yield ": keep-alive\n\n"
+            finally:
+                session.page_closed()
 
         return StreamingResponse(
             stream(),
@@ -182,21 +189,20 @@ def create_app(session: Session, auto_start: bool = False, research: ResearchMan
         await session.set_wispr(body.text)
         return session.view()
 
-    finalize_task: list[asyncio.Task] = []  # a reference, so the running task is not garbage-collected
-
     @app.post("/api/finalize")
     async def finalize() -> dict:
-        running = finalize_task and not finalize_task[0].done()
-        if running or session.finalizing or session.state.mode == "generating":
+        """End (e): the interview ends at once (listening stops), then the plan is written in the background."""
+        if not session.request_finalize("ended"):
             raise HTTPException(status_code=409, detail="already generating")
-        finalize_task[:] = [asyncio.create_task(session.finalize(), name="finalize")]
+        await session.notify()
         return {"ok": True}
 
     @app.post("/api/enough")
     async def enough() -> dict:
         """The interviewer has enough: the interview ends and the plan is written (as /api/finalize)."""
-        await session.force_enough()
-        await finalize()
+        session.state.force_enough()
+        session.request_finalize("ended")
+        await session.notify()
         return session.view()
 
     # the Plan view of this session (static/plan.html), its data and its PDF export

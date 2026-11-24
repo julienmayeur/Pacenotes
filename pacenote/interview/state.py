@@ -472,9 +472,11 @@ class SessionState(BaseModel):
     edit_log: list[EditLogEntry] = Field(default_factory=list)
     enough_data: bool = False
     enough_data_reason: str = ""
-    mode: Mode = "consent"
+    mode: Mode = "consent"  # written by Session._set_mode only: listening is open in "interview" only (lifecycle.py)
     sync_count: int = 0
     started_at: float | None = None  # epoch seconds, set when consent is given
+    ended_at: float | None = None  # epoch seconds the interview ended (listening stopped)
+    end_reason: str = ""  # why it ended: lifecycle.REASONS
     last_sync_at: float | None = None
     last_sync_error: str | None = None
     last_sync_seconds: float | None = None  # duration of the last model call
@@ -1475,10 +1477,9 @@ class SessionState(BaseModel):
         return True
 
     def force_enough(self, reason: str = "interviewer decision") -> None:
+        """The interviewer has enough. Ending the interview (and the listening) is Session.end_interview."""
         self.enough_data = True
         self.enough_data_reason = self.enough_data_reason or reason
-        if self.mode in ("consent", "interview"):
-            self.mode = "finalize"
 
     # --- helpers -------------------------------------------------------------
     def _drop_from_next(self, qid: str) -> None:

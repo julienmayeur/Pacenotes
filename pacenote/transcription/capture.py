@@ -396,6 +396,7 @@ class ListenCapture:
     _binary: str = ""
     _t0: float = 0.0
     _stopping: bool = False
+    live = True  # the microphone: started by the Start button only (interview/lifecycle.py)
     _started: bool = False
     _srt: dict[str, int] = field(default_factory=dict)
     _pending: list[TimedCue] = field(default_factory=list)
@@ -465,13 +466,19 @@ class ListenCapture:
         return run.prepared_locales
 
     def start(self) -> None:
-        if self._started:
+        if self._started or self._stopping:  # stopped before it started (the interview ended): never listens
             return
         self.session_dir.mkdir(parents=True, exist_ok=True)
         self._binary = ensure_helper(self.helper_bin, on_progress=self._progress, slug_hint=self.slug_hint)
+        if self._stopping:  # stopped while the helper was being built
+            return
         self._t0 = time.monotonic()
         run = self._run = self._spawn()
-        if not run.ready.wait(self.start_timeout) or not run.alive or run.error:
+        ready = run.ready.wait(self.start_timeout)
+        if self._stopping:  # stopped while it was starting (the interview ended): stopped, not failed
+            run.stop(self.stop_timeout)
+            return
+        if not ready or not run.alive or run.error:
             detail = run.error or {"code": "exited",
                                    "message": _tail(self.session_dir / "listen.log")
                                    or (f"exit code {run.popen.returncode}" if not run.alive
@@ -662,6 +669,9 @@ class ReplaySource:
     batch > 0 delivers the lines like Apple's live recogniser: in batches every `batch` seconds (11.5
     live), a line in the first batch after it ends. `arrivals` (from_transcript) replays a recorded
     session's own delivery instead: each line at the speech-clock time it arrived.
+
+    Like the microphone, it stops hearing when it is stopped: poll(final=True) gives the lines already
+    said by then (the recogniser's last words), never the rest of the recording (interview/lifecycle.py).
     """
 
     def __init__(self, files: dict[str, Path], speed: float = 1.0, clock=time.monotonic, batch: float = 0.0,
@@ -674,6 +684,7 @@ class ReplaySource:
         self._queue: list[tuple[float, TimedCue]] = []  # (when it is delivered, the line)
         self._t0: float | None = None
         self._stopped = False
+        self._stop_at: float | None = None  # the speech clock when it was stopped
 
     @classmethod
     def from_transcript(cls, path: Path, speed: float = 1.0, until: float | None = None,
@@ -708,9 +719,15 @@ class ReplaySource:
         return (self._clock() - self._t0) * self.speed
 
     def poll(self, final: bool = False) -> list[TimedCue]:
-        if self._t0 is None:
+        """The lines delivered by now; final=True: also the ones said by now (or by the stop) but not
+        delivered yet, as the live recogniser flushes its last words when it stops."""
+        if self._t0 is None or (self._stopped and not final):
             return []
-        now = float("inf") if final else self.elapsed()
+        now = self.elapsed() if self._stop_at is None else self._stop_at
+        if final:
+            ready = [c for at, c in self._queue if at <= now or c.end <= now]
+            self._queue = [] if self._stopped else [(at, c) for at, c in self._queue if not (at <= now or c.end <= now)]
+            return ready
         n = next((i for i, (at, _) in enumerate(self._queue) if at > now), len(self._queue))
         ready, self._queue = [c for _, c in self._queue[:n]], self._queue[n:]
         return ready
@@ -735,4 +752,6 @@ class ReplaySource:
         return Health(alive=bool(self.ready_locales()))
 
     def stop(self) -> None:
+        if not self._stopped and self._t0 is not None:
+            self._stop_at = self.elapsed()
         self._stopped = True

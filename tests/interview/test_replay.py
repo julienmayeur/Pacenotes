@@ -65,8 +65,11 @@ def test_replay_source_emits_both_streams_by_time():
     first = src.poll()
     assert {c.stream for c in first} == {"fr", "en"}
     assert all(c.end <= 20 for c in first)
-    rest = src.poll(final=True)
-    assert len(first) + len(rest) == 2 * 27
+    said = src.poll(final=True)  # the last words: said by now, not delivered yet
+    assert all(c.end <= 20 for c in said)
+    clock.t += 1000
+    rest = src.poll()
+    assert len(first) + len(said) + len(rest) == 2 * 27
     assert src.exhausted
 
 
@@ -92,7 +95,10 @@ async def _run_session(tmp_path, client_cfg):
     for _ in range(6):
         clock.t += 40
         await session.sync_once()
+    assert session.state.enough_data and session.state.mode == "interview"  # advice for the interviewer, never an end
     await session.shutdown()
+    assert session.state.mode == "finalize" and session.state.end_reason == "shutdown"  # Ctrl-C ends it
+    assert not session.view()["listening"]["on"]
 
     calls = engine.calls
     assert len(calls) >= 4
@@ -116,7 +122,6 @@ async def _run_session(tmp_path, client_cfg):
     assert st.get("import-flow").text_fr.startswith("Comment se passe")  # reword after lock was rejected
     assert st.get("roi-expectation").status == "answered"
     assert st.get("import-delays").origin == "added"
-    assert st.enough_data and st.mode == "interview"  # advice for the interviewer, never an end
 
     # Wispr Flow transcript merged before generating the plan
     await session.set_wispr("Transcript Wispr final : dix à douze semaines entre commande et arrivée.")

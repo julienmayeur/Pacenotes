@@ -116,6 +116,7 @@ def test_fast_pass_is_debounced_then_fills_the_current_answer(tmp_path, client_c
     assert view["fast"]["count"] == 1 and view["fast"]["latency"] is not None
     assert 0.3 <= view["fast"]["latency"] < 2.0  # debounce + call, measured from line arrival
     log = [json.loads(x) for x in (tmp_path / "f" / "sync_log.jsonl").read_text().splitlines()]
+    log = [e for e in log if e.get("kind") == "fast"]
     assert log[-1]["kind"] == "fast" and log[-1]["latency"]["newest"] is not None
 
 
