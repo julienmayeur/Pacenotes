@@ -373,7 +373,9 @@ so a replay at any speed keeps the pace):
   never on a line cut mid-sentence (live, the sentence end is seen in the next batch, 10–20 s after it was
   said). Once nothing new can be queued (every question asked), follow-ups come back. A step with less than a slot left starts only a priority-1 question: an overrun eats
   the priority 2 and 3 questions first.
-- **The closing is protected**: when the time left reaches the closing step's reserve, the question on
+- **The closing is protected**: its reserve is its planned time, and at least a slot plus its grace
+  (60 + 30 s) per closing question still open, because the time being up ends the interview; its slots
+  are computed net of those graces. When the time left reaches that reserve, the question on
   screen gives way at its next boundary (no grace) and the closing's questions come next, wherever the
   interview is; past the time (only with a `lifecycle.OVERRUN`) they still go first, then the questions
   left over, priority 1 first. Time

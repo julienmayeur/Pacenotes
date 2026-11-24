@@ -221,6 +221,26 @@ def test_nobody_heard_for_a_while_ends_the_interview(tmp_path, client_cfg, monke
     assert session.state.end_reason == "idle" and not session.listening
 
 
+def test_idle_counts_from_when_the_recogniser_is_up_not_from_start(tmp_path, client_cfg, monkeypatch):
+    """A first Start can download speech models for minutes: that wait is not silence."""
+    monkeypatch.setattr(lifecycle, "IDLE_AFTER", 0.5)
+    script, log = fake_listen(tmp_path, {"heartbeat": {"freeze_after": 0.0}})  # up, but nothing heard
+    slow = tmp_path / "slow-listen"
+    slow.write_text(f"#!/bin/sh\nsleep 1.0\nexec {script} \"$@\"\n")  # longer than IDLE_AFTER
+    slow.chmod(0o755)
+    session = _live(tmp_path, client_cfg, slow)
+
+    async def run():
+        await session.start()
+        assert session._end_due() is None  # 1 s of start-up, not 1 s of silence
+        await asyncio.sleep(0.8)
+        assert session.state.end_reason == "idle"  # then 0.5 s with nothing heard ends it
+        await session.shutdown()
+
+    asyncio.run(run())
+    _assert_stopped(session, log)
+
+
 def test_server_shutdown_stops_listening_and_keeps_the_session_for_a_plan(tmp_path, client_cfg):
     script, log = fake_listen(tmp_path)
     session = _live(tmp_path, client_cfg, script)
@@ -295,6 +315,27 @@ def test_nothing_outside_the_interview_starts_the_recogniser(tmp_path, client_cf
         session.ingest_once()  # the watchdog's turn: a stopped helper is never restarted
     assert len(runs(log)) == 1
     _assert_stopped(session, log)
+
+
+def test_a_saved_session_with_lines_not_analysed_gets_its_last_analysis(tmp_path, client_cfg):
+    """`pacenote finalize` on a finished session: the lines never analysed are, before the plan."""
+    clock = [0.0]
+    session = Session(client=client_cfg, session_dir=tmp_path / "r", engine=OfflineEngine(), settings=QUIET,
+                      source_factory=lambda d: ReplaySource({"fr": SAMPLES / "fr.srt"}, speed=1.0, clock=lambda: clock[0]))
+
+    async def run():
+        await session.start()
+        clock[0] = 60.0
+        await asyncio.sleep(0.2)
+        await session.finalize()
+
+    asyncio.run(run())
+    session.transcript.add("fr", 61.0, 63.0, "une ligne ajoutée après coup", received_at=time.time())
+    session.transcript.save_jsonl(session.session_dir / "transcript.jsonl")
+    resumed = Session.resume(client_cfg, session.session_dir, OfflineEngine())
+    assert resumed.state.mode == "done" and resumed.transcript.since(resumed.last_synced_seq)
+    assert asyncio.run(resumed.finalize())["md"]
+    assert not resumed.transcript.since(resumed.last_synced_seq) and resumed.state.mode == "done"
 
 
 def test_resuming_a_saved_session_never_listens(tmp_path, client_cfg):

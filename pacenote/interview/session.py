@@ -171,6 +171,7 @@ class Session:
         self._pages = 0
         self._page_seen = False
         self._page_gone_at: float | None = None
+        self._heard_from = 0.0  # speech clock when the recogniser was up: idle counts from there, not from Start
         self.persist()
 
     # --- notification for SSE ------------------------------------------------
@@ -268,6 +269,7 @@ class Session:
             await self.notify()
             return
         self.state.capture_problems = []
+        self._heard_from = self.speech_clock() if math.isfinite(self.speech_clock()) else 0.0
         self._stream_status = self._read_stream_status()
         self._tasks = [
             asyncio.create_task(self._ingest_loop(), name="ingest"),
@@ -485,7 +487,7 @@ class Session:
         """lifecycle.end_reason on this session's clocks."""
         if self.state.mode != "interview":
             return None
-        last = max((s.end for s in self.transcript.segments), default=0.0)
+        last = max(max((s.end for s in self.transcript.segments), default=0.0), self._heard_from)
         gone = None if self._pages or self._page_gone_at is None else time.monotonic() - self._page_gone_at
         return lifecycle.end_reason(self.state, speech_now=self.speech_clock(), last_heard=last,
                                     page_seen=self._page_seen, page_gone_for=gone)
@@ -1216,6 +1218,8 @@ class Session:
                 except Exception:
                     pass
         if self.transcript.since(self.last_synced_seq):
+            if self.state.mode not in ("interview", "finalize"):  # a saved session (`pacenote finalize`)
+                self._set_mode("finalize")
             await self.sync_once(force=True)
         self.record_ambassadors()
         before = self.state.mode

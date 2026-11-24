@@ -18,7 +18,9 @@ own clock, `SessionState.now()`, so a replay at any speed keeps the same pace):
    interviewee may already have gone on.
    A step with less than a slot left starts no new question but a priority-1 one: an overrun eats the
    priority 2 and 3 questions first.
-3. **The closing is protected.** When the time left reaches the closing step's reserve, the question
+3. **The closing is protected.** Its reserve is its planned time, and at least `MIN_SLOT + GRACE` per
+   closing question still open (the time being up ends the interview, so every closing question must go
+   up before it). When the time left reaches the closing step's reserve, the question
    on screen gives way at its next boundary and the next question is the closing step's, wherever the
    interview is: what matters for the plan (the return, the horizon) is never lost to time. Past the
    time (only with a `lifecycle.OVERRUN`), the closing's questions still go first, then the ones left
@@ -69,8 +71,12 @@ def _has_open(state: SessionState, phase: str) -> bool:
 
 
 def reserve(state: SessionState) -> float:
-    """Seconds kept for the closing step (0 once it has nothing left to ask)."""
-    return planned(state).get(CLOSING, 0.0) if _has_open(state, CLOSING) else 0.0
+    """Seconds kept for the closing step (0 once it has nothing left to ask): its planned time, and at
+    least a slot plus its grace per question it still has open. The time being up ends the interview
+    (lifecycle.py): a closing of three questions planned 1:20 was cut after its first (they ran 19:12 to
+    22:16 on the replay of a real interview)."""
+    n = sum(1 for q in state.questions if q.open and q.phase == CLOSING)
+    return max(planned(state).get(CLOSING, 0.0), n * (MIN_SLOT + GRACE)) if n else 0.0
 
 
 def phase_share(state: SessionState, phase: str, now: float | None = None) -> float:
@@ -127,6 +133,8 @@ def slot_for(state: SessionState, qid: str | None, now: float | None = None) -> 
     phase_left = max(0.0, budget - spent)
     seen = set(state.focus_history[:-1])  # the ones already asked (the last entry is `qid` itself)
     todo = [x for x in state.questions if x.open and x.phase == phase and x.id not in seen and x.id != qid]
+    if phase == CLOSING:  # the interview ends at the time: each question's grace comes out of the closing's time
+        phase_left = max(0.0, phase_left - GRACE * (1 + len(todo)))
     share = _weight(q) / (_weight(q) + sum(_weight(x) for x in todo))
     return max(MIN_SLOT, phase_left * share)
 

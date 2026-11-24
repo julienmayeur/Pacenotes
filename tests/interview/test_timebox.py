@@ -78,14 +78,19 @@ def test_each_step_gets_its_share_of_the_time_left_and_the_closing_keeps_its_res
     st.started_at = E
     st.set_clock(lambda: E)
     st.start_phase_clock(E)
-    assert st.phase == "wealth" and st.phase_budgets["wealth"] == 120.0  # on time: as planned
+    # the closing keeps a slot and its grace per open question (2 here: 180 s, more than its planned 80 s),
+    # since the time being up ends the interview; the steps before it share the rest by their planned minutes
+    assert timebox.reserve(st) == 2 * (timebox.MIN_SLOT + timebox.GRACE) == 180 > st.phase_plan["return"]
+    before = {p: st.phase_plan[p] for p in st.phase_plan if p != "return"}
+    assert st.phase == "wealth"
+    assert math.isclose(st.phase_budgets["wealth"], (1200 - 180) * 120 / sum(before.values()), abs_tol=0.2)
     # the opening ran 10 minutes (it took 14 in the real interview): the next step only gets its share of
-    # what is left once the closing's 80 s are set aside
+    # what is left once the closing's reserve is set aside
     st.set_clock(lambda: E + 600)
     st.advance("n", to="core-who-comes")
     weights = {p: st.phase_plan[p] for p in ("signal-carriers", "signal-flow", "knowledge", "decisions", "deep-dives")}
     assert st.phase == "signal-carriers"
-    assert math.isclose(st.phase_budgets["signal-carriers"], (600 - 80) * 120 / sum(weights.values()), abs_tol=0.2)
+    assert math.isclose(st.phase_budgets["signal-carriers"], (600 - 180) * 120 / sum(weights.values()), abs_tol=0.2)
     assert st.edit_log[-2].detail.endswith("(time budget spent)")
 
 
@@ -95,7 +100,9 @@ def test_when_the_time_left_is_the_closings_the_next_question_is_the_closings():
     st.set_clock(lambda: E)
     st.start_phase_clock(E)
     assert not timebox.closing_due(st)
-    st.set_clock(lambda: E + 1200 - 79)  # 79 s left: the closing's reserve
+    st.set_clock(lambda: E + 1200 - 181)
+    assert not timebox.closing_due(st)
+    st.set_clock(lambda: E + 1200 - 179)  # 179 s left: within the closing's reserve
     assert timebox.closing_due(st) and st.upcoming_order()[0] == "roi-expectation"
     st.advance("n")
     assert st.focus_id == "roi-expectation" and st.phase == "return"
@@ -275,10 +282,10 @@ def test_when_the_closing_is_due_the_question_on_screen_gives_way_at_its_next_bo
     now = [E]
     st.set_clock(lambda: now[0])
     st.start_phase_clock(E)
-    now[0] = E + 1200 - 100
-    st.advance("n", to="core-who-comes")  # goes up with 100 s left: its slot is a minute
+    now[0] = E + 1200 - 220
+    st.advance("n", to="core-who-comes")  # goes up with 220 s left: its slot is a minute
     assert not timebox.slot_over(st)
-    now[0] = E + 1200 - 79  # the closing's 80 s: the slot is not over, the time is
+    now[0] = E + 1200 - 179  # the closing's 180 s: the slot is not over, the time is
     assert timebox.slot_over(st) and st.next_qid() == "roi-expectation"
 
 
@@ -289,10 +296,10 @@ def test_when_the_closing_is_due_the_next_sentence_end_moves_to_it_without_grace
     s.view()
     st.ask_seq = 0
     s._lags = [11.5] * 10
-    s.source.t = 1200 - 100
-    st.advance("n", to="core-who-comes")  # its 60 s slot would run past the closing's 80 s
+    s.source.t = 1200 - 220
+    st.advance("n", to="core-who-comes")  # its 60 s slot would run past the closing's 180 s
     st.ask_seq = s.transcript.last_seq
-    end = _talk_continuously(s, 1101.0, 1124.0)  # the closing is due from 1120
+    end = _talk_continuously(s, 981.0, 1024.0)  # the closing is due from 1020
     assert timebox.closing_due(st) and st.focus_id == "core-who-comes"
     _say(s, end, end + 3, "c'est comme ça.")
     s.source.t = end + 3.5
