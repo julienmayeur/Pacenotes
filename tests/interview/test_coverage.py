@@ -22,6 +22,7 @@ from tests.interview.test_questions import jargon
 from tests.shared.test_i18n import _node_playwright
 
 E = 1_800_000_000.0
+BASE = 20 * 60 / 9 * coverage.ALLOWANCE_FACTOR  # a point's allowance in a 20-minute interview (133 s)
 
 
 class _Clock:
@@ -127,7 +128,7 @@ def test_a_new_area_starts_a_new_point_unless_the_model_says_it_is_the_same_case
 
 
 def test_the_allowance_is_the_area_share_of_the_interview_with_some_depth(tmp_path):
-    for minutes, want in ((20, 200.0), (15, 150.0), (5, coverage.MIN_ALLOWANCE), (60, coverage.MAX_ALLOWANCE)):
+    for minutes, want in ((20, BASE), (30, 200.0), (5, coverage.MIN_ALLOWANCE), (60, coverage.MAX_ALLOWANCE)):
         assert coverage.allowance(_session(tmp_path / str(minutes), minutes).state) == pytest.approx(want), minutes
 
 
@@ -144,8 +145,7 @@ def test_one_case_for_an_hour_gets_a_move_on_after_its_allowance_and_again_after
             moves.append((t, st.cov.move_on["to"]))
         if (q := coverage.pending_qid(st)) is not None and t - st.cov.move_on["at"] + E >= 60:
             st.advance("test: the interviewer asked it", to=q)  # asked, but the conversation stays put
-    allowance = 20 * 60 / 9 * coverage.ALLOWANCE_FACTOR  # 200 s
-    assert moves[0][0] == pytest.approx(allowance, abs=10)  # 3 min 20 s into the hour, not 60 min
+    assert moves[0][0] == pytest.approx(BASE, abs=10)  # about 2 min into the hour, not 60 min
     assert [m[1] for m in moves[:4]] == ["sales", "after-sales", "purchasing", "operations"]  # untouched, in order
     gaps = [b[0] - a[0] for a, b in zip(moves, moves[1:], strict=False)]
     assert min(gaps) >= coverage.COOLDOWN  # never nagging
@@ -198,10 +198,10 @@ def test_keep_going_sets_the_move_on_aside_and_gives_the_point_more_time(tmp_pat
     s._maybe_move_on()
     assert coverage.extend(st)
     assert st.get("area-sales") is None and st.next_qid() != "area-sales"  # left the queue
-    assert coverage.allowance(st) == pytest.approx(200 + coverage.EXTEND)
-    _at(s, 200 + coverage.EXTEND - 1)
+    assert coverage.allowance(st) == pytest.approx(BASE + coverage.EXTEND)
+    _at(s, BASE + coverage.EXTEND - 1)
     assert not coverage.due(st)
-    _sync(s, 200 + coverage.EXTEND + 5, _label("customer-service", same=True))
+    _sync(s, BASE + coverage.EXTEND + 5, _label("customer-service", same=True))
     assert coverage.due(st) and coverage.next_area(st) == "after-sales"  # sales was set aside on this point
 
 
@@ -209,14 +209,16 @@ def test_a_point_that_repeats_itself_gets_the_move_on_earlier_and_time_still_gua
     s = _session(tmp_path)
     st = s.state
     _sync(s, 40, _label("customer-service"))
+    _sync(s, 60, _label("customer-service", same=True, repeating=True))
+    _at(s, 75)
+    assert not coverage.due(st)
     _sync(s, 80, _label("customer-service", same=True, repeating=True))
-    _sync(s, 120, _label("customer-service", same=True, repeating=True))
-    _at(s, 125)
-    assert coverage.allowance(st) == pytest.approx(200 * coverage.REPEAT_FACTOR) and coverage.due(st)
+    _at(s, 85)
+    assert coverage.allowance(st) == pytest.approx(BASE * coverage.REPEAT_FACTOR) and coverage.due(st)
     s2 = _session(tmp_path / "b")  # no label at all (every sync failed): the clock alone still moves on
-    _at(s2, 199)
+    _at(s2, BASE - 1)
     assert not coverage.due(s2.state)
-    _at(s2, 201)
+    _at(s2, BASE + 1)
     assert coverage.due(s2.state)
 
 
@@ -239,7 +241,7 @@ def test_no_move_on_while_the_closing_questions_have_the_floor_and_depth_once_ev
     assert timebox.closing_due(st) and not coverage.due(st)
     s2 = _session(tmp_path / "b")
     _sync(s2, 40, _label("customer-service", mentioned=[a for a in coverage.ids(s2.state) if a != "customer-service"]))
-    assert coverage.allowance(s2.state) == pytest.approx(200 * coverage.DEPTH_FACTOR)
+    assert coverage.allowance(s2.state) == pytest.approx(BASE * coverage.DEPTH_FACTOR)
 
 
 # --- what the model and the screen see ---------------------------------------------------------------
@@ -313,3 +315,16 @@ def test_the_screen_shows_the_areas_and_the_move_on_line_and_x_keeps_going(tmp_p
     assert b["moveOn"]["text"].startswith("Côté ventes") and b["moveOn"]["keep"] == "Continuerx"
     assert r["after"]["moveOn"] is None  # x: the move-on is set aside, the point gets more time
     assert s.state.cov.topic["extra"] == coverage.EXTEND
+
+
+def test_a_followed_move_on_starts_the_new_point_when_its_question_went_up(tmp_path):
+    s = _session(tmp_path)
+    st = s.state
+    for t in (40, 80, 120, 160):
+        _sync(s, t, _label("customer-service", same=t > 40))
+    _at(s, 160)
+    s._maybe_move_on()
+    _at(s, 170)
+    st.advance("test: asked", to="area-sales")
+    _sync(s, 205, _label("sales"))  # the slice from 160 to 205 is mostly about sales, from 170 on
+    assert st.cov.topic["area"] == "sales" and st.cov.topic["since"] == E + 170

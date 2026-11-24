@@ -16,8 +16,9 @@ coverage for the interviewer. The model labels; the code decides:
 - **Drift is measured on the conversation, not on the screen.** The current point started when a label named
   another area (and not the same point); it survives question changes on screen, a failed sync and slices
   labelled "other": nothing but a new area resets it, so a missing analysis never silences the move-on.
-  Each point gets an allowance: its share of the interview (the length over the number of areas) times
-  `ALLOWANCE_FACTOR`, between `MIN_ALLOWANCE` and `MAX_ALLOWANCE`; twice that once no area is left
+  Each point gets an allowance: its share of the interview (the length over the number of areas, times
+  `ALLOWANCE_FACTOR`), between `MIN_ALLOWANCE` and `MAX_ALLOWANCE`, so every area can be reached in the
+  planned length (20 minutes, 9 areas: 133 s each); twice that once no area is left
   untouched (then depth is welcome). Time guarantees the move-on; a point that repeats itself (two
   slices in a row with nothing new) brings it earlier (`REPEAT_FACTOR`).
 - **The move-on.** Once the point has had its allowance and an area is still untouched, the next one
@@ -52,7 +53,7 @@ THEME = "areas"  # the theme of the area questions (added to the session when th
 QID_PREFIX = "area-"
 
 COVERED = 60.0  # s as the conversation's point: the area is covered, not only touched
-ALLOWANCE_FACTOR = 1.5  # a point's allowance: its share of the interview (length / areas) times this
+ALLOWANCE_FACTOR = 1.0  # a point's allowance: its share of the interview (length / areas) times this
 MIN_ALLOWANCE = 120.0
 MAX_ALLOWANCE = 300.0
 DEPTH_FACTOR = 2.0  # no area left untouched: depth is welcome, the allowance doubles
@@ -84,6 +85,7 @@ class AreaCoverage(BaseModel):
     topic: dict = Field(default_factory=dict)
     move_on: dict = Field(default_factory=dict)  # the pending move-on: {from, to, qid, at}; {} = none
     last_move: float | None = None  # when the last move-on was taken or set aside (cooldown)
+    asked: dict[str, float] = Field(default_factory=dict)  # area -> when its move-on question went up
     log: list[dict] = Field(default_factory=list)  # every label and move-on, for the replay and the plan
     labels: int = 0
 
@@ -198,8 +200,9 @@ def apply_topic(state: SessionState, label: TopicLabel | None, now: float | None
     entry = {"at": round(now - state.started_at, 1), "area": label.area, "point": label.point,
              "same_point": label.same_point, "repeating": label.repeating}
     if area and t.get("area") not in (None, area) and not label.same_point:
-        # a new point: its clock starts at the beginning of this slice (the previous label)
-        since = now - gap
+        # a new point: its clock starts at the beginning of this slice (the previous label), or when this
+        # area's move-on question went up during the slice (the conversation followed it from then)
+        since = max(now - gap, min(now, cov.asked.get(area, -1e18)))
         cov.topic = {"area": area, "point": label.point, "since": since, "at": now,
                      "repeats": 1 if label.repeating else 0, "extra": 0.0, "proposed": []}
         entry["new_point"] = True
@@ -369,6 +372,7 @@ def on_focus(state: SessionState) -> None:
     """The focus changed (state.advance): the move-on question went up, or another question did."""
     mv = state.cov.move_on
     if mv and state.focus_id == mv.get("qid"):
+        state.cov.asked[mv["to"]] = state.now()
         _resolve(state, "asked", drop=False)
 
 

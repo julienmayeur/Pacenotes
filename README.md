@@ -45,7 +45,7 @@ prepare (admin) ─► consent ─► interview: capture + follow-ups ─► sto
   of the company (sales, customer service, after-sales, purchasing, logistics, marketing, finance, people,
   IT; a questionnaire's `areas:` can change the list). The side panel shows a quiet dot per area: not
   discussed yet, touched on, covered. When the conversation has stayed on one point for its share of the
-  time (about 3 minutes in a 20-minute interview, sooner when it only repeats itself), the next area not
+  time (a little over 2 minutes in a 20-minute interview, so every area fits; sooner when it only repeats itself), the next area not
   discussed yet is queued as the next question, with a transition line ready to say. It moves up at the
   next boundary unless you keep going (`x`: three more minutes on this point). The measure follows the
   conversation, not the screen: a question changing on screen while the talk stays on the same case does

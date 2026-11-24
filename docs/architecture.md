@@ -393,7 +393,7 @@ took the whole hour while the question on screen kept changing. The model labels
 - **Drift is measured on the conversation**: the current point starts when a label names another area (and
   not the same point); question changes on screen, `other`, an unknown id or a failed sync never reset it,
   so a missing analysis never silences the move-on. Allowance: the interview length over the number of
-  areas, × 1.5, between 2 and 5 minutes (200 s for 20 minutes and 9 areas); × 2 once no area is left
+  areas, between 2 and 5 minutes (133 s for 20 minutes and 9 areas: every area fits in the planned length); × 2 once no area is left
   untouched; × 0.6 after two slices in a row that only repeat the point; + 3 minutes per `x`.
 - **The move-on**: once the point has had its allowance, the first untouched area (then touched but not
   covered; never one already suggested on this point) gets its question, in the current step, through the
