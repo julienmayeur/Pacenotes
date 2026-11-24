@@ -204,3 +204,13 @@ def _no_local_speech_backend_config(monkeypatch):
     for name in ("PACENOTE_WHISPER_BIN", "PACENOTE_WHISPER_MODEL", "PACENOTE_SPEECH_BACKEND"):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setattr("pacenote.transcription.speech.WHISPER_NAMES", ("pacenote-test-no-such-whisper",))
+
+
+def pytest_terminal_summary(terminalreporter):
+    """Browser tests skip without Node + the `playwright` package; say so loudly, so a run that silently lost
+    them (e.g. NODE_PATH not pointing at a node_modules with playwright) is never read as a full green."""
+    skipped = [r for r in terminalreporter.stats.get("skipped", []) if "playwright" in str(r.longrepr)]
+    if skipped:
+        terminalreporter.write_sep("!", f"{len(skipped)} real-browser tests skipped: Node can't load `playwright`",
+                                   yellow=True)
+        terminalreporter.write_line("Set NODE_PATH to a node_modules that has playwright (README, Tests), then rerun.")
