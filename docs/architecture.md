@@ -276,7 +276,7 @@ retires only on an "answer over" signal (`Session._answer_over`, checked every p
 | The question is complete | An analysis (fast pass or full sync) turns the focus question from open to answered: the model's call (the ladder done), accepted only past the existing gate, every slot item plus half of the other expected details (`QuestionState.sufficient`); from an answer given after what is asked now went up (a turn starts after it in the lines it read; a pending completion is dropped when the interviewer reads or clicks a follow-up) | The focus moves to the next question at once, even while the interviewee goes on |
 | The interviewee answers the next question | The fast pass gives the queued next question an answer piece and none to the current one | The focus moves there |
 | The question's time slot is over | `timebox.slot_over` (below), something said since the pin, then the first boundary: a sure pause of 1.5 s; once the slot is 30 s over, a new line ending in . ? ! | The next question moves up, before any queued follow-up |
-| The conversation stayed on one point | `coverage.pending_qid` (below): the next area's question is queued; same boundary as a slot over, the 30 s grace counted from when it was queued | The next area's question moves up, unless the interviewer keeps going (`x`) |
+| The conversation stayed on one point | `coverage.pending_qid` (below): the next area's question is queued, on screen at least 10 s (whatever the slot on screen says); then a sure pause of 1.5 s, or once it has been queued 30 s, a new line ending in . ? ! | The next area's question moves up, unless the interviewer keeps going (`x`) |
 | A real pause after the answer | Something was said since the pin; the fast pass read every line; then a pause on the speech clock of 3.5 s after a line ending in . ? ! (7 s after any other line: the recogniser cuts long sentences into ~60-character lines) | The first queued item moves up (the next question if the focus is answered) |
 | The interviewer | `n` / Enter, `a`, `k`, `p`, or a click on a queued question | As before (`n` and `a` go to the « Question suivante » shown); a click asks that item |
 
@@ -397,10 +397,11 @@ took the whole hour while the question on screen kept changing. The model labels
   areas, between 2 and 5 minutes (133 s for 20 minutes and 9 areas: every area fits in the planned length); × 2 once no area is left
   untouched; × 0.6 after two slices in a row that only repeat the point; + 3 minutes per `x`.
 - **The move-on**: once the point has had its allowance, the first untouched area (then touched but not
-  covered; never one already suggested on this point) gets its question, in the current step, through the
+  covered, then once more an area whose question went up but that is still untouched: shown is not covered;
+  never one already suggested on this point) gets its question, in the current step, through the
   queued-next slot: the screen shows a transition line ready to say above it, and a quiet "keep going (x)".
   No follow-up is queued meanwhile (the prompts get `time_over` and `areas.move_on_queued`). It moves up at
-  the next boundary (table above); `x` sets it aside and gives the point 3 more minutes; the conversation
+  the next boundary (table above), and its transition line stays above the question for 45 s; `x` sets it aside and gives the point 3 more minutes; the conversation
   moving to another area by itself drops it. The next move-on waits at least 90 s; none while the closing
   questions have the floor.
 

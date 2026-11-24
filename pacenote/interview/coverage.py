@@ -24,10 +24,12 @@ coverage for the interviewer. The model labels; the code decides:
   untouched (then depth is welcome). Time guarantees the move-on; a point that repeats itself (two
   slices in a row with nothing new) brings it earlier (`REPEAT_FACTOR`).
 - **The move-on.** Once the point has had its allowance and an area is still untouched, the next one
-  (the areas' order, untouched first, then touched but not covered) is queued as the next question with a
-  transition line: the interviewer can say it as is. It goes through the queued-next slot (state.next_qid),
-  so it moves up at the next boundary like a question whose time slot is over (session.py), unless the
-  interviewer keeps going (`x`: `EXTEND` more seconds on this point). No action means rotate. After a move-on
+  (the areas' order, untouched first, then touched but not covered, then once more an untouched area whose
+  question went up unanswered) is queued as the next question with a transition line: the interviewer can
+  say it as is. It goes through the queued-next slot (state.next_qid) and moves up at the next boundary
+  (session.py), on its own clock: on screen `SHOW` seconds at least, then a sure pause, or a sentence end once
+  it has been queued `timebox.GRACE` seconds; the transition line stays above the question `SAY_FOR` seconds.
+  The interviewer can keep going instead (`x`: `EXTEND` more seconds on this point). No action means rotate. After a move-on
   (taken or set aside) the next one waits `COOLDOWN` seconds; none while the closing questions have the
   floor (timebox.py).
 
@@ -63,6 +65,8 @@ REPEAT_FACTOR = 0.6  # the point repeats itself: the move-on comes at this share
 REPEATS = 2  # slices in a row the model found repeating before REPEAT_FACTOR applies
 EXTEND = 180.0  # the interviewer keeps going (x): this much more on the current point
 COOLDOWN = 90.0  # after a move-on (taken or set aside), the next one waits at least this long
+SHOW = 10.0  # s the queued move-on stays on screen before it can move up (read the line, or keep going with x)
+SAY_FOR = 45.0  # s the transition line stays above the area's question once it went up
 GAP_CAP = 120.0  # at most this much time goes to one label (a failed sync never inflates an area)
 
 Status = Literal["untouched", "touched", "covered"]
@@ -250,15 +254,17 @@ def allowance(state: SessionState) -> float:
 
 
 def next_area(state: SessionState) -> str | None:
-    """The area to move to: the first untouched one, else the first touched but not covered; never the
-    current point's area, one already suggested on this point, or one whose question was asked."""
+    """The area to move to: the first untouched one whose question was not asked yet, else the first touched
+    but not covered one; else, once more, an area whose question went up but that is still untouched (shown is
+    not covered). Never the current point's area or one already suggested on this point."""
     cov = state.cov
     cur = cov.topic.get("area")
     skip = {cur, *cov.topic.get("proposed", [])}
     asked = set(state.focus_history)
-    cands = [a for a in ids(state) if a not in skip and QID_PREFIX + a not in asked]
-    for want in ("untouched", "touched"):
-        hit = next((a for a in cands if status(state, a) == want), None)
+    cands = [a for a in ids(state) if a not in skip]
+    fresh = [a for a in cands if QID_PREFIX + a not in asked]
+    for pool, want in ((fresh, "untouched"), (fresh, "touched"), (cands, "untouched")):
+        hit = next((a for a in pool if status(state, a) == want), None)
         if hit:
             return hit
     return None
@@ -417,7 +423,16 @@ def view(state: SessionState, lang: str, tr=None, say: str | None = None, now: f
         title = _pick(to.title, say)
         title = title[:1].lower() + title[1:] if say in ("fr", "en") else title  # mid-sentence
         mv = {"to": to.id, "qid": qid, "transition": tr("coverage.transition", {"to": title}) if tr else title}
-    return {"areas": areas, **counts(state), "total": len(areas), "move_on": mv,
+    said = None  # the area's question just went up from a move-on: its transition line stays above it a moment
+    q = state.get(state.focus_id)
+    if q is not None and q.id.startswith(QID_PREFIX) and (to := get(state, q.id[len(QID_PREFIX):])) is not None:
+        at = cov.asked.get(to.id)
+        if at is not None and (state.now() if now is None else now) - at < SAY_FOR:
+            say = say or state.language
+            title = _pick(to.title, say)
+            title = title[:1].lower() + title[1:] if say in ("fr", "en") else title
+            said = tr("coverage.transition", {"to": title}) if tr else title
+    return {"areas": areas, **counts(state), "total": len(areas), "move_on": mv, "said": said,
             "dwell": round(dwell(state, now)), "allowance": round(allowance(state)),
             "point": cov.topic.get("point", ""), "extendable": bool(cov.topic)}
 

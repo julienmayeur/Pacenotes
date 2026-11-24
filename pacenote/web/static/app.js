@@ -332,6 +332,8 @@ function renderAsk(cur, changed) {
   setText($("ask-label"), fallback ? t("focus.askTheme") : t("focus.ask"));
   const text = ask ? ask.text : "";
   setText($("ask-text"), text);
+  // the next area's question just went up (coverage first): the line that leads to it stays a moment
+  setText($("ask-transition"), fallback && cur && cur.transition ? cur.transition : "");
   // with several attendees: who to address it to (the model's pick, else the rung's rule)
   const to = cur && S.mode === "interview" && cur.status !== "answered" ? cur.ask_to : null;
   setClass($("ask-to"), "hidden", !to);

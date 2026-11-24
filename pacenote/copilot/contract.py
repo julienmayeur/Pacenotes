@@ -218,7 +218,7 @@ class TopicLabel(_Strict):
     labels, the code decides when the conversation has stayed on one area long enough."""
 
     area: str  # the main area of the new lines: an id from the areas list, "other" (off the list or small talk)
-    point: str  # the specific case or point, a few words ("dealer calls about order status")
+    point: str  # the specific case or point, a few words ("bakery orders re-keyed from email")
     same_point: bool  # the new lines go on with the point of the previous slice (the same case)
     repeating: bool  # the new lines restate what was already said on this point, with nothing new
     discussed: list[str]  # area ids the new lines actually discuss (a concrete exchange, not a passing word)

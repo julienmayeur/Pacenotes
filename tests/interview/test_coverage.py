@@ -139,7 +139,7 @@ def test_one_case_for_an_hour_gets_a_move_on_after_its_allowance_and_again_after
     moves = []
     for t in range(40, 3601, 10):
         if t % 40 == 0:
-            _sync(s, t, _label("customer-service", "dealer calls about order status", same=t > 40))
+            _sync(s, t, _label("customer-service", "bakery orders re-keyed from email", same=t > 40))
         _at(s, t)
         if s._maybe_move_on():
             moves.append((t, st.cov.move_on["to"]))
@@ -176,11 +176,11 @@ def test_it_moves_up_at_the_next_boundary_unless_the_interviewer_keeps_going(tmp
     st = s.state
     for t in (40, 80, 120, 160, 200):
         _sync(s, t, _label("customer-service", same=t > 40))
-    _say(s, 190.0, 199.0, "et donc les concessionnaires nous rappellent pour savoir")
+    _say(s, 190.0, 199.0, "et donc les boulangers nous rappellent pour savoir")
     _at(s, 200)
     s._maybe_move_on()
     st.ask_seq = s.transcript.last_seq
-    _say(s, 200.0, 209.0, "ils appellent tout le temps, c'est le problème principal")
+    _say(s, 200.0, 209.0, "ils appellent pour leurs commandes, c'est le problème principal")
     _at(s, 212)
     assert not s._maybe_retire()  # within the grace, mid-conversation: nothing moves
     _say(s, 220.0, 232.0, "voilà, c'est vraiment ça qui nous prend le plus de temps.")
@@ -249,7 +249,7 @@ def test_no_move_on_while_the_closing_questions_have_the_floor_and_depth_once_ev
 
 def test_the_model_gets_the_areas_and_where_the_conversation_is(tmp_path):
     s = _session(tmp_path)
-    _sync(s, 40, _label("customer-service", "dealer calls"))
+    _sync(s, 40, _label("customer-service", "orders by email"))
     system = build_sync_system(s.state, glossary="")
     assert "# Coverage first" in system and "- after-sales: After-sales and warranty" in system
     user = build_sync_user(s.state, [], [], 40)
@@ -302,7 +302,7 @@ const { chromium } = require('playwright');
 def test_the_screen_shows_the_areas_and_the_move_on_line_and_x_keeps_going(tmp_path):
     s = _session(tmp_path)
     for t in (40, 80, 120, 160, 200):
-        _sync(s, t, _label("customer-service", "dealer calls", same=t > 40, mentioned=["it"] if t == 40 else []))
+        _sync(s, t, _label("customer-service", "orders by email", same=t > 40, mentioned=["it"] if t == 40 else []))
     _at(s, 200)
     assert s._maybe_move_on()
     r = _run(tmp_path, s, COVERAGE_SCRIPT)
@@ -341,3 +341,64 @@ def test_greetings_before_the_first_area_do_not_count_against_it(tmp_path):
     assert not coverage.due(st)
     _at(s, 80 + BASE + 1)
     assert coverage.due(st)
+
+
+def test_the_move_on_stays_on_screen_its_own_grace_even_when_the_slot_on_screen_is_long_over(tmp_path):
+    """Live replay: queued and asked within 2 s four times, because the question on screen was long past its
+    slot. The move-on now has its own clock: SHOW seconds at least, then a sure pause, or a sentence end once
+    its own GRACE is over."""
+    def ready(tmp):
+        s = _session(tmp)
+        for t in (40, 80, 120, 160, 200):
+            _sync(s, t, _label("customer-service", same=t > 40))
+        s.state.focus_slot = 1.0  # the question on screen is long over its slot
+        s.state.ensure_ask()
+        _say(s, 185.0, 195.0, "on reçoit les commandes par mail, et quelqu'un les ressaisit toutes à la main ensuite.")
+        s.state.ask_seq = 0
+        _at(s, 200)
+        assert s._maybe_move_on()
+        return s
+
+    s = ready(tmp_path / "pause")  # silence since 195 s: a sure pause, but the line is shown SHOW seconds first
+    _at(s, 200 + coverage.SHOW - 1)
+    assert not s._maybe_retire()
+    _at(s, 200 + coverage.SHOW + 1)
+    assert s._maybe_retire() and s.state.focus_id == "area-sales"
+    assert s.ask_changes[-1]["reason"] == "next area, 1.5 s pause"
+
+    s = ready(tmp_path / "talk")  # the interviewee talks on, no pause: a sentence end once the grace is over
+    for t in range(201, 200 + int(timebox.GRACE) + 4, 2):
+        _say(s, t - 2.0, t - 0.1, "et puis il y a les relances clients.")  # each line ends a sentence
+        _at(s, t)
+        moved = s._maybe_retire()
+        assert not moved or t - 200 > timebox.GRACE, t  # never within the grace
+        if moved:
+            break
+    assert moved and t - 200 <= timebox.GRACE + 4  # the next sentence end after it
+    assert s.state.focus_id == "area-sales" and s.ask_changes[-1]["reason"] == "next area, sentence end"
+
+
+def test_an_area_shown_but_still_untouched_is_offered_again(tmp_path):
+    s = _session(tmp_path)
+    st = s.state
+    for a in coverage.ids(st):
+        st.focus_history.append(coverage.QID_PREFIX + a)  # every area's question went up
+    _sync(s, 40, _label("customer-service", mentioned=["sales", "it"]))
+    assert coverage.next_area(st) == "after-sales"  # untouched despite its question: shown is not covered
+    st.cov.topic["proposed"] = ["after-sales", "purchasing", "operations", "marketing", "finance", "people"]
+    assert coverage.next_area(st) is None  # touched ones are never re-offered
+
+
+def test_the_transition_line_stays_above_the_area_question_once_it_went_up(tmp_path):
+    s = _session(tmp_path)
+    st = s.state
+    for t in (40, 80, 120, 160, 200):
+        _sync(s, t, _label("customer-service", same=t > 40))
+    _at(s, 200)
+    s._maybe_move_on()
+    _at(s, 230)
+    st.advance("test: asked", to="area-sales")
+    cur = s.view()["current"]
+    assert cur["id"] == "area-sales" and cur["transition"].startswith("Merci, c'est très clair.")
+    _at(s, 230 + coverage.SAY_FOR + 1)
+    assert s.view()["current"]["transition"] is None

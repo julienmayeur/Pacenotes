@@ -643,18 +643,23 @@ class Session:
         st = self.state
         if sum(len(s.text) for s in self.transcript.segments if s.seq > (st.ask_seq or 0)) < self.settings.answer_min_chars:
             return None
+        # the next area's question (coverage.py) has its own clock: on screen at least SHOW seconds (the
+        # interviewer reads the transition line and can keep going with x), its grace counted from then
+        moving = (mq := coverage.pending_qid(st)) is not None
+        age = st.now() - st.cov.move_on.get("at", st.now()) if moving else None
+        what = "next area" if moving else "time slot over"
+        if age is not None and age < coverage.SHOW:
+            return None
         if self.speech_pause() >= self.settings.slot_pause:
-            return f"time slot over, {self.settings.slot_pause:g} s pause"
-        over = -(timebox.slot_left(st) or 0.0)
-        if coverage.pending_qid(st) is not None:  # the move-on's grace runs from when it was queued
-            over = max(over, st.now() - st.cov.move_on.get("at", st.now()))
+            return f"{what}, {self.settings.slot_pause:g} s pause"
+        over = age if age is not None else -(timebox.slot_left(st) or 0.0)
         if over < timebox.GRACE and not timebox.closing_due(st):
             return None  # (the closing's time has come: no grace)
         # live, the lines come in batches every ~11.5 s and a pause is rarely sure: the next line that ends a
         # sentence (in the newest batch) is the boundary
-        mark = self._grace_from.setdefault(st.focus_id or "", self.transcript.last_seq)
+        mark = self._grace_from.setdefault(f"{st.focus_id}|{mq}" if moving else st.focus_id or "", self.transcript.last_seq)
         if any(s.seq > mark and not self.line_open(s.text) for s in self._lines()):
-            return "time slot over, sentence end"
+            return f"{what}, sentence end"
         return None
 
     def _maybe_move_on(self) -> bool:
@@ -1260,6 +1265,8 @@ class Session:
                        "ask": ({"key": f"f:{cur.id}:{pin.at!r}", "kind": "followup", "text": pin.shown(shown, lang),
                                 "rung": pin.rung} if (pin := st.ask_pin) is not None
                                else {"key": f"q:{cur.id}", "kind": "question", "text": cur.text(shown)}),
+                       # the area's question just went up from a move-on: the line that leads to it, a moment
+                       "transition": cov_view.get("said") if cov_view else None,
                        "ask_next": [{"key": _ask_key(cur.id, i), "kind": i["kind"],
                                      "text": (i["entry"].shown(shown, lang) if i["kind"] == "followup"
                                               else st.get(i["qid"]).text(shown)),

@@ -602,7 +602,7 @@ The areas (id: title):
 {areas}
 For topic: area = the ONE area new_transcript is mainly about (an id above), or "other" for small talk, \
 the interview itself, or something off the list. point = the specific case or point in a few words \
-(e.g. "dealer calls about order status"). same_point = true when new_transcript goes on with the point \
+(e.g. "bakery orders re-keyed from email"). same_point = true when new_transcript goes on with the point \
 of state.areas.current_point, even if it touches another area along the way. repeating = true when \
 it only restates what was already said on that point, with no new fact. discussed = the area ids \
 new_transcript actually discusses (a concrete exchange: a case, a person, a number, a tool); mentioned \
