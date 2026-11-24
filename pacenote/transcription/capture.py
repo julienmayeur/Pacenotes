@@ -24,6 +24,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import math
 import os
 import queue
 import shutil
@@ -524,6 +525,11 @@ class ListenCapture:
             out += self._run.drain()
         return sorted(out, key=lambda c: (c.end, c.stream))
 
+    def level(self) -> float | None:
+        """The microphone level of the last second (rms), for the timing log (to calibrate a real-time
+        speech signal: the final lines arrive in batches every ~11.5 s and hide short pauses)."""
+        return self._run.rms if self._run is not None else None
+
     def stream_status(self) -> dict[str, dict]:
         """Per stream: alive, problem (None when fine), restarts, gave_up, and stopped (stop() was
         called on purpose: nothing is reported and nothing restarts). One process serves every
@@ -653,22 +659,45 @@ class ReplaySource:
     """Feeds saved SRT files as if they were live.
 
     speed=1.0 is real time, 10.0 is ten times faster, 0 (or less) emits everything at once.
+    batch > 0 delivers the lines like Apple's live recogniser: in batches every `batch` seconds (11.5
+    live), a line in the first batch after it ends. `arrivals` (from_transcript) replays a recorded
+    session's own delivery instead: each line at the speech-clock time it arrived.
     """
 
-    def __init__(self, files: dict[str, Path], speed: float = 1.0, clock=time.monotonic):
+    def __init__(self, files: dict[str, Path], speed: float = 1.0, clock=time.monotonic, batch: float = 0.0,
+                 arrivals: list[tuple[TimedCue, float]] | None = None):
         self.files = {k: Path(v) for k, v in files.items()}
         self.speed = speed
+        self.batch = batch
+        self._arrivals = arrivals
         self._clock = clock
-        self._queue: list[TimedCue] = []
+        self._queue: list[tuple[float, TimedCue]] = []  # (when it is delivered, the line)
         self._t0: float | None = None
         self._stopped = False
 
+    @classmethod
+    def from_transcript(cls, path: Path, speed: float = 1.0, until: float | None = None,
+                        clock=time.monotonic) -> ReplaySource:
+        """A recorded session's transcript.jsonl, each line delivered when it arrived live (its
+        received_at, on the speech clock: the quickest delivery seen counts as no delay)."""
+        rows = [json.loads(x) for x in Path(path).read_text(encoding="utf-8").splitlines() if x.strip()]
+        rows = [r for r in rows if until is None or r["start"] < until]
+        shift = min((r["received_at"] - r["end"] for r in rows), default=0.0)
+        arrivals = [(TimedCue(r["stream"], r["start"], r["end"], r["text"]), r["received_at"] - shift) for r in rows]
+        streams = sorted({c.stream for c, _ in arrivals})
+        return cls({s: Path(path) for s in streams}, speed=speed, clock=clock, arrivals=arrivals)
+
     def start(self) -> None:
-        cues: list[TimedCue] = []
-        for stream, path in self.files.items():
-            for c in load_srt(path):
-                cues.append(TimedCue(stream, c.start, c.end, c.text))
-        self._queue = sorted(cues, key=lambda c: (c.end, c.stream))
+        if self._arrivals is not None:
+            timed = [(max(at, c.end), c) for c, at in self._arrivals]
+        else:
+            cues: list[TimedCue] = []
+            for stream, path in self.files.items():
+                for c in load_srt(path):
+                    cues.append(TimedCue(stream, c.start, c.end, c.text))
+            b = self.batch
+            timed = [((math.ceil(c.end / b) * b) if b > 0 else c.end, c) for c in cues]
+        self._queue = sorted(timed, key=lambda x: (x[0], x[1].end, x[1].stream))
         self._t0 = self._clock()
 
     def elapsed(self) -> float:
@@ -682,8 +711,8 @@ class ReplaySource:
         if self._t0 is None:
             return []
         now = float("inf") if final else self.elapsed()
-        ready = [c for c in self._queue if c.end <= now]
-        self._queue = self._queue[len(ready) :]
+        n = next((i for i, (at, _) in enumerate(self._queue) if at > now), len(self._queue))
+        ready, self._queue = [c for _, c in self._queue[:n]], self._queue[n:]
         return ready
 
     @property

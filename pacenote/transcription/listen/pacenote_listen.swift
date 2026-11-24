@@ -81,6 +81,7 @@ struct Options {
     var command = ""
     var locales: [String] = []
     var file: String? = nil
+    var realtime = false  // --file only: feed it at its own pace, as a microphone would (checks live timing)
     var maxLength = 60
 }
 
@@ -88,7 +89,7 @@ func parseArgs() -> Options {
     var o = Options()
     var args = Array(CommandLine.arguments.dropFirst())
     guard let cmd = args.first, ["prepare", "listen"].contains(cmd) else {
-        fail(Failure(code: "usage", message: "usage: pacenote-listen prepare|listen --locale fr-FR [--locale en-US] [--file X] [--max-length N]"), exitCode: 2)
+        fail(Failure(code: "usage", message: "usage: pacenote-listen prepare|listen --locale fr-FR [--locale en-US] [--file X [--realtime]] [--max-length N]"), exitCode: 2)
     }
     o.command = cmd
     args.removeFirst()
@@ -101,6 +102,7 @@ func parseArgs() -> Options {
         switch a {
         case "--locale": o.locales.append(value())
         case "--file": o.file = value()
+        case "--realtime": o.realtime = true
         case "--max-length": o.maxLength = Int(value()) ?? 60
         default: fail(Failure(code: "usage", message: "unknown argument \(a)"), exitCode: 2)
         }
@@ -430,7 +432,7 @@ func convert(_ buffer: AVAudioPCMBuffer, _ converter: AVAudioConverter, _ target
     return (error == nil && out.frameLength > 0) ? out : nil
 }
 
-func feedFile(_ path: String, into pipeline: Pipeline) throws {
+func feedFile(_ path: String, into pipeline: Pipeline, realtime: Bool = false) async throws {
     let file: AVAudioFile
     do {
         file = try AVAudioFile(forReading: URL(fileURLWithPath: path))
@@ -440,12 +442,18 @@ func feedFile(_ path: String, into pipeline: Pipeline) throws {
     guard let conv = AVAudioConverter(from: file.processingFormat, to: pipeline.format) else {
         throw Failure(code: "audio_format", message: "Cannot convert \(path) to the speech format.")
     }
+    let started = Date()
+    let rate = file.processingFormat.sampleRate
     while file.framePosition < file.length {
         guard let buf = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: 8192) else { break }
         try file.read(into: buf)
         if buf.frameLength == 0 { break }
         Level.shared.add(buf)
         if let out = convert(buf, conv, pipeline.format) { pipeline.feed(out) }
+        if realtime {  // as a microphone would: no faster than the audio's own time
+            let ahead = Double(file.framePosition) / rate - Date().timeIntervalSince(started)
+            if ahead > 0 { try? await Task.sleep(nanoseconds: UInt64(ahead * 1_000_000_000)) }
+        }
     }
 }
 
@@ -485,7 +493,7 @@ struct PacenoteListen {
         if let path = opts.file {
             Out.shared.emit("ready", ["locales": ids, "failed": failed, "source": "file", "sample_rate": pipeline.format.sampleRate])
             let heartbeat = startHeartbeat()
-            do { try feedFile(path, into: pipeline) } catch let f as Failure { fail(f, exitCode: 4) } catch {
+            do { try await feedFile(path, into: pipeline, realtime: opts.realtime) } catch let f as Failure { fail(f, exitCode: 4) } catch {
                 fail(Failure(code: "file", message: describe(error)), exitCode: 4)
             }
             Level.shared.beat()  // the whole file was read

@@ -415,6 +415,10 @@ class FallbackSource:
     def stream_status(self) -> dict[str, dict]:
         return self.active.stream_status()
 
+    def level(self) -> float | None:
+        fn = getattr(self.active, "level", None)
+        return fn() if callable(fn) else None
+
     def problems(self) -> list[str]:
         return self.active.problems()
 
