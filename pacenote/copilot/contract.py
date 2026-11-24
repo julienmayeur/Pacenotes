@@ -213,6 +213,18 @@ class ThemeCoverage(_Strict):
     note: str
 
 
+class TopicLabel(_Strict):
+    """What the new lines of a sync are about, as an area of the company (interview/coverage.py): the model
+    labels, the code decides when the conversation has stayed on one area long enough."""
+
+    area: str  # the main area of the new lines: an id from the areas list, "other" (off the list or small talk)
+    point: str  # the specific case or point, a few words ("dealer calls about order status")
+    same_point: bool  # the new lines go on with the point of the previous slice (the same case)
+    repeating: bool  # the new lines restate what was already said on this point, with nothing new
+    discussed: list[str]  # area ids the new lines actually discuss (a concrete exchange, not a passing word)
+    mentioned: list[str]  # area ids only named in passing
+
+
 class PlanDelta(_Strict):
     context: list[str]
     priorities: list[str]
@@ -387,6 +399,9 @@ class SyncResult(_Strict):
     sponsor_probe: SponsorProbe | None
     viewpoints: list[Viewpoint]  # new or changed viewpoints only; [] when nothing new
     ask_to: list[AskTo]  # who to address a question to, when two attendees or more; [] when nothing new
+    # the area of the company the new lines are about (coverage.py); null when the slice holds no speech
+    # (results recorded before it load through parse_sync_result)
+    topic: TopicLabel | None
 
 
 class FastResult(_Strict):
@@ -754,6 +769,8 @@ def parse_sync_result(raw: str | dict | SyncResult) -> SyncResult:
             raw = loads_lenient(raw)
         if isinstance(raw, dict) and "attendee_stances" in raw:  # recorded before viewpoints
             raw = {k: v for k, v in raw.items() if k != "attendee_stances"} | {"viewpoints": raw.get("viewpoints", [])}
+        if isinstance(raw, dict) and "topic" not in raw:  # recorded before coverage first
+            raw = {**raw, "topic": None}
         return SyncResult.model_validate(raw)
     except (json.JSONDecodeError, ValueError) as exc:
         raise ContractError(f"sync response violates the contract: {exc}") from exc
@@ -834,4 +851,5 @@ def empty_result() -> SyncResult:
         to_check=[],
         viewpoints=[],
         ask_to=[],
+        topic=None,
     )

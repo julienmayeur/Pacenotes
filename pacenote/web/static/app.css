@@ -193,6 +193,26 @@ body {
   font-weight: 600; }
 .an-text { display: block; font-size: var(--fs-md, 17px); line-height: 1.3; color: var(--muted); text-wrap: pretty; }
 .ask-next li.question .an-label { color: var(--ok); }
+/* coverage first: the line that leads to the next area's question, ready to say; "keep going" stays quiet */
+.an-transition { display: block; font-size: var(--fs-sm, 14px); line-height: 1.35; font-style: italic; color: var(--muted); margin: 2px 0 3px; }
+.an-transition:empty { display: none; }
+.an-keep { font: inherit; font-size: var(--fs-xs); color: var(--faint); background: none; border: 0; padding: 0 0 4px; cursor: pointer; }
+.an-keep:hover { color: var(--muted); }
+.an-keep kbd { margin-left: 5px; font-size: var(--fs-xs); border-color: var(--rule); color: var(--faint); }
+.an-keep.hidden { display: none; }
+
+/* the areas of the company (coverage first): a dot each, quiet; never a score or a colour alarm */
+.areas-title.hidden, .areas:empty { display: none; }
+.areas { list-style: none; margin: 0 0 var(--sp-3); padding: 0; display: flex; flex-wrap: wrap; gap: 3px 10px;
+  font-size: 12px; color: var(--faint); }
+.areas li { display: inline-flex; align-items: center; gap: 4px; }
+.areas li::before { content: ""; width: 7px; height: 7px; border-radius: 50%; border: 1px solid currentColor;
+  box-sizing: border-box; flex: none; }
+.areas li.touched { color: var(--muted); }
+.areas li.touched::before { background: linear-gradient(90deg, currentColor 50%, transparent 50%); }
+.areas li.covered { color: var(--ink); }
+.areas li.covered::before { background: currentColor; }
+.areas li.current { text-decoration: underline dotted; text-underline-offset: 3px; }
 .an-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 
 /* the ambassador question: quiet, under the focal follow-up */

@@ -34,7 +34,7 @@ from pacenote.copilot.prompts import (
     build_sync_system,
     build_sync_user,
 )
-from pacenote.interview import lens, timebox, translate
+from pacenote.interview import coverage, lens, timebox, translate
 from pacenote.interview import phases as P
 from pacenote.interview.questionnaire import ClientConfig
 from pacenote.interview.state import SessionState
@@ -418,7 +418,9 @@ class Session:
         while True:
             before = list(self.state.capture_problems)
             n = self.ingest_once()
+            moved_on = self.state.mode == "interview" and self._maybe_move_on()
             advanced = self.state.mode == "interview" and self._maybe_retire()
+            advanced = advanced or moved_on
             if n or advanced or self.state.capture_problems != before:
                 await self.notify()
             self._log_timing()
@@ -610,9 +612,11 @@ class Session:
             return nxt, f"complete, {len(cur.covered)} of {len(cur.all_expect())} details"
         if self._tail:
             return None  # still the tail of the answer just completed: the new question was not asked yet
-        if timebox.slot_over(st) and (nxt := next((i for i in queue if i["kind"] == "question"), None)):
-            # the question's time is up (timebox.py): the next question moves up at the first boundary,
-            # before any queued follow-up (digging deeper is what the time no longer allows)
+        if ((timebox.slot_over(st) or coverage.pending_qid(st) is not None)
+                and (nxt := next((i for i in queue if i["kind"] == "question"), None))):
+            # the question's time is up (timebox.py), or the conversation has stayed on one point and the next
+            # area's question is queued (coverage.py): it moves up at the first boundary, before any queued
+            # follow-up (digging deeper is what the time no longer allows)
             why = self._slot_boundary()
             return (nxt, why) if why else None
         if not queue and cur.status != "answered":
@@ -641,7 +645,10 @@ class Session:
             return None
         if self.speech_pause() >= self.settings.slot_pause:
             return f"time slot over, {self.settings.slot_pause:g} s pause"
-        if -(timebox.slot_left(st) or 0.0) < timebox.GRACE and not timebox.closing_due(st):
+        over = -(timebox.slot_left(st) or 0.0)
+        if coverage.pending_qid(st) is not None:  # the move-on's grace runs from when it was queued
+            over = max(over, st.now() - st.cov.move_on.get("at", st.now()))
+        if over < timebox.GRACE and not timebox.closing_due(st):
             return None  # (the closing's time has come: no grace)
         # live, the lines come in batches every ~11.5 s and a pause is rarely sure: the next line that ends a
         # sentence (in the newest batch) is the boundary
@@ -649,6 +656,26 @@ class Session:
         if any(s.seq > mark and not self.line_open(s.text) for s in self._lines()):
             return "time slot over, sentence end"
         return None
+
+    def _maybe_move_on(self) -> bool:
+        """The conversation has stayed on one point for its allowance (coverage.py): queue the next area's
+        question with its transition line."""
+        if not coverage.tick(self.state):
+            return False
+        mv = self.state.cov.move_on
+        self._log_sync({"kind": "move_on", "clock": round(self.speech_clock(), 2), **mv,
+                        "dwell": round(coverage.dwell(self.state)), "point": self.state.cov.topic.get("point", "")})
+        self.persist()
+        return True
+
+    async def extend_point(self) -> bool:
+        """The interviewer keeps going on the current point (x): more time, and a queued move-on is set aside."""
+        if self.state.mode != "interview" or not coverage.extend(self.state):
+            return False
+        self._log_sync({"kind": "extend", "clock": round(self.speech_clock(), 2), "area": self.state.cov.topic.get("area")})
+        self.persist()
+        await self.notify()
+        return True
 
     def _maybe_retire(self) -> bool:
         """What is asked now changes only once its answer is over (see _answer_over)."""
@@ -1190,6 +1217,8 @@ class Session:
         # display language = the screen-language selector (top right): labels AND question texts,
         # follow-ups, ladder/missing items. ONE language at a time: no gloss in a second language.
         shown = langs.ui
+        # coverage first: one language on screen (the question and the line leading to it, as shown)
+        cov_view = coverage.view(st, shown, st.tr(shown), shown)
 
         def qv(q) -> dict:
             return {"id": q.id, "theme": q.theme, "text": q.text(shown),
@@ -1234,6 +1263,9 @@ class Session:
                        "ask_next": [{"key": _ask_key(cur.id, i), "kind": i["kind"],
                                      "text": (i["entry"].shown(shown, lang) if i["kind"] == "followup"
                                               else st.get(i["qid"]).text(shown)),
+                                     # the next area's question (coverage.py): with the line that leads to it
+                                     **({"transition": cov_view["move_on"]["transition"]}
+                                        if cov_view.get("move_on") and i.get("qid") == cov_view["move_on"]["qid"] else {}),
                                      **({"rung": i["entry"].rung} if i["kind"] == "followup" else {"qid": i["qid"]})}
                                     for i in self.ask_queue()],
                        "follow_up": pin.shown(shown, lang) if (pin := st.ask_pin) is not None else "",
@@ -1315,6 +1347,8 @@ class Session:
             },
             # the time budget (timebox.py): elapsed / total for the screen; the slot for the details
             "time": timebox.view(st),
+            # coverage first (coverage.py): the areas (quiet strip) and the pending move-on with its transition
+            "coverage": cov_view,
             "themes": [
                 {
                     "id": t.id,

@@ -36,7 +36,16 @@ VALID = {
     "to_check": [],
     "viewpoints": [],
     "ask_to": [],
+    "topic": {"area": "purchasing", "point": "factory lead times", "same_point": True, "repeating": False,
+              "discussed": ["purchasing"], "mentioned": ["operations"]},
 }
+
+
+def test_a_result_recorded_before_the_topic_label_still_loads():
+    old = {k: v for k, v in VALID.items() if k != "topic"}
+    assert parse_sync_result(old).topic is None
+    assert parse_sync_result(json.dumps(old)).topic is None
+    assert parse_sync_result(VALID).topic.area == "purchasing"
 
 
 def test_valid_payload_parses_from_dict_string_and_fenced_string():

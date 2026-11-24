@@ -1,0 +1,58 @@
+# The areas of a company, shipped with the app (pacenote/interview/coverage.py): what a 360° view of the
+# business covers. The interview goes wide before it goes deep: the copilot shows which areas were
+# discussed, and when the conversation has stayed on one area for its share of the time, it suggests a
+# transition and this area's question for the next one not touched yet.
+#
+# The model names the area each stretch of the conversation is about (sync `topic`); the code decides
+# (time per area, when to move on). A client questionnaire can list its own `areas:` (ids from this file,
+# and/or its own entries with the same fields) to narrow or reorder them.
+#
+# Wording rules: the questions are said to the interviewee, who sees the screen. One real recent case,
+# with who, which tool and how long; no AI vocabulary (tests check this file).
+
+areas:
+  - id: sales
+    title: {fr: Ventes et clients, en: Sales and customers}
+    short: {fr: Ventes, en: Sales}
+    fr: "Côté ventes : comment arrive une nouvelle commande ou un nouveau client chez vous, et qui s'en occupe, du premier contact jusqu'au devis ?"
+    en: "On the sales side: how does a new order or a new customer reach you, and who handles it, from the first contact to the quote?"
+  - id: customer-service
+    title: {fr: Service client et commandes, en: Customer service and orders}
+    short: {fr: Service client, en: Service}
+    fr: "Quand un client appelle ou écrit au sujet d'une commande en cours, qui lui répond, et où va-t-il chercher la réponse ?"
+    en: "When a customer calls or writes about an order in progress, who answers, and where do they look for the answer?"
+  - id: after-sales
+    title: {fr: SAV et garanties, en: After-sales and warranty}
+    short: {fr: SAV, en: After-sales}
+    fr: "Quand un produit revient en panne ou sous garantie, que se passe-t-il, du premier appel jusqu'à la clôture du dossier ?"
+    en: "When a product comes back broken or under warranty, what happens, from the first call to the closing of the case?"
+  - id: purchasing
+    title: {fr: Achats et fournisseurs, en: Purchasing and suppliers}
+    short: {fr: Achats, en: Purchasing}
+    fr: "Comment décidez-vous quoi commander à vos fournisseurs, et en quelle quantité ? Qui fait ce calcul, et avec quel outil ?"
+    en: "How do you decide what to order from your suppliers, and how much? Who does that calculation, and with which tool?"
+  - id: operations
+    title: {fr: Stock et logistique, en: Stock and logistics}
+    short: {fr: Logistique, en: Logistics}
+    fr: "Entre le moment où la marchandise arrive et celui où elle repart chez le client, qu'est-ce qui coince le plus souvent ?"
+    en: "Between the moment goods arrive and the moment they leave for the customer, what gets stuck most often?"
+  - id: marketing
+    title: {fr: Marketing et produits, en: Marketing and products}
+    short: {fr: Marketing, en: Marketing}
+    fr: "Quand vous lancez un nouveau produit ou une nouvelle gamme, qui prépare les fiches, les prix et la communication, et combien de temps cela prend-il ?"
+    en: "When you launch a new product or range, who prepares the product sheets, the prices and the communication, and how long does it take?"
+  - id: finance
+    title: {fr: Finance et administration, en: Finance and administration}
+    short: {fr: Finance, en: Finance}
+    fr: "Côté finance et administration : quelles tâches reviennent chaque mois, comme les factures, les relances ou les rapprochements, et qui les fait ?"
+    en: "On the finance and admin side: which tasks come back every month, such as invoices, reminders or reconciliations, and who does them?"
+  - id: people
+    title: {fr: Équipe et organisation, en: People and organisation}
+    short: {fr: Équipe, en: People}
+    fr: "Combien êtes-vous aujourd'hui, comment l'équipe est-elle répartie, et sur quels postes avez-vous du mal à recruter ?"
+    en: "How many of you are there today, how is the team split, and which roles are hard to hire for?"
+  - id: it
+    title: {fr: Informatique et données, en: IT and data}
+    short: {fr: Informatique, en: IT}
+    fr: "Quels sont vos principaux logiciels aujourd'hui, et qui s'occupe de l'informatique quand quelque chose ne marche pas ?"
+    en: "What are your main software tools today, and who looks after IT when something does not work?"

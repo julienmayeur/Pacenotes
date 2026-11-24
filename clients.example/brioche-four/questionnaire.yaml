@@ -58,6 +58,9 @@
 #     A file without `phase:` still loads: use-case questions go to the deep dives, capacity /
 #     strategy themes open, ROI / budget close, the rest are deep dives. `phase_minutes:` overrides
 #     the time budget per phase (scaled to target_minutes).
+#   - The interview goes around the whole company before it goes deep (pacenote/interview/coverage.py):
+#     the areas come from pacenote/interview/core/areas.yaml. `areas: [sales, after-sales, finance]`
+#     narrows or reorders them; an entry of your own takes id, title, short and one question per language.
 #   - Leave every top opportunity with at least one baseline number (hours, delays, volumes) and a
 #     way to measure it, in the CEO's words: the plan proves value against that baseline.
 

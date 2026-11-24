@@ -921,5 +921,15 @@
     "themes": "Coverage by theme",
     "fast": "Fast pass: speech → screen {{s}} s",
     "sync": "Last full analysis: {{s}} s"
+  },
+  "coverage": {
+    "transition": "Thank you, that's very clear. To get the full picture of the company, I'd like to turn to another topic: {{to}}.",
+    "keep": "Keep going",
+    "keepTitle": "Stay on this topic a few more minutes (x)",
+    "title": "Company tour",
+    "count": "{{n}}/{{m}} discussed",
+    "untouched": "not discussed yet",
+    "touched": "touched on",
+    "covered": "covered"
   }
 }

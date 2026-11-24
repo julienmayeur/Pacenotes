@@ -921,5 +921,15 @@
     "themes": "Couverture par thème",
     "fast": "Analyse rapide : parole → écran {{s}} s",
     "sync": "Dernière analyse complète : {{s}} s"
+  },
+  "coverage": {
+    "transition": "Merci, c'est très clair. Pour avoir une vue d'ensemble de l'entreprise, j'aimerais passer à un autre sujet : {{to}}.",
+    "keep": "Continuer",
+    "keepTitle": "Garder ce sujet quelques minutes de plus (x)",
+    "title": "Tour de l'entreprise",
+    "count": "{{n}}/{{m}} abordés",
+    "untouched": "pas encore abordé",
+    "touched": "abordé",
+    "covered": "couvert"
   }
 }

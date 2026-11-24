@@ -158,6 +158,13 @@ def create_app(session: Session, auto_start: bool = False, research: ResearchMan
         await session.next_phase(body.from_ if body else None)
         return session.view()
 
+    @app.post("/api/extend")
+    async def extend() -> dict:
+        """Keep going on the current point (x on the page): more time, and a queued move-on is set aside."""
+        if not await session.extend_point():
+            raise HTTPException(status_code=409, detail="not interviewing")
+        return session.view()
+
     @app.post("/api/questions/{qid}/answered")
     async def answered(qid: str) -> dict:
         if not await session.mark_answered(qid):

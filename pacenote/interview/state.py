@@ -85,8 +85,9 @@ from pacenote.copilot.contract import (
     SlotFill,
     SyncResult,
 )
-from pacenote.interview import lens, timebox
+from pacenote.interview import coverage, lens, timebox
 from pacenote.interview import phases as P
+from pacenote.interview.coverage import AreaCoverage
 from pacenote.interview.questionnaire import Questionnaire
 from pacenote.knowledge import recipes as recipe_lib
 from pacenote.people import attendees as attendees_lib
@@ -496,6 +497,9 @@ class SessionState(BaseModel):
     fast_read: int = 0
     sync_read: int = 0
     coverage_read: dict[str, int] = Field(default_factory=dict)
+    # coverage first (coverage.py): the areas of the company, the time on each, the conversation's current
+    # point and the pending move-on
+    cov: AreaCoverage = Field(default_factory=AreaCoverage)
 
     # the interview's clock (epoch seconds): wall time live; the session sets it to its speech clock, so
     # a replay at any speed keeps the same pace (time budgets, slots)
@@ -541,6 +545,7 @@ class SessionState(BaseModel):
             phase_plan=P.budgets(q.target_minutes, q.phase_minutes),
             posture=q.posture,
             posture_rationale=q.posture_rationale,
+            cov=AreaCoverage(areas=coverage.resolve(q.areas)),
         )
         st.coverage = st.computed_coverage()
         st._refill_next()
@@ -829,6 +834,7 @@ class SessionState(BaseModel):
             self.phase_budgets[self.phase] = round(timebox.phase_share(self, self.phase, now), 1)
         self.focus_since = now
         self.focus_slot = timebox.slot_for(self, self.focus_id, now)
+        coverage.start(self, now)  # the conversation's first point starts with the interview
 
     def _enter_phase(self, phase: str | None, reason: str) -> None:
         if phase == self.phase:
@@ -1165,6 +1171,8 @@ class SessionState(BaseModel):
         # 6e. the views heard, by statement (viewpoints.py), and who to address a question to (attendees.py)
         viewpoints_lib.apply(self, result.viewpoints, read, ok, reject)
         attendees_lib.apply_ask_to(self, result.ask_to, read, ok, reject)
+        # 6f. what the slice was about, as an area of the company (coverage.py)
+        coverage.apply_topic(self, result.topic)
 
         # 7. enough_data is sticky. It is advice for the interviewer (the essentials are covered), never an
         # end: listening, the analysis and the questions go on until the interviewer ends the interview
@@ -1339,6 +1347,8 @@ class SessionState(BaseModel):
         asked = [e.text for e in q.thread if e.kind == "followup"] + [e.text for e in self.ask_next]
         if any(_fold(t) == f for t in asked) or _fold(q.text(self.language)) == f:
             return "already asked or queued"
+        if coverage.pending_qid(self) is not None:
+            return "the conversation stayed on one point: the next area's question is queued instead"
         if timebox.slot_over(self) and self.next_qid() is not None:
             return "time slot over: the next question is queued instead"
         if len(self.ask_next) >= STACK_CAP:  # the newest, drawn from the latest answer, replaces the oldest
@@ -1353,6 +1363,9 @@ class SessionState(BaseModel):
         (kept while it stays open)."""
         self.ensure_ask()
         q = self.get(self.focus_id)
+        if (mv := coverage.pending_qid(self)) is not None:  # the conversation stayed on one point: move on
+            self.ask_next_qid = mv
+            return mv
         if q is None or (q.status != "answered" and not timebox.slot_over(self)):
             return None
         nq = self.get(self.ask_next_qid)
@@ -1423,6 +1436,7 @@ class SessionState(BaseModel):
                        else "maps filled" if self.maps_enough(self.phase or "") else "questions done")
                 self._enter_phase(new_phase, why)
         self.focus_slot = timebox.slot_for(self, self.focus_id)
+        coverage.on_focus(self)
         self.next_questions = [i for i in self.next_questions if i != self.focus_id]
         self._refill_next()
         self.edit_log.append(EditLogEntry(sync=self.sync_count, kind="focus", target=self.focus_id,

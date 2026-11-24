@@ -40,6 +40,16 @@ prepare (admin) ─► consent ─► interview: capture + follow-ups ─► sto
   first, never from the closing questions, which always get their time at the end. The screen shows the
   time left, quietly. When the time is up nothing stops: the copilot keeps listening and proposing, and
   the End button lights up; ending writes the plan and opens it on screen.
+- **The whole company before one point.** People dig in to understand and do not feel the time pass, so the
+  copilot watches the coverage too. Claude labels what each stretch of the conversation is about, as an area
+  of the company (sales, customer service, after-sales, purchasing, logistics, marketing, finance, people,
+  IT; a questionnaire's `areas:` can change the list). The side panel shows a quiet dot per area: not
+  discussed yet, touched on, covered. When the conversation has stayed on one point for its share of the
+  time (about 3 minutes in a 20-minute interview, sooner when it only repeats itself), the next area not
+  discussed yet is queued as the next question, with a transition line ready to say. It moves up at the
+  next boundary unless you keep going (`x`: three more minutes on this point). The measure follows the
+  conversation, not the screen: a question changing on screen while the talk stays on the same case does
+  not reset it. The plan lists the areas never discussed as open points.
 - **Admin auto-fill.** Before the interview, the admin panel fills the client sheet from public web
   sources (with provenance per field; your own edits are never overwritten) and prepares profile
   cards of the people you will meet (professional, publicly self-published facts only).
@@ -224,6 +234,7 @@ replays a recorded session with its own live delivery. `--minutes N` sets the in
 | click a queued question | Ask it now (it moves up into « À demander maintenant ») |
 | `p` | Close the current phase |
 | `e` | End the interview: stop listening, write the plan and open it |
+| `x` | Keep going on the current point: three more minutes, and the queued move to the next area is set aside |
 | `a` | Mark the current question answered and move on |
 | `k` | Skip the current question |
 | `s` | Sync now |

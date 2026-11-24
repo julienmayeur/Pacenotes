@@ -646,6 +646,7 @@ class OfflineEngine:
                 to_check=[],
                 viewpoints=[],
                 ask_to=[],
+                topic=None,
             )
         )
         coverage = trial.computed_coverage()
@@ -674,6 +675,7 @@ class OfflineEngine:
             to_check=[],
             viewpoints=[],
             ask_to=[],
+            topic=None,
         )
 
     def fast(self, system: str, user: str, *, state: SessionState, lines: list[Segment]) -> FastResult:

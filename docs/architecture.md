@@ -82,7 +82,7 @@ pacenote/
 | Module | Role |
 |---|---|
 | `cli.py` | Entry point (`pacenote`, or `python -m pacenote`): `run`, `replay`, `finalize`, `purge`, `new-client`, `check`, `soak`, `next`, `admin`, `capabilities`, `metrics`, `recipes` |
-| `web/server.py` | FastAPI app for one interview: `/` page, `/api/state`, `/api/events` (SSE), actions (`/api/start`, `/api/next`, `/api/next-phase`, `/api/sync`, `/api/questions/{id}/answered|skip`, `/api/enough`, `/api/wispr`, `/api/finalize`, `/api/language`), Plan view (`/plan`, `/api/plan`, `/api/plan/pdf`); mounts the admin router |
+| `web/server.py` | FastAPI app for one interview: `/` page, `/api/state`, `/api/events` (SSE), actions (`/api/start`, `/api/next`, `/api/next-phase`, `/api/extend`, `/api/sync`, `/api/questions/{id}/answered|skip`, `/api/enough`, `/api/wispr`, `/api/finalize`, `/api/language`), Plan view (`/plan`, `/api/plan`, `/api/plan/pdf`); mounts the admin router |
 | `web/admin.py` | `/admin` page and `/admin/api/*`: clients, next client, research, pre-plan and history, Auto-fill, people cards, metrics, saved sessions and their plans |
 | `web/common.py` | What both apps share: `STATIC_DIR`, the i18n catalog routes, the Plan view responses |
 | `web/guard.py` | Host allow-list and same-origin guard on every server |
@@ -91,6 +91,7 @@ pacenote/
 | `interview/state.py` | `SessionState`: questions, thread, ladder, slots, maps, recipe matches, coverage, versions, every locking and phase rule |
 | `interview/phases.py` | The seven phases, their goals, maps and time budgets; assigns a phase to old-format questionnaires |
 | `interview/timebox.py` | The time budget: each step's share of the time left, each question's slot, the protected closing |
+| `interview/coverage.py` | Coverage first: the areas of the company (`interview/core/areas.yaml` or the questionnaire's `areas:`), the time on each from the model's topic labels, drift on the conversation's point, the move-on with its transition line, `x` to keep going |
 | `interview/questionnaire.py`, `interview/preparation.py` | Questionnaire schema and loader; what an interview starts from for a client: core questions (`interview/core/questions.yaml`), the pre-plan's seed questions, the pace's questions, the model's background (`load_client`) |
 | `interview/lens.py` | The executive lens: talking points on manual work and metric questions per workflow (merge, wording guard, timing, template fallback for metric questions); what the plan may use of them |
 | `interview/translate.py` | On-the-fly translation of the questionnaire into the interview language through Claude, cached per client |
@@ -275,6 +276,7 @@ retires only on an "answer over" signal (`Session._answer_over`, checked every p
 | The question is complete | An analysis (fast pass or full sync) turns the focus question from open to answered: the model's call (the ladder done), accepted only past the existing gate, every slot item plus half of the other expected details (`QuestionState.sufficient`); from an answer given after what is asked now went up (a turn starts after it in the lines it read; a pending completion is dropped when the interviewer reads or clicks a follow-up) | The focus moves to the next question at once, even while the interviewee goes on |
 | The interviewee answers the next question | The fast pass gives the queued next question an answer piece and none to the current one | The focus moves there |
 | The question's time slot is over | `timebox.slot_over` (below), something said since the pin, then the first boundary: a sure pause of 1.5 s; once the slot is 30 s over, a new line ending in . ? ! | The next question moves up, before any queued follow-up |
+| The conversation stayed on one point | `coverage.pending_qid` (below): the next area's question is queued; same boundary as a slot over, the 30 s grace counted from when it was queued | The next area's question moves up, unless the interviewer keeps going (`x`) |
 | A real pause after the answer | Something was said since the pin; the fast pass read every line; then a pause on the speech clock of 3.5 s after a line ending in . ? ! (7 s after any other line: the recogniser cuts long sentences into ~60-character lines) | The first queued item moves up (the next question if the focus is answered) |
 | The interviewer | `n` / Enter, `a`, `k`, `p`, or a click on a queued question | As before (`n` and `a` go to the « Question suivante » shown); a click asks that item |
 
@@ -373,6 +375,34 @@ When the time is up, or the model says the essentials are covered (`enough_data`
 listening, the analyses and the questions go on, and the End button (`e`) lights up for the interviewer.
 Ending (`e`, the console, or `/api/enough`) stops listening, writes the plan and opens the Plan view.
 
+### Coverage first (`interview/coverage.py`)
+
+The interview goes around the whole company before it goes deep: in the first real interview one case
+took the whole hour while the question on screen kept changing. The model labels, the code decides:
+
+- **The areas** (`interview/core/areas.yaml`: sales, customer service, after-sales, purchasing, logistics,
+  marketing, finance, people, IT; a questionnaire's `areas:` narrows or reorders them, or adds its own),
+  each with a title, a short label and one ready question.
+- **The label**: each full sync returns `topic` for the slice it read: the main area (an id, or `other`),
+  the specific point, `same_point`, `repeating`, and the areas `discussed` (a concrete exchange) or only
+  `mentioned`. Results recorded before the field load with `topic: null`.
+- **Coverage**: the time from one label to the next goes to the area the label names (at most 120 s per
+  label). An area is *covered* after 60 s as the point, *touched* once discussed or mentioned. The side
+  panel shows a dot per area (empty, half, full) and underlines the current point's area; the plan lists the
+  untouched areas as open items.
+- **Drift is measured on the conversation**: the current point starts when a label names another area (and
+  not the same point); question changes on screen, `other`, an unknown id or a failed sync never reset it,
+  so a missing analysis never silences the move-on. Allowance: the interview length over the number of
+  areas, × 1.5, between 2 and 5 minutes (200 s for 20 minutes and 9 areas); × 2 once no area is left
+  untouched; × 0.6 after two slices in a row that only repeat the point; + 3 minutes per `x`.
+- **The move-on**: once the point has had its allowance, the first untouched area (then touched but not
+  covered; never one already suggested on this point) gets its question, in the current step, through the
+  queued-next slot: the screen shows a transition line ready to say above it, and a quiet "keep going (x)".
+  No follow-up is queued meanwhile (the prompts get `time_over` and `areas.move_on_queued`). It moves up at
+  the next boundary (table above); `x` sets it aside and gives the point 3 more minutes; the conversation
+  moving to another area by itself drops it. The next move-on waits at least 90 s; none while the closing
+  questions have the floor.
+
 The maps (`maps` in the contract, `state.maps`) are filled from the interviewee's stories: `org` (person,
 role, department, reports to, time on judgment vs glue), `flows` (sender, receiver, what, channel,
 cadence, wait, who waits, confidential, CEO pattern), `stores` (what, where, owner, how found, reuse
@@ -398,6 +428,7 @@ Each full sync returns exactly this JSON, enforced with `--json-schema` (CLI) or
 | `plan_delta` | new bullets for `context`, `priorities`, `workflows`, `quick_wins`, `risks`, `budget`, `open_points` |
 | `clean_passages[]` | cleaned, glossary-corrected transcript by speaker turn (feeds the interview log) |
 | `enough_data`, `enough_data_reason` | the essentials are covered (sticky): a hint for the interviewer, never an end |
+| `topic` | the slice's area of the company: `area` (id or `other`), `point`, `same_point`, `repeating`, `discussed[]`, `mentioned[]` (coverage first); null when the slice holds no speech |
 
 The fast pass returns `question_updates`, `slots`, `maps` (usually empty), `coverage` and `noise`;
 its output is kept short because its latency grows with what it writes.

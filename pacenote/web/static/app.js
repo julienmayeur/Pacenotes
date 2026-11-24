@@ -358,15 +358,25 @@ function renderAskNext(cur) {
 }
 function buildAskNext(i) {
   const li = document.createElement("li");
-  li.innerHTML = `<button type="button" class="an-item"><span class="an-label"></span><span class="an-text"></span></button>`;
-  li.querySelector("button").addEventListener("click", () => askNow(li.dataset.key));
+  li.innerHTML = `<button type="button" class="an-item"><span class="an-label"></span><span class="an-transition"></span><span class="an-text"></span></button>`
+    + `<button type="button" class="an-keep hidden"><span></span><kbd>x</kbd></button>`;
+  li.querySelector(".an-item").addEventListener("click", () => askNow(li.dataset.key));
+  li.querySelector(".an-keep").addEventListener("click", () => act("extend"));
   fillAskNext(li, i);
   return li;
 }
 function fillAskNext(li, i) {
   setClass(li, "question", i.kind === "question");
-  li.querySelector("button").title = t("focus.askNowTitle");
+  li.querySelector(".an-item").title = t("focus.askNowTitle");
   setText(li.querySelector(".an-label"), i.kind === "question" ? t("focus.nextQuestion") : t("focus.queued"));
+  // the next area's question (coverage first): the line that leads to it, ready to say; the interviewer can
+  // stay on the current point instead (x)
+  setText(li.querySelector(".an-transition"), i.transition || "");
+  setClass(li, "move-on", !!i.transition);
+  const keep = li.querySelector(".an-keep");
+  setClass(keep, "hidden", !i.transition);
+  keep.title = t("coverage.keepTitle");
+  setText(keep.querySelector("span"), t("coverage.keep"));
   setText(li.querySelector(".an-text"), i.text);
 }
 async function askNow(key) {
@@ -536,6 +546,22 @@ function timeLeft() {
   return S.mode === "interview" && S.started_at ? T.left - (Date.now() / 1000 - S._at) : T.left;
 }
 
+/** Coverage first: the areas of the company, a dot each (empty: not discussed yet, half: touched on, full:
+ *  covered), the current point's area underlined. Quiet: the interviewee sees this screen. */
+function renderAreas() {
+  const C = S.coverage || {};
+  const areas = C.areas || [];
+  setClass($("areas-title"), "hidden", !areas.length);
+  setText($("areas-count"), areas.length ? `· ${t("coverage.count", { n: (C.touched || 0) + (C.covered || 0), m: C.total })}` : "");
+  syncList($("areas"), areas, (a) => a.id,
+    (a) => { const li = document.createElement("li"); fillArea(li, a); return li; }, fillArea);
+}
+function fillArea(li, a) {
+  li.className = `${a.status}${a.current ? " current" : ""}`;
+  li.title = `${a.title} · ${t(`coverage.${a.status}`)}`;
+  setText(li, a.short);
+}
+
 function renderWhere() {
   const st = S.status || {};
   const left = timeLeft();
@@ -546,6 +572,7 @@ function renderWhere() {
   setClass($("time-left").parentElement, "low", left < 180 && left >= 0);
   setClass($("time-left").parentElement, "over", left < 0);
   setText($("coverage-pct"), `${Math.round((st.coverage || 0) * 100)} %`);
+  renderAreas();
   // short "where we are" next to the upcoming questions
   setText($("where-line"), t("focus.whereLine", { answered: st.answered || 0, open: st.open || 0,
                                                   pct: Math.round((st.coverage || 0) * 100), left: clock(left) }));
@@ -920,6 +947,7 @@ async function act(action) {
     if (action === "sync") { await post("/api/sync"); $("sync-dot").className = "dot busy"; }
     if (action === "answered" && cur) render(await post(`/api/questions/${encodeURIComponent(cur)}/answered`));
     if (action === "skip" && cur) render(await post(`/api/questions/${encodeURIComponent(cur)}/skip`));
+    if (action === "extend") render(await post("/api/extend"));  // keep going on this point (coverage first)
     if (action === "enough") {  // ends the interview and writes the plan, as End (e)
       if (confirm(t("console.confirmFinalize"))) await post("/api/enough");
     }
@@ -973,6 +1001,7 @@ document.addEventListener("keydown", (e) => {
   else if (k === "k") act("skip");
   else if (k === "p") act("phase");
   else if (k === "e") act("end");
+  else if (k === "x") act("extend");
   else if (k === "d") toggleDetails();
   else if (k === "t") { showTail = !showTail; store("pacenote.tail", showTail ? "1" : "0"); if (S) renderStrip(); }
   else if (k === "l") cycleUiLanguage();

@@ -244,6 +244,9 @@ class Questionnaire(BaseModel):
     use_cases: list[UseCaseDef] = Field(default_factory=list)
     phase_minutes: dict[str, float] | None = None  # minutes per phase (phases.DEFAULT_MINUTES), scaled
     core_questions: bool = True  # merge the app's core questions (phases 1-4) when tailoring
+    # the areas of the company the interview covers (coverage.py): core/areas.yaml by default, or catalog ids
+    # and/or entries of their own ({id, title, short, fr, en...}) to narrow or reorder them
+    areas: list[str | dict] | None = None
     # the interview's pace (horizons.py): explorer, pragmatic or urgent. Set when tailoring from the
     # pre-study's score or the interviewer's override (client.yaml); may also be written here by hand.
     posture: Literal["explorer", "pragmatic", "urgent"] | None = None
@@ -259,6 +262,15 @@ class Questionnaire(BaseModel):
         if unknown:
             raise ValueError(f"phase_minutes: unknown phases {unknown} (known: {', '.join(_phases.PHASE_IDS)})")
         return {k: max(0.0, float(m)) for k, m in v.items()}
+
+    @field_validator("areas")
+    @classmethod
+    def _areas(cls, v: list[str | dict] | None) -> list[str | dict] | None:
+        if v:
+            from pacenote.interview import coverage
+
+            coverage.resolve(v)  # unknown ids raise
+        return v
 
     @field_validator("language")
     @classmethod

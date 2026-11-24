@@ -6,7 +6,7 @@ import json
 from collections.abc import Mapping
 
 from pacenote.copilot.contract import CATALOG_DESCRIPTIONS, SLOT_DESCRIPTIONS, SLOT_KEYS, SLOT_RUNG
-from pacenote.interview import lens, timebox
+from pacenote.interview import coverage, lens, timebox
 from pacenote.interview import phases as P
 from pacenote.interview.state import SessionState
 from pacenote.knowledge import briefs
@@ -592,6 +592,23 @@ end the interview (it goes on until they do). enough_data_reason: one sentence w
 interview): use_case (its id, or null), question_id (or null), slots (the slot keys it leaves open, \
 [] when none), question (short, in {lang_name}), ask (who would know), evidence. state.to_check lists \
 the ones recorded so far: never repeat one. Empty list when nothing new.
+- topic: what new_transcript is about, as an area of the company (see Coverage first). null only when \
+the slice holds no speech.
+
+# Coverage first: the whole company before one point
+The interviewer needs a view of the whole company in {target} minutes, so breadth comes before depth. \
+People dig into one case and do not feel the time pass; the app watches that from your topic labels. \
+The areas (id: title):
+{areas}
+For topic: area = the ONE area new_transcript is mainly about (an id above), or "other" for small talk, \
+the interview itself, or something off the list. point = the specific case or point in a few words \
+(e.g. "dealer calls about order status"). same_point = true when new_transcript goes on with the point \
+of state.areas.current_point, even if it touches another area along the way. repeating = true when \
+it only restates what was already said on that point, with no new fact. discussed = the area ids \
+new_transcript actually discusses (a concrete exchange: a case, a person, a number, a tool); mentioned \
+= area ids only named in passing. Be strict: a word in passing is never discussed. \
+When state.areas.move_on_queued is set, the conversation has stayed on its point long enough and the \
+next area's question is queued: propose no follow-up that digs further into the current point.
 """
 
 
@@ -625,6 +642,7 @@ def build_sync_system(state: SessionState, glossary: str, context: str = "") -> 
         people_guide=people_guide(state),
         lens_guide=lens_guide(state),
         data_rule=DATA_RULE,
+        areas=coverage.catalog_lines(state),
     )
 
 
@@ -702,7 +720,8 @@ def state_snapshot(state: SessionState, for_plan: bool = False) -> dict:
         # who attended by role and persona only, and the views heard by position and topic, never a quote or
         # a speaker (the plan is shared)
         return out | {"value_framings": lens.for_plan(state), "attendees": attendees_lib.for_plan(state),
-                      "viewpoints": viewpoints_lib.for_plan(state)}
+                      "viewpoints": viewpoints_lib.for_plan(state),
+                      "areas": {a: coverage.status(state, a) for a in coverage.ids(state)} or None}
     return out | {"value_framings": [{"use_case": uc, "point": f.get("point", ""), "timing": f.get("timing", ""),
                                       "asked": bool(f.get("asked"))} for uc, f in state.value_framings.items()],
                   "metric_questions": {k: {"kind": m.get("kind", ""), "question": m.get("question", "")}
@@ -711,6 +730,7 @@ def state_snapshot(state: SessionState, for_plan: bool = False) -> dict:
                   "attendees": attendees_lib.snapshot(state),
                   "viewpoints": viewpoints_lib.snapshot(state),
                   "ask_to": {qid: x.get("attendee") for qid, x in state.ask_to.items()},
+                  "areas": coverage.snapshot(state) or None,  # coverage first (coverage.py)
                   "ambassador_probes": [{"use_case": uc, "person": p.get("person", ""), "question": p.get("question", ""),
                                          "timing": p.get("timing", ""), "asked": bool(p.get("asked"))}
                                         for uc, p in state.ambassador_probes.items()],
@@ -945,7 +965,9 @@ would know; each one that is not already a slot gap goes in open_items with that
 the interviewee stated them, and who was in the meeting (by role, see Who was in the meeting). Facts only.
 - open_items: open questions that belong to no single slot (budget, sponsor, who grants IT \
 access, security rules, use cases not covered...), each with topic, question and ask. Slot gaps \
-are collected automatically from the slots: do not repeat them here.
+are collected automatically from the slots: do not repeat them here. state.areas lists the areas of the \
+company and whether the interview discussed them: each area still "untouched" is one open item (what to \
+ask about it next time), never a guess about it.
 
 # What agents can do today (capability brief, as of {cap_as_of})
 Rely on this brief, not on your memory: never claim a capability it does not contain, choose each \

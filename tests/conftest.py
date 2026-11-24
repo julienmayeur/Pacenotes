@@ -96,6 +96,7 @@ def result(**kw) -> SyncResult:
         to_check=[],
         viewpoints=[],
         ask_to=[],
+        topic=None,
     )
     base.update(kw)
     return SyncResult.model_validate(base)
