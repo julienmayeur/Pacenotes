@@ -79,7 +79,8 @@ def missing_items(state: SessionState, lang: str) -> list[dict]:
         for e in q.all_expect():
             if lang != src and e not in done:
                 items.append({"id": f"e|{q.id}|{e}", "from": src, "text": e})
-        for e in q.thread:  # follow-ups generated in another language (display only; keyed by
+        queued = state.ask_next if q.id == state.focus_id else []  # queued under the question being asked
+        for e in [*q.thread, *queued]:  # follow-ups generated in another language (display only; keyed by
             gen = e.lang or state.language  # time: the thread is trimmed from the front)
             if e.kind == "followup" and gen != lang and not e.texts.get(lang):
                 items.append({"id": f"f|{q.id}|{e.at!r}", "from": gen, "text": e.text})
@@ -117,7 +118,8 @@ def apply(state: SessionState, lang: str, translated: dict[str, str]) -> int:
         elif kind == "f":
             qid, _, at = rest.partition("|")
             q = state.get(qid)
-            entry = next((e for e in (q.thread if q is not None else []) if e.kind == "followup" and repr(e.at) == at), None)
+            pool = [*q.thread, *(state.ask_next if q.id == state.focus_id else [])] if q is not None else []
+            entry = next((e for e in pool if e.kind == "followup" and repr(e.at) == at), None)
             if entry is not None:
                 entry.texts[lang] = text
                 n += 1

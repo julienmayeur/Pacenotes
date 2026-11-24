@@ -8,13 +8,21 @@ Focus (the question on screen):
     for a few seconds (decided by the session, which knows about silence).
   * `next_questions` is the upcoming list (focus excluded).
 
+What is asked now (the "ask"): the question being answered stays on screen until the answer is over.
+`ask_pin` is the follow-up being answered (None = the focus question itself). A follow-up the model
+proposes meanwhile is never put in its place: it is queued under it in `ask_next` (at most
+STACK_CAP; a full queue drops new proposals) and, once the focus is answered, the next question is
+queued after them (`ask_next_qid`). Queued follow-ups are not in the thread (the thread and the prompts
+hold what was asked); one joins the thread when it is promoted, i.e. when the session sees the answer
+is over (session.py) or the interviewer clicks it. A focus change resets the ask.
+
 Per question, the interview digs down a ladder: business (the problem or goal) -> workflow
 (steps, who does what, handoffs, where it breaks) -> implementation (people and roles, tools,
 ERP, email, Excel, data, integrations, volumes) -> done. `expect` lists the concrete details
 each rung needs; `covered` = those heard so far (only grows); `rung` only moves down the ladder.
-The `thread` under the original question alternates captured answer pieces and ONE follow-up
-question at a time: answer piece, follow-up, answer piece, follow-up… A pending follow-up is
-never swapped under the interviewer; the next one is appended only after the next answer piece.
+The `thread` under the original question holds the captured answer pieces and the follow-ups
+asked, in order. On the focus question a proposed follow-up waits in `ask_next` until it is asked;
+on another question (answered spontaneously) it is appended after an answer piece, one at a time.
 
 Locking rules (enforced here, whatever the model returns):
   * "answered" locks a question: status, answer and wording never change again; it cannot be
@@ -92,6 +100,7 @@ MAX_ADDS_PER_SYNC = 3
 UPCOMING_COUNT = 3  # questions shown after the current one
 NEXT_COUNT = UPCOMING_COUNT  # backwards-compatible name
 MAX_THREAD = 40
+STACK_CAP = 2  # follow-ups queued under the question being asked (the next question adds one line)
 MAX_MAP_RECORDS = 40  # per map: a runaway model never floods the state
 MAX_RECIPE_MATCHES = 24
 MAX_RECIPE_ITEMS = 12  # heard signals / missing items kept per match
@@ -429,6 +438,16 @@ class SessionState(BaseModel):
     phases_skipped: list[str] = Field(default_factory=list)  # phases the interviewer ended with `p`
     focus_id: str | None = None  # the question being asked (locked while answered)
     focus_since: float | None = None
+    # what is asked now on the focus question `ask_for` (see the module docstring): the follow-up being
+    # answered (None = the focus question itself), the follow-ups queued under it, not asked yet, the
+    # next question queued once the focus is answered, and when the pinned item went up (`ask_seq`: the
+    # transcript version then, set by the session; the answer to it is the lines after)
+    ask_for: str | None = None
+    ask_pin: ThreadEntry | None = None
+    ask_next: list[ThreadEntry] = Field(default_factory=list)
+    ask_next_qid: str | None = None
+    ask_since: float | None = None
+    ask_seq: int | None = None
     focus_history: list[str] = Field(default_factory=list)
     next_questions: list[str] = Field(default_factory=list)  # upcoming, focus excluded
     coverage: dict[str, float] = Field(default_factory=dict)
@@ -978,10 +997,11 @@ class SessionState(BaseModel):
                 if e.op == "reword":
                     text = (e.text or (e.text_fr if self.language == "fr" else e.text_en if self.language == "en"
                                        else None) or e.text_en or e.text_fr or "").strip()
-                    if text and self._append_followup(q, text, by="sync", lang=self.language):
-                        ok("reword", q.id, "current question: rewording added to the thread as a follow-up")
+                    why = self.propose_followup(text, by="sync") if text else "empty rewording"
+                    if not why:
+                        ok("reword", q.id, "current question: rewording queued under it as a follow-up")
                     else:
-                        reject("reword", q.id, "current question: a follow-up is already pending")
+                        reject("reword", q.id, f"current question: {why}")
                     continue
                 reject(e.op, q.id, "current question is locked while it is being answered")
                 continue
@@ -1176,7 +1196,12 @@ class SessionState(BaseModel):
             else:
                 q.vague = u.vague
                 if u.follow_up.strip():
-                    self._append_followup(q, u.follow_up.strip(), by=by, lang=self.language)
+                    if q.id == self.focus_id:  # queued under the question being asked, never in its place
+                        why = self.propose_followup(u.follow_up.strip(), by=by)
+                        if why:
+                            reject("followup", q.id, why)
+                    else:
+                        self._append_followup(q, u.follow_up.strip(), by=by, lang=self.language)
             q.thread = q.thread[-MAX_THREAD:]
             if q.id != self.focus_id and q.thread_at is None and q.answer:
                 q.thread_at = time.time()  # answered spontaneously: it joins the thread now
@@ -1236,6 +1261,67 @@ class SessionState(BaseModel):
         self.edit_log.extend(report.applied + report.rejected)
         return report
 
+    # --- what is asked now ---------------------------------------------------------------
+    def ensure_ask(self) -> None:
+        """The ask belongs to the focus question: a focus change (any path) resets it. A follow-up the
+        new focus got while it was not the focus (answered spontaneously) is queued, not asked."""
+        if self.ask_for == self.focus_id:
+            return
+        self.ask_for, self.ask_pin, self.ask_next, self.ask_next_qid = self.focus_id, None, [], None
+        self.ask_since, self.ask_seq = time.time(), None
+        q = self.get(self.focus_id)
+        if q is not None and q.open and q.thread and q.thread[-1].kind == "followup":
+            self.ask_next.append(q.thread.pop())
+
+    def propose_followup(self, text: str, by: str) -> str:
+        """Queue a follow-up under the question being asked. Returns why it was not queued ("" = queued)."""
+        self.ensure_ask()
+        q = self.get(self.focus_id)
+        if q is None or not q.open:
+            return "no open focus question"
+        f = _fold(text)
+        if not f:
+            return "empty follow-up"
+        asked = [e.text for e in q.thread if e.kind == "followup"] + [e.text for e in self.ask_next]
+        if any(_fold(t) == f for t in asked) or _fold(q.text(self.language)) == f:
+            return "already asked or queued"
+        if len(self.ask_next) >= STACK_CAP:
+            return f"{STACK_CAP} follow-ups already queued under the question being asked"
+        self.ask_next.append(ThreadEntry(kind="followup", text=text, rung=q.rung if q.rung != "done" else "implementation",
+                                         at=time.time(), by=by, lang=self.language))
+        q.updated_at = time.time()
+        return ""
+
+    def next_qid(self) -> str | None:
+        """The next question, queued under the ask once the focus is answered (kept while it stays open)."""
+        self.ensure_ask()
+        q = self.get(self.focus_id)
+        if q is None or q.status != "answered":
+            return None
+        nq = self.get(self.ask_next_qid)
+        if nq is None or not nq.open:
+            order = self.upcoming_order(exclude=self.focus_id)
+            self.ask_next_qid = order[0] if order else None
+        return self.ask_next_qid
+
+    def promote(self, at: float | None = None, reason: str = "answer over") -> ThreadEntry | None:
+        """The pinned ask is over: the first queued follow-up (or the one proposed at `at`) is asked now. It
+        joins the thread; the queued ones before it are dropped (not asked)."""
+        self.ensure_ask()
+        q = self.get(self.focus_id)
+        idx = 0 if at is None else next((i for i, e in enumerate(self.ask_next) if e.at == at), -1)
+        if q is None or idx < 0 or idx >= len(self.ask_next):
+            return None
+        entry, dropped = self.ask_next[idx], self.ask_next[:idx]
+        self.ask_next = self.ask_next[idx + 1:]
+        q.thread.append(entry)
+        q.thread = q.thread[-MAX_THREAD:]
+        self.ask_pin, self.ask_since, self.ask_seq = entry, time.time(), None
+        self.edit_log.append(EditLogEntry(sync=self.sync_count, kind="ask", target=q.id, applied=True,
+                                          detail=f"follow-up asked ({reason})"
+                                                 + (f", {len(dropped)} queued one(s) dropped" if dropped else "")))
+        return entry
+
     def history(self) -> list[QuestionState]:
         """The interview thread above the current question, oldest first: questions that left the
         focus (answered, moved on, skipped) and questions answered spontaneously. A question
@@ -1250,8 +1336,9 @@ class SessionState(BaseModel):
         return sorted(qs, key=lambda q: q.updated_at, reverse=True)[:n]
 
     # --- focus ------------------------------------------------------------------
-    def advance(self, reason: str = "next") -> str | None:
-        """Move the focus to the next upcoming open question. Returns the new focus id."""
+    def advance(self, reason: str = "next", to: str | None = None) -> str | None:
+        """Move the focus to the next upcoming open question (`to`: that one, e.g. the next question
+        queued on screen, when it is still a candidate). Returns the new focus id."""
         old = self.focus_id
         if (left := self.get(old)) is not None:
             left.thread_at = time.time()  # joins the thread, at the bottom
@@ -1262,6 +1349,9 @@ class SessionState(BaseModel):
             self.phase = left.phase if left is not None else self.current_phase
         # phase by phase: the current phase while it is not done, then the next one (phases.py)
         candidates = self.upcoming_order(exclude=old)
+        if to in candidates:
+            candidates.remove(to)
+            candidates.insert(0, to)
         self.focus_id = candidates[0] if candidates else None
         self.focus_since = time.time()
         if self.focus_id:
@@ -1291,7 +1381,7 @@ class SessionState(BaseModel):
         if note:
             q.answer = note
         if qid == self.focus_id:
-            self.advance("marked answered by the interviewer")
+            self.advance("marked answered by the interviewer", to=self.next_qid())
         else:
             q.thread_at = q.thread_at or time.time()
             self._drop_from_next(qid)

@@ -45,9 +45,13 @@ def _session(tmp_path, client_cfg, *, with_follow_up: bool):
     q.thread = [ThreadEntry(kind="answer", text="Le téléphone.", rung="business", at=now - 60),
                 ThreadEntry(kind="followup", text="Combien d'appels par jour ?", rung="business", at=now - 50),
                 ThreadEntry(kind="answer", text="Un toutes les 15 minutes.", rung="business", at=now - 30)]
-    if with_follow_up:
+    st.ensure_ask()
+    if with_follow_up:  # being asked now, with one more queued under it
         q.thread.append(ThreadEntry(kind="followup", text="Qui décroche ces appels aujourd'hui ?", rung="business",
                                     at=now - 10))
+        st.ask_pin = q.thread[-1]
+        st.ask_next = [ThreadEntry(kind="followup", text="Et quand personne ne décroche, que se passe-t-il ?",
+                                   rung="business", at=now - 4)]
     q.updated_at, q.updated_by = now - 5, "fast"
     return s
 
@@ -78,6 +82,10 @@ const { chromium } = require('playwright');
         askInMissing: document.querySelector('#missing-card').contains(ask),
         askLabel: document.querySelector('#ask-label').textContent,
         askText: ask.textContent,
+        queued: [...document.querySelectorAll('#ask-next li')].filter(visible).map((li) => ({
+          label: li.querySelector('.an-label').textContent, text: li.querySelector('.an-text').textContent,
+          px: px(li.querySelector('.an-text')),
+          below: li.getBoundingClientRect().top >= ask.getBoundingClientRect().bottom })),
         cardSizes: [...new Set(card.map(px))].sort((a, b) => a - b),
         ladderInTheme: document.querySelector('#theme-head').contains(document.querySelector('#ladder')),
         ladderAboveAsk: document.querySelector('#ladder').getBoundingClientRect().bottom
@@ -106,6 +114,22 @@ const { chromium } = require('playwright');
     out[name].errors = errors;
     await p.close();
   }
+  // a click on a queued follow-up asks it: it takes the focal spot, in place, and leaves the queue
+  const c = await b.newPage({ viewport: { width: 1280, height: 900 } });
+  await c.goto(process.argv[2]);
+  await c.waitForFunction(() => document.querySelector('#ask-text').textContent.length > 3);
+  await c.waitForTimeout(300);
+  const top0 = await c.evaluate(() => document.querySelector('#ask-text').getBoundingClientRect().top);
+  const queuedCount = await c.evaluate(() => document.querySelectorAll('#ask-next li').length);
+  if (queuedCount) {
+    const target = await c.evaluate(() => document.querySelector('#ask-next .an-text').textContent);
+    await c.click('#ask-next .an-item');
+    await c.waitForFunction((t) => document.querySelector('#ask-text').textContent === t, target, { timeout: 8000 });
+    out.clicked = await c.evaluate((top0) => ({
+      left: document.querySelectorAll('#ask-next li').length,
+      top: Math.round(document.querySelector('#ask-text').getBoundingClientRect().top - top0) }), top0);
+  }
+  await c.close();
   // keyboard shortcuts still drive the interview: "n" moves to the next question
   const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
   await p.goto(process.argv[2]);
@@ -156,6 +180,10 @@ def test_ask_now_is_the_focal_point_and_the_card_uses_a_small_type_scale(tmp_pat
         assert v["askLabel"] == "à demander maintenant"
         assert v["askPx"] == v["largest"], (name, v["largestEl"])
         assert not v["askInMissing"]
+        # the next follow-up is queued under it, quieter, never in its place
+        assert [(x["label"], x["text"]) for x in v["queued"]] == [
+            ("Relance suivante", "Et quand personne ne décroche, que se passe-t-il ?")]
+        assert all(x["below"] and x["px"] < v["askPx"] / 1.3 for x in v["queued"])
         # the theme question stays visible, as small context only
         assert v["themeShown"] and v["currentText"] == theme and v["themePx"] < v["askPx"] / 1.5
         assert v["answerOrder"] == sorted(v["answerOrder"])
@@ -169,6 +197,7 @@ def test_ask_now_is_the_focal_point_and_the_card_uses_a_small_type_scale(tmp_pat
         assert len(v["cardSizes"]) <= 4, (name, v["cardSizes"])
         # the breadcrumb is the question's own ladder: attached to the theme header, above "ask now"
         assert v["ladderInTheme"] and v["ladderAboveAsk"] and not v["ladderInTop"]
+    assert r["clicked"] == {"left": 0, "top": 0}  # asked now, in the same place; nothing left queued
     assert r["movedOn"]
 
 

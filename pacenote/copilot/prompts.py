@@ -511,7 +511,9 @@ obvious ones from context. Never invent facts, figures or names that were not sa
 # The current question is locked
 state.current_question is the original question on screen. It stays there until the interviewer moves \
 on. Never reword, reorder or remove it, and never put it in next_questions. Under it, the screen \
-shows a thread: the answer pieces captured so far and the follow-up questions asked.
+shows a thread: the answer pieces captured so far and the follow-up questions asked. `asking_now` is \
+what the interviewee is answering; `queued` are follow-ups already proposed, on screen under it and not \
+asked yet: your follow_up is queued after them, so never repeat one.
 
 # Dig down the ladder, one follow-up at a time
 For each question the interviewer digs down a ladder, rung by rung:
@@ -667,6 +669,8 @@ def state_snapshot(state: SessionState, for_plan: bool = False) -> dict:
             d["gathers_slots"] = list(q.gathers)
         if thread and q.thread:
             d["thread"] = [f"{t.kind}: {t.text}" for t in q.thread[-6:]]
+        if thread:
+            d |= ask_snapshot(state)
         return d
 
     cur = state.current_question
@@ -1059,8 +1063,9 @@ FAST_SYSTEM = """\
 You run the live interview thread of a kickoff between a consulting engineer and \
 {who} at {client}. A few seconds after someone speaks you get the newest transcript lines and \
 the question on screen with its thread so far. Your output is shown to the interviewer at once: the new \
-piece of answer is appended under the question, then ONE follow-up question to ask next. Be \
-fast, literal and conservative.
+piece of answer is appended under the question, and ONE follow-up question is queued under what is being \
+asked, for the interviewer to ask once the answer is over (the screen never swaps the question being \
+answered). Be fast, literal and conservative.
 
 Each message is independent: rely only on the state and lines in that message.
 
@@ -1100,8 +1105,10 @@ already covered.
   - rung: business, workflow or implementation: where the digging is now. Move down only when \
 the current rung is mostly covered (or the interviewee cannot say more); "done" when implementation is \
 covered too.
-  - follow_up: ONE short natural follow-up question in {lang_name} for the interviewer to ask now, \
-digging into the original question on the current rung, aimed at its first missing item. When \
+  - follow_up: ONE short natural follow-up question in {lang_name} for the interviewer to ask next, \
+digging into the original question on the current rung, aimed at its first missing item. `asking_now` \
+is what the interviewee is answering; `queued` are follow-ups already on screen, not asked yet: never \
+repeat one of them. When \
 the answer is vague, ask for a concrete recent example, a number, a name or a tool, in the \
 interviewee's own words, following the wording rules above. Never repeat one from the thread. "" when the \
 ladder is done.
@@ -1122,6 +1129,15 @@ If the new lines are only the interviewer asking, small talk or noise, return em
 
 
 FAST_CONTEXT_CHARS = 1500
+
+
+def ask_snapshot(state: SessionState) -> dict:
+    """What the interviewee is answering on the current question, and the follow-ups queued under it."""
+    state.ensure_ask()
+    cur = state.current_question
+    pin = state.ask_pin
+    return {"asking_now": pin.text if pin is not None else (cur.text(state.language) if cur else ""),
+            "queued": [e.text for e in state.ask_next]}
 
 
 def build_fast_system(state: SessionState, glossary: str, context: str = "") -> str:
@@ -1151,7 +1167,7 @@ def build_fast_user(state: SessionState, new_lines: list[Segment], context: list
                    "rung": cur.rung, "expect": cur.expect_in(lang),
                    "covered": [cur.expect_text(e, lang) for e in cur.covered],
                    "missing_on_rung": [cur.expect_text(e, lang) for e in cur.missing()], "draft_answer": cur.answer,
-                   "thread": [f"{t.kind} ({t.rung}): {t.text}" for t in cur.thread[-8:]]}
+                   "thread": [f"{t.kind} ({t.rung}): {t.text}" for t in cur.thread[-8:]], **ask_snapshot(state)}
         if cur.use_case:
             current |= {"use_case": cur.use_case, "missing_slots": cur.missing_slots()}
         elif cur.gathers:

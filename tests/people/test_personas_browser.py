@@ -149,6 +149,7 @@ def card_session(tmp_path, persona: str) -> Session:
             to_check=[{"use_case": "bakery-orders", "question_id": None, "slots": ["target"],
                        "question": "Which figure would show the order desk is doing better, and by when?",
                        "ask": "the CEO", "evidence": "that's for the boss to say"}]))
+    st.promote()  # the follow-up is being asked
     return s
 
 

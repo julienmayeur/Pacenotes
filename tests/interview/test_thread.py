@@ -1,6 +1,7 @@
-"""The interview thread: original question locked on screen, answer pieces and ONE follow-up at a
-time appended under it, the Business > Workflow > Implementation ladder, focus that only moves
-on with n / Enter or when the ladder is done and the room is quiet, calm (frozen) lists."""
+"""The interview thread: original question locked on screen, answer pieces under it, follow-ups queued
+under the question being asked (never in its place) until its answer is over, the Business > Workflow >
+Implementation ladder, focus that only moves on with n / Enter or once the answer is over, calm (frozen)
+lists."""
 
 import asyncio
 import json
@@ -64,29 +65,35 @@ def test_real_questionnaire_ignores_a_local_preplan(tmp_path):
 # --- thread ---------------------------------------------------------------------------------------
 
 
-def test_thread_alternates_answer_pieces_and_one_follow_up():
+def test_follow_ups_queue_under_the_question_being_asked_never_in_its_place():
     st = real_state()
     q = st.current_question
     st.apply_fast_result(fast(upd(q.id, "partial", "Aller plus vite.", rung="business",
                                   follow_up="Plus vite sur quoi, concrètement ?", vague=True)))
-    assert [(t.kind, t.text) for t in q.thread] == [("answer", "Aller plus vite."),
-                                                    ("followup", "Plus vite sur quoi, concrètement ?")]
-    assert q.follow_up == "Plus vite sur quoi, concrètement ?" and q.vague
-    # a new follow-up while one is pending and no new answer piece: kept, never swapped
-    st.apply_fast_result(fast(upd(q.id, "partial", "Aller plus vite.", piece="", rung="business",
-                                  follow_up="Autre question ?")))
-    assert len(q.thread) == 2 and q.follow_up == "Plus vite sur quoi, concrètement ?"
-    # the CEO answers the follow-up: piece appended, then the next follow-up
-    st.apply_fast_result(fast(upd(q.id, "partial", "Les commandes : deux jours au lieu du jour même.",
-                                  piece="Les commandes doivent partir le jour même, pas en deux jours.",
-                                  covered=["le résultat attendu, chiffré (délai, coût, volume)"], rung="business",
-                                  follow_up="D'ici combien de mois ?")))
-    assert [t.kind for t in q.thread] == ["answer", "followup", "answer", "followup"]
-    assert q.answer == "Les commandes : deux jours au lieu du jour même."  # merged summary kept separately
-    # the same follow-up is never asked twice
-    st.apply_fast_result(fast(upd(q.id, "partial", q.answer, piece="Six mois.", rung="business",
-                                  follow_up="D'ici combien de mois ?")))
-    assert [t.kind for t in q.thread][-1] == "answer"
+    assert [(t.kind, t.text) for t in q.thread] == [("answer", "Aller plus vite.")]  # the thread = what was asked
+    assert st.ask_pin is None and [e.text for e in st.ask_next] == ["Plus vite sur quoi, concrètement ?"]
+    assert q.vague
+    # understanding grows: the next proposal is queued after it, the first one stays where it is
+    st.apply_fast_result(fast(upd(q.id, "partial", "Aller plus vite.", piece="Les commandes surtout.",
+                                  rung="business", follow_up="Les commandes de qui ?")))
+    assert [e.text for e in st.ask_next] == ["Plus vite sur quoi, concrètement ?", "Les commandes de qui ?"]
+    # the queue is capped: a third proposal is dropped (logged), nothing visible is replaced
+    rep = st.apply_fast_result(fast(upd(q.id, "partial", "x", piece="Et les devis.", rung="business",
+                                        follow_up="Et les devis ?")))
+    assert len(st.ask_next) == 2 and any(r.kind == "followup" for r in rep.rejected)
+    # the answer is over: the first queued follow-up is asked now and joins the thread
+    st.promote()
+    assert st.ask_pin.text == "Plus vite sur quoi, concrètement ?" and q.follow_up == st.ask_pin.text
+    assert [e.text for e in st.ask_next] == ["Les commandes de qui ?"]
+    assert [t.kind for t in q.thread] == ["answer", "answer", "answer", "followup"]
+    # the same follow-up is never asked or queued twice
+    rep = st.apply_fast_result(fast(upd(q.id, "partial", "x", piece="Six mois.", rung="business",
+                                        follow_up="Plus vite sur quoi, concrètement ?")))
+    assert [e.text for e in st.ask_next] == ["Les commandes de qui ?"]
+    # a focus change resets the ask: the new question is asked first, with nothing queued
+    st.advance("n")
+    st.ensure_ask()
+    assert st.ask_for == st.focus_id and st.ask_pin is None and st.ask_next == []
 
 
 def test_full_sync_does_not_duplicate_pieces_when_the_fast_pass_owns_the_thread():
@@ -96,8 +103,20 @@ def test_full_sync_does_not_duplicate_pieces_when_the_fast_pass_owns_the_thread(
     st.apply_sync_result(result(question_updates=[upd(q.id, "partial", "Aller plus vite (résumé).",
                                                       piece="Aller plus vite.", rung="business",
                                                       follow_up="Sur quel processus ?")]), thread=False)
-    assert [(t.kind, t.by) for t in q.thread] == [("answer", "fast"), ("followup", "sync")]
+    assert [(t.kind, t.by) for t in q.thread] == [("answer", "fast")]
+    assert [(e.text, e.by) for e in st.ask_next] == [("Sur quel processus ?", "sync")]
     assert q.answer == "Aller plus vite (résumé)."
+
+
+def test_a_follow_up_proposed_for_another_question_waits_in_the_queue_when_it_becomes_the_focus():
+    st = real_state()
+    other = st.next_questions[0]
+    st.apply_fast_result(fast(upd(other, "partial", "Les devis.", rung="business", follow_up="Combien par semaine ?")))
+    assert st.get(other).thread[-1].kind == "followup"  # not the focus: in its thread, as before
+    st.advance("n", to=other)
+    st.ensure_ask()
+    assert st.focus_id == other and [e.text for e in st.ask_next] == ["Combien par semaine ?"]
+    assert st.get(other).thread[-1].kind == "answer"  # not asked yet: out of the thread
 
 
 # --- ladder ---------------------------------------------------------------------------------------
@@ -142,7 +161,7 @@ def test_current_question_is_never_replaced_reordered_or_removed():
         next_questions=[cur, "capacity-growth", "capacity-time"]))
     q = st.get(cur)
     assert st.focus_id == cur and q.text_fr.startswith("Si demain")  # original question kept
-    assert q.follow_up == "Concrètement, plus vite sur quoi ?"  # the rewording became the follow-up
+    assert st.ask_next[-1].text == "Concrètement, plus vite sur quoi ?"  # the rewording is queued under it
     assert cur not in st.next_questions and st.next_questions[:2] == ["capacity-growth", "capacity-time"]
     assert {r.kind for r in rep.rejected} >= {"remove", "reorder"}
     st.mark_answered("capacity-growth")
@@ -157,16 +176,221 @@ def _session(tmp_path, settings=None, engine=None):
                                                  fast_enabled=False))
 
 
-def test_auto_advance_only_when_done_and_quiet(tmp_path):
-    s = _session(tmp_path, Settings(advance_silence=4.0))
-    cur = s.state.focus_id
-    s.transcript.add("fr", 0, 1, "la réponse continue…", received_at=time.time())
-    assert not s._maybe_auto_advance()  # not answered
-    s.state.get(cur).status = "answered"
-    assert not s._maybe_auto_advance()  # answered, but people are still talking
-    s.transcript.segments[-1].received_at = time.time() - 5
-    assert s._maybe_auto_advance()
-    assert s.state.focus_id != cur and s.focus_changes[-1]["reason"].startswith("answered")
+class _Clock:
+    """A source that only has a speech clock (the tests add the lines themselves)."""
+
+    def __init__(self, t=0.0):
+        self.t = t
+
+    def elapsed(self):
+        return self.t
+
+
+def _talking(tmp_path, **kw):
+    """A session in the interview, its speech clock at 100 s, the fast pass caught up."""
+    s = _session(tmp_path, Settings(sync_interval=3600, first_sync_delay=3600, poll_interval=3600, **kw))
+    s.state.mode = "interview"
+    s.source = _Clock(100.0)
+    return s
+
+
+def _say(s, start, end, text):
+    seg = s.transcript.add("fr", start, end, text, received_at=time.time())
+    s.last_fast_seq = s.transcript.last_seq  # analysed
+    return seg
+
+
+def test_the_question_being_answered_stays_while_the_answer_goes_on(tmp_path):
+    s = _talking(tmp_path)
+    st = s.state
+    first = st.focus_id
+    s.view()  # the question goes up
+    st.ask_seq = s.transcript.last_seq
+    asked = s.view()["current"]["ask"]
+    assert asked == {"key": f"q:{first}", "kind": "question", "text": st.get(first).text("fr")}
+    for i, follow in enumerate(["Plus vite sur quoi ?", "Les commandes de qui ?", "Et les devis ?"]):
+        _say(s, 90 + i * 3, 92 + i * 3, "on parle des commandes et")
+        st.apply_fast_result(fast(upd(first, "partial", "x", piece=f"morceau {i}", rung="business", follow_up=follow)))
+        s.source.t = 92 + i * 3 + 1  # one second later the answer goes on
+        assert not s._maybe_retire()
+        v = s.view()["current"]
+        assert v["ask"] == asked  # never swapped under the interviewee
+        assert [x["text"] for x in v["ask_next"]] == ["Plus vite sur quoi ?", "Les commandes de qui ?"][:i + 1]
+    # a pause mid-sentence (no final mark) is not the end of the answer…
+    s.source.t = 98 + 5
+    assert not s._maybe_retire()
+    # …the end of a sentence and a real pause are
+    _say(s, 104, 106, "Voilà, c'est surtout les commandes.")
+    s.source.t = 106 + 3.0
+    assert not s._maybe_retire()
+    s.source.t = 106 + 3.6
+    assert s._maybe_retire()
+    v = s.view()["current"]
+    assert v["id"] == first and v["ask"]["text"] == "Plus vite sur quoi ?" and v["ask"]["kind"] == "followup"
+    assert [x["text"] for x in v["ask_next"]] == ["Les commandes de qui ?"]
+    assert s.ask_changes[-1]["reason"].startswith("answer over")
+    # the answer to the new one has not started: nothing moves until something is said
+    s.source.t = 200
+    assert not s._maybe_retire()
+
+
+def test_a_line_without_a_final_mark_needs_a_longer_pause(tmp_path):
+    s = _talking(tmp_path)
+    st = s.state
+    s.view()
+    st.ask_seq = 0
+    _say(s, 90, 93, "il faut compter trois heures parce que")
+    st.apply_fast_result(fast(upd(st.focus_id, "partial", "x", piece="trois heures", follow_up="Pourquoi trois ?")))
+    s.source.t = 93 + 5
+    assert not s._maybe_retire()
+    s.source.t = 93 + 7.1
+    assert s._maybe_retire()
+
+
+def test_live_batches_raise_the_pause_by_the_recogniser_delay(tmp_path):
+    """Live, Apple's final results arrive about every 11.5 s: a line-less stretch shorter than that says
+    nothing about silence. The pause counts beyond the measured delay."""
+    s = _talking(tmp_path)
+    st = s.state
+    s.view()
+    st.ask_seq = 0
+    s._lags = [0.5, 3.0, 6.0, 9.0, 11.0] * 4  # a batch holds the last ~11 s
+    _say(s, 80, 88, "Voilà pour les commandes.")
+    st.apply_fast_result(fast(upd(st.focus_id, "partial", "x", piece="commandes", follow_up="Et les devis ?")))
+    s.source.t = 88 + 3.6 + 5  # silent for all we know, but the next batch may still bring words
+    assert not s._maybe_retire()
+    s.source.t = 88 + 3.6 + 11.1  # beyond the longest delay, but not its margin (a batch can be skipped)
+    assert not s._maybe_retire()
+    s.source.t = 88 + 3.6 + 1.25 * 11
+    assert s._maybe_retire()
+
+
+def test_the_interviewer_reading_a_queued_question_asks_it_at_once(tmp_path):
+    s = _talking(tmp_path)
+    st = s.state
+    s.view()
+    st.ask_seq = 0
+    _say(s, 90, 92, "La saisie des commandes prend trois heures à Lucie et")
+    st.apply_fast_result(fast(upd(st.focus_id, "partial", "x", piece="trois heures",
+                                  follow_up="Combien de commandes saisit-elle par jour ?")))
+    st.apply_fast_result(fast(upd(st.focus_id, "partial", "x", piece="Lucie", follow_up="Qui corrige les erreurs ?")))
+    for e in st.ask_next:  # on screen since 92 s on the speech clock (5 s before 97 s)
+        e.at = time.time() - 5
+    s.source.t = 92.1
+    assert not s._maybe_retire()
+    _say(s, 92.2, 94, "et les erreurs, Marc les corrige")  # the interviewee's words, mid-turn: not a question read
+    s.source.t = 94.5
+    assert not s._maybe_retire()
+    _say(s, 95, 97, "Et qui corrige les erreurs, du coup")  # read aloud after a gap, in their own words
+    s.source.t = 97.2
+    assert s._maybe_retire()
+    assert st.ask_pin.text == "Qui corrige les erreurs ?"  # the one read, not the first one queued
+    assert st.ask_next == [] and s.ask_changes[-1]["reason"] == "the interviewer asked it"
+
+
+def test_a_follow_up_drawn_from_the_answer_is_not_taken_as_read_aloud(tmp_path):
+    """The model writes a follow-up from what was just said, so its words echo that line: only a line said
+    after the follow-up appeared can be the interviewer reading it."""
+    s = _talking(tmp_path)
+    st = s.state
+    s.view()
+    st.ask_seq = 0
+    _say(s, 80, 81, "Bien.")
+    _say(s, 82, 86, "Les relances de devis la semaine dernière, Paul")  # a turn start, before the follow-up
+    s.source.t = 86.5
+    st.apply_fast_result(fast(upd(st.focus_id, "partial", "x", piece="relances",
+                                  follow_up="Ces relances, combien par semaine ?")))
+    assert not s._maybe_retire()
+
+
+def test_once_answered_the_next_question_is_queued_and_taken_when_the_answer_is_over(tmp_path):
+    s = _talking(tmp_path)
+    st = s.state
+    first = st.focus_id
+    s.view()
+    st.ask_seq = 0
+    q = st.current_question
+    _say(s, 90, 95, "Le service commandes, sans hésiter.")
+    st.apply_fast_result(fast(upd(first, "answered", "x", piece="commandes", covered=q.all_expect())))
+    assert q.status == "answered"
+    v = s.view()["current"]
+    nxt = v["ask_next"][-1]
+    assert nxt["kind"] == "question" and nxt["qid"] != first
+    assert v["ask"]["text"] == q.text("fr")  # same text: answered never swaps it
+    s.source.t = 95 + 2
+    assert not s._maybe_retire()  # still within the pause: the answer may go on
+    s.source.t = 95 + 3.6
+    assert s._maybe_retire()
+    assert st.focus_id == nxt["qid"] and s.focus_changes[-1]["reason"].startswith("answered")
+
+
+def test_a_long_next_question_read_aloud_is_recognised(tmp_path):
+    """Theme questions run to ~300 characters: read aloud they come as several ~60-character lines."""
+    s = _talking(tmp_path)
+    st = s.state
+    first = st.focus_id
+    s.view()
+    st.ask_seq = 0
+    q = st.current_question
+    _say(s, 60, 64, "Le service commandes, sans hésiter.")
+    st.apply_fast_result(fast(upd(first, "answered", "x", piece="commandes", covered=q.all_expect())))
+    nxt = st.next_qid()
+    text = st.get(nxt).text("fr")
+    assert len(text) > 200
+    words, chunks, cur = text.split(), [], ""
+    for w in words:
+        if cur and len(cur) + 1 + len(w) > 60:
+            chunks.append(cur)
+            cur = w
+        else:
+            cur = f"{cur} {w}".strip()
+    chunks.append(cur)
+    t = 66.0
+    for c in chunks:
+        _say(s, t, t + 3.5, c)
+        t += 3.6
+    s.source.t = t
+    assert s._maybe_retire()
+    assert st.focus_id == nxt and s.focus_changes[-1]["reason"] == "the interviewer asked it"
+
+
+def test_the_interviewee_answering_the_next_question_moves_the_ask_there(tmp_path):
+    async def run():
+        s = _talking(tmp_path, fast_enabled=True)
+        st = s.state
+        first = st.focus_id
+        s.view()
+        st.ask_seq = 0
+        q = st.current_question
+        st.apply_fast_result(fast(upd(first, "answered", "x", piece="commandes", covered=q.all_expect())))
+        nxt = st.next_qid()
+
+        class _Next:
+            name = "next"
+
+            def fast(self, system, user, *, state, lines):
+                return fast(upd(nxt, "partial", "", piece="Les relances de devis."))
+
+        s.engine = _Next()
+        s.transcript.add("fr", 96, 99, "Les relances de devis, deux jours", received_at=time.time())
+        await s.fast_once()
+        assert s._maybe_retire()  # no pause needed: the conversation is already there
+        assert st.focus_id == nxt and s.focus_changes[-1]["reason"] == "the interviewee answers the next question"
+
+    asyncio.run(run())
+
+
+def test_clicking_a_queued_question_asks_it_now(tmp_path):
+    s = _session(tmp_path)
+    with TestClient(create_app(s)) as http:
+        http.post("/api/start")
+        st = s.state
+        st.apply_fast_result(fast(upd(st.focus_id, "partial", "x", piece="x", follow_up="Et les devis ?")))
+        v = http.get("/api/state").json()
+        key = v["current"]["ask_next"][0]["key"]
+        v = http.post("/api/ask", json={"key": key}).json()
+        assert v["current"]["ask"]["text"] == "Et les devis ?" and v["current"]["ask_next"] == []
+        assert http.post("/api/ask", json={"key": key}).status_code == 409  # no longer queued
 
 
 def test_next_key_moves_on_and_logs_the_reason(tmp_path):
@@ -212,6 +436,7 @@ def test_advance_prefers_questions_not_asked_yet():
 
 def test_upcoming_list_is_frozen_while_people_talk(tmp_path):
     s = _session(tmp_path, Settings(freeze_silence=2.5))
+    s.source = _Clock(1.5)  # the speech clock: the line below ended half a second ago
     st = s.state
     a, b, c = st.next_questions
     s.transcript.add("fr", 0, 1, "on parle", received_at=time.time())
@@ -220,7 +445,7 @@ def test_upcoming_list_is_frozen_while_people_talk(tmp_path):
     assert [q["id"] for q in s.view()["next"]] == [a, b, c]
     st.get(b).status = "answered"  # an item that no longer applies just disappears, in place
     assert [q["id"] for q in s.view()["next"]] == [a, c]
-    s.transcript.segments[-1].received_at = time.time() - 3  # silence: now the new order shows
+    s.source.t = 4.0  # three seconds of silence on the speech clock: now the new order shows
     st.next_questions = [c, a]
     # the list is re-derived; c opens the next phase, so it cannot jump ahead of a (phases.py)
     assert st.get(c).phase != st.get(a).phase
@@ -240,8 +465,8 @@ def test_view_shows_thread_ladder_and_current_rung_checklist(tmp_path):
                                 {"item": "le temps qu'elle prend aujourd'hui (heures par jour ou par semaine)", "done": True},
                                 {"item": "ce que vous feriez du temps gagné (boulangeries ou commandes en plus)",
                                  "done": False}]
-    assert cur["follow_up"] == "Plus vite sur quoi ?"
-    assert [t["kind"] for t in cur["thread"]] == ["answer", "followup"]
+    assert cur["ask"]["text"].startswith("Si demain") and cur["ask_next"][0]["text"] == "Plus vite sur quoi ?"
+    assert [t["kind"] for t in cur["thread"]] == ["answer"]
 
 
 # --- noise and the live strip --------------------------------------------------------------------

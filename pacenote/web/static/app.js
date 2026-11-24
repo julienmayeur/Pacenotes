@@ -310,35 +310,67 @@ function renderCurrent(swap = false) {
     ? `${t("phases.toCapture")} : ${ph.gaps.slice(0, 3).join(" · ")}` : "");
 }
 
-/** "À demander maintenant", THE focal point of the screen: the pending follow-up. With no follow-up
- *  yet (a fresh question) or once it is answered, the theme question itself takes the focal spot
- *  (the theme header then keeps only its label and ladder, so the question is never shown twice). */
+/** "À demander maintenant", THE focal point of the screen: what the interviewee is answering. It stays put
+ *  until the answer is over (the server decides: the interviewer reads a queued question, the interviewee
+ *  answers the next one, or a real pause after a complete answer); a new follow-up never takes its place,
+ *  it is queued underneath (renderAskNext). With no follow-up asked yet, the theme question itself takes the
+ *  focal spot (the theme header then keeps only its label and ladder, so it is never shown twice). */
 let lastAsk = "";
-let lastAskLang = "";
+let lastAskKey = "";
 let askFlash = null;
 function renderAsk(cur, changed) {
-  const follow = cur && cur.status !== "answered" ? cur.follow_up || "" : "";
-  const fallback = !!cur && !follow;
+  const ask = cur ? cur.ask || { key: `q:${cur.id}`, kind: "question", text: cur.text } : null;
+  const fallback = !!ask && ask.kind === "question";
   const box = $("ask-now");
   setClass(box, "hidden-soft", !cur);
   setClass(box, "fallback", fallback);
-  setClass(box, "answered", !!cur && cur.status === "answered");
+  setClass(box, "answered", !!cur && cur.status === "answered");  // same text, a quiet green rule
   setClass($("theme-head"), "echoed", fallback);
   setText($("ask-label"), fallback ? t("focus.askTheme") : t("focus.ask"));
-  const text = follow || (cur ? cur.text : "");
+  const text = ask ? ask.text : "";
   setText($("ask-text"), text);
   // with several attendees: who to address it to (the model's pick, else the rung's rule)
   const to = cur && S.mode === "interview" && cur.status !== "answered" ? cur.ask_to : null;
   setClass($("ask-to"), "hidden", !to);
   setText($("ask-to"), to ? `→ ${t("focus.askTo", { who: to.reason ? t("focus.askToWhy", { who: to.who, why: to.reason }) : to.who })}` : "");
-  const sameLang = lastAskLang === S.ui_language;  // a language switch is not a new follow-up
-  lastAskLang = S.ui_language;
-  if (text !== lastAsk && !changed && text && sameLang) {  // a new follow-up arrived: a short highlight
+  // a queued question became the one asked (not a language switch, not a new card): a short highlight
+  const key = ask ? ask.key : "";
+  if (key !== lastAskKey && !changed && text && lastAskKey) {
     box.classList.add("fresh");
     clearTimeout(askFlash);
     askFlash = setTimeout(() => box.classList.remove("fresh"), 1100);
   }
   lastAsk = text;
+  lastAskKey = key;
+  renderAskNext(cur);
+}
+
+/** Under the question being asked: what to ask next, as understanding grows. Items are only appended
+ *  (a calm fade-in, nothing above moves); one leaves when it is asked. Clicking one asks it now. */
+function renderAskNext(cur) {
+  const items = cur && S.mode === "interview" ? cur.ask_next || [] : [];
+  const ol = $("ask-next");
+  setClass(ol, "hidden", !items.length);
+  syncList(ol, items, (i) => i.key, buildAskNext, fillAskNext);
+}
+function buildAskNext(i) {
+  const li = document.createElement("li");
+  li.innerHTML = `<button type="button" class="an-item"><span class="an-label"></span><span class="an-text"></span></button>`;
+  li.querySelector("button").addEventListener("click", () => askNow(li.dataset.key));
+  fillAskNext(li, i);
+  return li;
+}
+function fillAskNext(li, i) {
+  setClass(li, "question", i.kind === "question");
+  li.querySelector("button").title = t("focus.askNowTitle");
+  setText(li.querySelector(".an-label"), i.kind === "question" ? t("focus.nextQuestion") : t("focus.queued"));
+  setText(li.querySelector(".an-text"), i.text);
+}
+async function askNow(key) {
+  if (!S || busy || transitioning || !key) return;
+  busy = true;
+  try { render(await post("/api/ask", { key })); } catch (_) { /* no longer queued: the next poll shows why */ }
+  finally { busy = false; }
 }
 
 /** Under the focal follow-up, quiet, tied to the current workflow: a talking point to say about its manual
@@ -401,8 +433,8 @@ function renderSummary(cur, changed, names) {
   // answer pieces are in the summary above and the follow-up to ask now is the focal "ask now", so
   // only the follow-ups already asked are listed here (the full thread stays in the history item).
   const all = cur ? cur.thread || [] : [];
-  const last = all[all.length - 1];
-  const thread = all.filter((e) => e.kind === "followup" && !(e === last && cur.status !== "answered"));
+  const pinned = cur && cur.ask && cur.ask.kind === "followup" ? cur.ask.text : null;
+  const thread = all.filter((e) => e.kind === "followup" && e.text !== pinned);
   const tlist = $("thread");
   setClass($("followups"), "hidden", !thread.length);
   syncList(tlist, thread, (e) => `${cur.id}|${e.i}`,

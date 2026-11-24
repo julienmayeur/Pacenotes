@@ -14,8 +14,11 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
+import re
 import shutil
 import time
+import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -61,8 +64,33 @@ class Settings:
     fast_context_seconds: float = 30.0
     fast_min_chars: int = 8
     fast_retry_after: float = 3.0  # back-off after a failed fast call
-    advance_silence: float = 4.0  # answered focus question + this much silence -> next question
+    # the question being answered stays on screen until the answer is over (see _answer_over): a pause
+    # this long after a line that ends a sentence, or `answer_pause_open` after one that does not, counted
+    # on the speech clock beyond what the recogniser still holds back (its delivery lag, measured)
+    answer_pause: float = 3.5
+    answer_pause_open: float = 7.0
+    answer_min_chars: int = 12  # something was said since the pinned question went up
     freeze_silence: float = 2.5  # the upcoming list only re-orders after this much silence
+
+
+_STOP = frozenset((
+    "vous nous elle elles ils sont cette votre notre leur leurs quoi quel quelle quels quelles comment "
+    "combien pourquoi est-ce estce dans pour avec sans mais donc alors aussi tres plus moins tout tous toute "
+    "toutes chez entre comme fait faire etre avoir peut peux sont etait quand where what which that this "
+    "with your have does about there their they them from will would could should when then than into"
+).split())
+
+
+def _content_words(text: str) -> set[str]:
+    """The words that carry a question (folded, 4+ letters, not a common word): to recognise it read aloud."""
+    folded = unicodedata.normalize("NFKD", text.lower())
+    folded = "".join(c for c in folded if not unicodedata.combining(c))
+    return {w for w in re.findall(r"[a-z0-9]+", folded) if len(w) >= 4 and w not in _STOP}
+
+
+def _ask_key(focus: str | None, item: dict) -> str:
+    """A queued item's stable key on screen (the page sends it back when it is clicked)."""
+    return f"f:{focus}:{item['at']!r}" if item["kind"] == "followup" else f"n:{item['qid']}"
 
 
 def new_session_dir(sessions_dir: Path, slug: str) -> Path:
@@ -111,6 +139,9 @@ class Session:
         self._upcoming_display: list[str] | None = None  # frozen upcoming list while people talk
         self._display_focus: str | None = None
         self.focus_changes: list[dict] = []  # every focus change, with its reason (for checks)
+        self.ask_changes: list[dict] = []  # every change of what is asked now (follow-up promoted, focus moved)
+        self._lags: list[float] = []  # speech clock at ingest - line start, recent lines: how long speech stays unseen
+        self._moved_to: str | None = None  # the fast pass heard the answer to the queued next question
         self._t0_mono: float | None = None
         self._translate_task: asyncio.Task | None = None
         self._display_task: asyncio.Task | None = None  # translations for the display language only
@@ -350,8 +381,11 @@ class Session:
                 self._log_sync({"kind": "capture", "note": note})
         cues = self.source.poll(final=final)
         now = time.time()
+        clock = self.speech_clock()
         for c in cues:
             self.transcript.add(c.stream, c.start, c.end, c.text, received_at=now)
+            if not final:
+                self._lags = [*self._lags, max(0.0, clock - c.start)][-40:]
         if cues and self.state.first_speech_at is None:
             self.state.first_speech_at = now
             self._first_line_mono = time.monotonic()
@@ -371,7 +405,7 @@ class Session:
         while True:
             before = list(self.state.capture_problems)
             n = self.ingest_once()
-            advanced = self.state.mode == "interview" and self._maybe_auto_advance()
+            advanced = self.state.mode == "interview" and self._maybe_retire()
             if n or advanced or self.state.capture_problems != before:
                 await self.notify()
             await asyncio.sleep(self.settings.poll_interval)
@@ -382,21 +416,159 @@ class Session:
         newest = max((s.received_at for s in self.transcript.segments), default=0.0)
         return time.time() - newest if newest else 1e9
 
-    def _maybe_auto_advance(self) -> bool:
-        """The focus only moves on by itself once it is answered AND the room went quiet."""
-        cur = self.state.current_question
-        if cur is None or cur.status != "answered" or self.silence() < self.settings.advance_silence:
+    def speech_clock(self) -> float:
+        """Seconds on the speech clock (segment start/end): the source's own when it has one (a replay,
+        at any speed), else since Start (the live helper's clock starts with it)."""
+        own = getattr(self.source, "elapsed", None)
+        return float(own()) if callable(own) else self.elapsed
+
+    def speech_pause(self) -> float:
+        """Seconds of silence we can be sure of: since the end of the last line on the speech clock, minus
+        how long speech can stay unseen. A line only arrives once it ends (a ~60-character line takes a few
+        seconds to say), and live, Apple's final results come in batches about every 11.5 s on top of that
+        (sometimes a batch is skipped); so a line-less stretch means silence only beyond that delay: the
+        longest, over the recent lines, of speech clock at arrival − line start, plus 25 %. Large when
+        nothing was said yet."""
+        if not self.transcript.segments:
+            return 1e9
+        last_end = max(s.end for s in self.transcript.segments)
+        lag = 1.25 * max(self._lags, default=0.0)  # the longest recent delay, with a margin: batches can skip
+        return self.speech_clock() - last_end - lag
+
+    @staticmethod
+    def line_open(text: str) -> bool:
+        """True when a line does not end a sentence: no . ? ! at its end, or an ellipsis. The recogniser
+        punctuates and cuts long sentences into ~60-character lines, so a line without a final mark is
+        most likely cut mid-sentence: the speaker is going on."""
+        t = text.strip().rstrip("»\"' ")
+        return not t or t.endswith(("…", "...")) or t[-1] not in ".?!"
+
+    ASK_TURN_GAP = 0.6  # s of speech gap before a line that may be the interviewer reading a queued question
+
+    def _asked(self) -> dict | None:
+        """The interviewer reads a queued question aloud: lines since the pinned one went up hold most
+        of its words. Returns that queued item."""
+        st = self.state
+        since = st.ask_seq or 0
+        primary = next((sid for sid in sorted({s.stream for s in self.transcript.segments})
+                        if sid.split("-")[0] == st.language), st.language)
+        lines = [s for s in self.transcript.readable(self.transcript.merged(), primary=primary)
+                 if s.seq not in self.noise_seqs]
+        # a question read aloud starts a turn (after a gap in the speech; the first lines after the pin are
+        # the answer) and is mostly made of its own words: the turn's first lines, up to its next gap (a long
+        # question takes several ~60-character lines)
+        starts = [i for i, s in enumerate(lines) if s.seq > since and i
+                  and s.start - lines[i - 1].end >= self.ASK_TURN_GAP]
+        windows = []
+        for i in starts:
+            j = i + 1
+            while j < len(lines) and j - i < 8 and lines[j].start - lines[j - 1].end < self.ASK_TURN_GAP:
+                windows.append((i, _content_words(" ".join(s.text for s in lines[i:j]))))
+                j += 1
+            windows.append((i, _content_words(" ".join(s.text for s in lines[i:j]))))
+        clock, now = self.speech_clock(), time.time()
+        for item in self.ask_queue():
+            words = _content_words(item["source"])
+            if len(words) < 2:
+                continue
+            need = max(2, math.ceil(0.6 * len(words)))
+            # a follow-up can only be read once it is on screen; its own wording often echoes the answer
+            # it was drawn from, which must not count
+            shown = clock - (now - item["at"]) if item["kind"] == "followup" else -1e9
+            if any(lines[i].start >= shown and len(words & w) >= need and len(words & w) * 3 >= len(w)
+                   for i, w in windows):
+                return item
+        return None
+
+    def ask_queue(self) -> list[dict]:
+        """What is queued under the question being asked: the follow-ups, then the next question once
+        the focus is answered. `source` is the text in the interview language (what is said aloud)."""
+        st = self.state
+        st.ensure_ask()
+        out = [{"kind": "followup", "at": e.at, "source": e.text, "entry": e} for e in st.ask_next]
+        nid = st.next_qid()
+        if (nq := st.get(nid)) is not None:
+            out.append({"kind": "question", "qid": nid, "source": nq.text(st.language)})
+        return out
+
+    def _answer_over(self) -> tuple[dict | None, str] | None:
+        """Has the answer to what is asked now ended? Robust signals only, never a timer while people talk:
+          * the interviewer reads a queued question (its words in the new lines): it is asked now;
+          * the fast pass heard the answer to the queued next question, and none to the current one;
+          * a pause on the speech clock after something was said: `answer_pause` after a line that
+            ends a sentence, `answer_pause_open` otherwise, once the fast pass has read every line (the
+            queue then reflects the whole answer).
+        Returns (the queued item to ask now, or None = the focus is answered and nothing is queued, why)."""
+        st = self.state
+        cur = st.current_question
+        if cur is None:
+            return None
+        queue = self.ask_queue()
+        if st.ask_seq is None:
+            st.ask_seq = self.transcript.last_seq
+        if (hit := self._asked()) is not None:
+            return hit, "the interviewer asked it"
+        if self._moved_to is not None:
+            moved, self._moved_to = self._moved_to, None
+            hit = next((i for i in queue if i.get("qid") == moved), None)
+            if hit is not None:
+                return hit, "the interviewee answers the next question"
+        if not queue and cur.status != "answered":
+            return None  # nothing to move to: the question stays
+        said = sum(len(s.text) for s in self.transcript.segments if s.seq > st.ask_seq)
+        if said < self.settings.answer_min_chars or self.fast_running:
+            return None
+        if self.fast_available and self.last_fast_seq < self.transcript.last_seq:
+            return None  # the last words are not analysed yet: the queue may still change
+        last = max(self.transcript.segments, key=lambda s: (s.end, s.seq))
+        wait = self.settings.answer_pause_open if self.line_open(last.text) else self.settings.answer_pause
+        if self.speech_pause() < wait:
+            return None
+        if cur.status == "answered":
+            nxt = next((i for i in queue if i["kind"] == "question"), None)
+            return nxt, f"answered, {wait:g} s pause"
+        return queue[0], f"answer over, {wait:g} s pause"
+
+    def _maybe_retire(self) -> bool:
+        """What is asked now changes only once its answer is over (see _answer_over)."""
+        over = self._answer_over()
+        if over is None:
             return False
-        if self.fast_running:  # let the last words land on the current question first
-            return False
-        self._advance(f"answered, {self.settings.advance_silence:g} s of silence")
+        item, why = over
+        if item is not None and item["kind"] == "followup":
+            self.state.promote(item["at"], reason=why)
+            self._ask_changed("followup", why)
+            self.persist()
+            return True
+        self._advance(why, to=item["qid"] if item else None)
         return True
 
-    def _advance(self, reason: str) -> None:
+    def _ask_changed(self, kind: str, reason: str) -> None:
+        entry = {"t": time.time(), "clock": round(self.speech_clock(), 2), "kind": kind, "reason": reason,
+                 "focus": self.state.focus_id}
+        self.ask_changes.append(entry)
+        self._log_sync({"kind": "ask", **entry})
+
+    async def ask_now(self, key: str) -> bool:
+        """The interviewer clicked a queued question: it is asked now (key from view()['current']['ask_next'])."""
+        item = next((i for i in self.ask_queue() if _ask_key(self.state.focus_id, i) == key), None)
+        if item is None:
+            return False
+        if item["kind"] == "followup":
+            self.state.promote(item["at"], reason="clicked by the interviewer")
+            self._ask_changed("followup", "clicked by the interviewer")
+            self.persist()
+        else:
+            self._advance("next question clicked by the interviewer", to=item["qid"])
+        await self.notify()
+        return True
+
+    def _advance(self, reason: str, to: str | None = None) -> None:
         old = self.state.focus_id
-        new = self.state.advance(reason)
+        new = self.state.advance(reason, to=to)
         self.focus_changes.append({"t": time.time(), "from": old, "to": new, "reason": reason})
         self._log_sync({"kind": "focus", "from": old, "to": new, "reason": reason})
+        self._ask_changed("question", reason)
         self.persist()
 
     async def next_question(self, seen: str | None = None) -> str | None:
@@ -405,7 +577,7 @@ class Session:
         rather than skipping the new question too."""
         if seen is not None and seen != self.state.focus_id:
             return self.state.focus_id
-        self._advance("interviewer pressed next")
+        self._advance("interviewer pressed next", to=self.state.ask_next_qid)  # the « Question suivante » shown
         await self.notify()
         return self.state.focus_id
 
@@ -475,7 +647,7 @@ class Session:
         it refreshes when the focus changes or after `freeze_silence` seconds of silence."""
         st = self.state
         if (self._upcoming_display is None or self._display_focus != st.focus_id
-                or self.silence() >= self.settings.freeze_silence):
+                or self.speech_pause() >= self.settings.freeze_silence):
             self._upcoming_display = st.refresh_upcoming()
             self._display_focus = st.focus_id
         else:  # only drop entries that are no longer open; no re-ordering, no additions
@@ -551,7 +723,11 @@ class Session:
             return False
         if self.state.mode not in ("interview", "finalize"):
             return False
+        nxt = self.state.next_qid()  # queued under the answered focus question, if any
         report = self.state.apply_fast_result(result, read=upto)  # stamped with the transcript version it read
+        pieces = {u.question_id for u in result.question_updates if u.answer_piece.strip()}
+        if nxt is not None and nxt in pieces and self.state.focus_id not in pieces:
+            self._moved_to = nxt  # the interviewee is answering the next question: the ask moves there
         applied = time.time()
         self.last_fast_seq = upto
         flagged = {n.strip().lstrip("#") for n in result.noise}
@@ -906,6 +1082,7 @@ class Session:
             return [{"i": i, "kind": t.kind, "text": t.shown(shown, lang), "rung": t.rung}
                     for i, t in enumerate(q.thread)][-n:]
 
+        st.ensure_ask()  # the ask belongs to the focus question (reset when the focus moved)
         cur = st.current_question
         current = None
         if cur is not None:
@@ -922,7 +1099,17 @@ class Session:
                        "missing": [cur.expect_text(e, shown) for e in cur.missing(shown_rung)],
                        "covered": [cur.expect_text(e, shown) for e in cur.covered],
                        "covered_keys": list(cur.covered),
-                       "follow_up": cur.thread[-1].shown(shown, lang) if cur.follow_up else "",
+                       # what is asked now: the follow-up being answered, else the question itself; it
+                       # stays until the answer is over. Under it, what is queued, never in its place.
+                       "ask": ({"key": f"f:{cur.id}:{pin.at!r}", "kind": "followup", "text": pin.shown(shown, lang),
+                                "rung": pin.rung} if (pin := st.ask_pin) is not None
+                               else {"key": f"q:{cur.id}", "kind": "question", "text": cur.text(shown)}),
+                       "ask_next": [{"key": _ask_key(cur.id, i), "kind": i["kind"],
+                                     "text": (i["entry"].shown(shown, lang) if i["kind"] == "followup"
+                                              else st.get(i["qid"]).text(shown)),
+                                     **({"rung": i["entry"].rung} if i["kind"] == "followup" else {"qid": i["qid"]})}
+                                    for i in self.ask_queue()],
+                       "follow_up": pin.shown(shown, lang) if (pin := st.ask_pin) is not None else "",
                        "vague": cur.vague,
                        "use_case": ({"id": uc.id, "title": uc.title(shown), "missing": cur.missing_slots()}
                                     if (uc := st.get_use_case(cur.use_case)) else None),

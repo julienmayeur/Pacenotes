@@ -28,7 +28,7 @@
     "analysing": "analyse",
     "deep": "analyse approfondie",
     "moveHint": "n / Entrée : question suivante",
-    "moveReady": "Réponse complète — on passe à la suite au prochain silence (ou n / Entrée)",
+    "moveReady": "Réponse complète — la question suivante est prête dessous ; elle passe en tête quand vous la posez (ou n / Entrée)",
     "ladder": "paliers",
     "translated": "traduit automatiquement",
     "rungs": {
@@ -78,7 +78,10 @@
       "urgent": "Seriez-vous partant pour essayer la façon plus rapide d'abord sur votre propre travail, pour que l'équipe le voie ?"
     },
     "askTo": "Demander à {{who}}",
-    "askToWhy": "{{who}} · {{why}}"
+    "askToWhy": "{{who}} · {{why}}",
+    "queued": "Relance suivante",
+    "nextQuestion": "Question suivante",
+    "askNowTitle": "La poser maintenant"
   },
   "where": {
     "title": "Où on en est",

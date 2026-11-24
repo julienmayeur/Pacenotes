@@ -44,6 +44,10 @@ class NextBody(BaseModel):
     from_: str | None = Field(default=None, alias="from")
 
 
+class AskBody(BaseModel):
+    key: str = Field(max_length=200)
+
+
 def create_app(session: Session, auto_start: bool = False, research: ResearchManager | None = None,
                bind_host: str | None = None, claude_bin: str | None = None) -> FastAPI:
     """The interview app. Listening starts ONLY on POST /api/start (the Start button): never at
@@ -135,6 +139,15 @@ def create_app(session: Session, auto_start: bool = False, research: ResearchMan
         if session.state.mode not in ("interview", "finalize"):
             raise HTTPException(status_code=409, detail="not interviewing")
         await session.next_question(body.from_ if body else None)
+        return session.view()
+
+    @app.post("/api/ask")
+    async def ask_now(body: AskBody) -> dict:
+        """The interviewer clicked a question queued under the one being asked: it is asked now."""
+        if session.state.mode not in ("interview", "finalize"):
+            raise HTTPException(status_code=409, detail="not interviewing")
+        if not await session.ask_now(body.key):
+            raise HTTPException(status_code=409, detail="no longer queued")
         return session.view()
 
     @app.post("/api/next-phase")

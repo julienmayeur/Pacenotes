@@ -61,13 +61,15 @@
               <ol id="ladder" class="ladder" data-i18n-attr="aria-label:focus.ladder"></ol>
             </header>
 
-            <!-- THE focal point: what the interviewer asks now (the pending follow-up; with none yet, the
-                 theme question itself) -->
+            <!-- THE focal point: what the interviewee is answering (the follow-up asked; with none yet, the
+                 theme question itself). It stays until the answer is over; new follow-ups queue under it -->
             <section id="ask-now" class="ask-now" aria-live="polite">
               <span id="ask-label" class="ask-label"></span>
               <p id="ask-text" class="ask-text"></p>
               <!-- with several attendees: who to address it to (attendees.py) -->
               <p id="ask-to" class="ask-to hidden"></p>
+              <!-- what to ask next, queued under it as understanding grows; never in its place -->
+              <ol id="ask-next" class="ask-next hidden" aria-live="polite"></ol>
             </section>
 
             <!-- attached to the question: what we heard so far, then what is still missing -->

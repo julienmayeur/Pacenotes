@@ -218,7 +218,7 @@ sequenceDiagram
     S->>St: apply_sync_result(read version)
     St-->>S: applied + rejected (logged)
     S-->>P: SSE view
-    P->>S: POST /api/next (n / Enter) or auto-advance after 4 s of silence on a done ladder
+    P->>S: POST /api/next (n / Enter), POST /api/ask (a queued question clicked), or the answer is over
 ```
 
 ### Capture
@@ -248,13 +248,41 @@ sequenceDiagram
 
 | Lane | When | Model and process | Updates |
 |---|---|---|---|
-| Fast pass | 2.5 s after the last new line (`PACENOTE_FAST_DEBOUNCE`), 8 s at most | `claude-haiku-5-5`, one persistent `claude -p --input-format stream-json` process, recycled every 10 turns, fresh `claude -p` fallback | the current question's thread (answer piece, next single follow-up), items covered, rung, status; answers to other questions; coverage (upward only); noise lines (TV, nearby voices) |
+| Fast pass | 2.5 s after the last new line (`PACENOTE_FAST_DEBOUNCE`), 8 s at most | `claude-haiku-5-5`, one persistent `claude -p --input-format stream-json` process, recycled every 10 turns, fresh `claude -p` fallback | the current question's thread (answer piece; the next follow-up, queued under what is being asked), items covered, rung, status; answers to other questions; coverage (upward only); noise lines (TV, nearby voices) |
 | Full sync | 15 s after the first speech, then every `PACENOTE_SYNC_INTERVAL` (40 s) | `claude-opus-5-5`, one `claude -p --output-format json` per call, effort `low` | the whole contract below |
 
 A tick that fires while the previous call runs is skipped (counted) and its lines go with the next
 call. A failed round (network, refusal, invalid JSON) changes nothing; its delta is re-sent next
 time. On a noisy replay at real speed, the end of a CEO answer reaches the screen as the next
-follow-up in about 5–7 s (debounce + polling + a 1.5–3 s fast call).
+follow-up, queued under the question being answered, in about 5–7 s (debounce + polling + a 1.5–3 s
+fast call). Live, Apple's recogniser delivers its final results in batches about every 11.5 s, which
+adds up to that much before the words even reach the fast pass.
+
+### What is asked now (answer pacing)
+
+Nobody can tell when someone has finished: they may go on 5 or 10 s later. So the question being
+answered (`ask_pin`: the follow-up asked, else the focus question) never changes because a model
+result arrived. A new follow-up is queued under it (`ask_next`, at most 2; a full queue drops new
+proposals and logs it), and once the focus question is answered the next question is queued after
+them (`ask_next_qid`). Queued follow-ups are not in the thread, since the thread and the prompts hold
+what was asked; the prompts get them as `queued` so they are never proposed twice. The pinned item
+retires only on an "answer over" signal (`Session._answer_over`, checked every poll):
+
+| Signal | How it is read | Then |
+|---|---|---|
+| The interviewer reads a queued question | A line that starts a turn (≥ 0.6 s gap on the speech clock, not the first lines after the pin; for a follow-up, said after it appeared) holds ≥ 60 % of the question's content words, and they make up ≥ ⅓ of the words heard; the turn's first lines up to its next gap (a long question comes as several ~60-character lines) | That item is asked now, at once (earlier queued ones are dropped) |
+| The interviewee answers the next question | The fast pass gives the queued next question an answer piece and none to the current one | The focus moves there |
+| A real pause after the answer | Something was said since the pin; the fast pass read every line; then a pause on the speech clock of 3.5 s after a line ending in . ? ! (7 s after any other line: the recogniser cuts long sentences into ~60-character lines) | The first queued item moves up (the next question if the focus is answered) |
+| The interviewer | `n` / Enter, `a`, `k`, `p`, or a click on a queued question | As before (`n` and `a` go to the « Question suivante » shown); a click asks that item |
+
+The pause is counted on the speech clock (segment `end`), beyond how long speech can stay unseen: a
+line arrives only once it ends, so the delay is the longest, over the recent lines, of speech clock at
+arrival − line start, plus 25 % (live batches sometimes skip a period). A replay delivers each line as it
+ends (the delay is a line's length, a few seconds); live, Apple's batches add ~11.5 s or more, so a
+silence-based move needs ~25–30 s without a line: live, the pin mostly moves when a queued question is
+read aloud, or on a key or a click.
+Seconds without a new line are never taken as silence while they are shorter than that delay. The same measure freezes the upcoming list. Every change is logged
+(`kind: ask` / `focus` in `sync_log.jsonl`, with its reason).
 
 ### Versioned analyses (optimistic locking per record)
 
@@ -271,10 +299,11 @@ instead would drop nearly every sync while people talk.
 Whatever the model returns:
 
 - The current question is never reworded, reordered or removed; a rewording proposed for it is
-  appended to its thread as a follow-up. Focus moves only on `n` / Enter / `a` / `k`, `p` (next
-  phase), or when the ladder is done and nobody spoke for 4 s.
-- The thread alternates answer pieces and follow-ups; a pending follow-up is never swapped and
-  never repeated. The rung only moves down the ladder and climbs once a rung is covered.
+  queued under it as a follow-up. Focus moves only on `n` / Enter / `a` / `k`, `p` (next phase), a
+  click on the queued next question, or once the answer is over (see "What is asked now").
+- What is being answered is never swapped by a model result: follow-ups queue under it (at most 2),
+  never repeated, and join the thread when asked. The rung only moves down the ladder and climbs once
+  a rung is covered.
 - Status only moves forward (`pending → partial → answered`); `answered` locks a question forever.
 - Queue edits target `pending`/`partial` questions only, `remove` only `pending`; at most 3
   additions per sync; unknown ids and themes rejected; coverage clamped to 0–1.
@@ -364,11 +393,13 @@ One panel holds the thread: questions already asked (compact, with a summary), t
 then a short « Ensuite » list (one line each). It scrolls only when the thread no longer fits. The
 current card reads top to bottom: the step (`Étape 2/7 · Qui porte l'information`); the theme question
 as small context with its ladder (`Business 1/3 › Workflow 0/2 › Implémentation 0/2`); « À demander
-maintenant », the single thing to ask, the largest text on screen (with no follow-up yet, the theme
-question itself, shown once); then, attached to it, « Ce qu'on a entendu » (the live answer) and « Ce qui
+maintenant », what the interviewee is answering, the largest text on screen (with no follow-up asked
+yet, the theme question itself, shown once); it stays until the answer is over. Under it, smaller, what to
+ask next: « Relance suivante » (up to two, appended with a fade-in, never in its place) and, once the
+question is answered, « Question suivante »; a click asks one now. Then, attached to it, « Ce qu'on a entendu » (the live answer) and « Ce qui
 manque » (items still missing on the current rung, or the use case's unfilled slots) with « Déjà capté »;
 the controls sit quietly at the foot of the card. The upcoming list never reorders while someone talks
-(2.5 s of silence first). The side panel shows time left, coverage and the steps of the conversation (a
+(2.5 s of silence first, on the speech clock beyond the recogniser's delay). The side panel shows time left, coverage and the steps of the conversation (a
 cursor on the current one, a check on those done, the planned minutes in small).
 
 Behind `d`: the follow-ups already asked, how fresh the answer is, what the step's maps still miss, where

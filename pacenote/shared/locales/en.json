@@ -28,7 +28,7 @@
     "analysing": "analysing",
     "deep": "deep analysis",
     "moveHint": "n / Enter: next question",
-    "moveReady": "Complete — moving on at the next pause (or n / Enter)",
+    "moveReady": "Complete — the next question is ready below; it moves up when you ask it (or n / Enter)",
     "ladder": "ladder",
     "translated": "machine-translated",
     "rungs": {
@@ -78,7 +78,10 @@
       "urgent": "Would you be up for trying the quicker way first on your own work, so the team sees it?"
     },
     "askTo": "Ask {{who}}",
-    "askToWhy": "{{who}} · {{why}}"
+    "askToWhy": "{{who}} · {{why}}",
+    "queued": "Next follow-up",
+    "nextQuestion": "Next question",
+    "askNowTitle": "Ask it now"
   },
   "where": {
     "title": "Where we are",

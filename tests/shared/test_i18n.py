@@ -377,15 +377,15 @@ def test_switching_languages_over_the_api_keeps_the_interview_state(tmp_path, re
         st = http.post("/api/language", json={"ui": "en"}).json()
         assert st["ui_language"] == "en" and st["language"] == "fr"
         assert st["current"]["text"].startswith("If tomorrow")  # the questionnaire's own English
-        _wait(lambda: http.get("/api/state").json()["current"]["follow_up"].startswith("[en] "))
+        # the follow-up is queued under the question being asked (never in its place), translated for display
+        _wait(lambda: http.get("/api/state").json()["current"]["ask_next"][0]["text"].startswith("[en] "))
         st = http.get("/api/state").json()
-        fu = [e for e in st["current"]["thread"] if e["kind"] == "followup"]
-        assert fu and fu[-1]["text"] == "[en] Qui décroche ces appels aujourd'hui ?"
+        assert st["current"]["ask_next"][0]["text"] == "[en] Qui décroche ces appels aujourd'hui ?"
         assert [e for e in st["current"]["thread"] if e["kind"] == "answer"] == [
             e for e in before["current"]["thread"] if e["kind"] == "answer"]  # what was said stays as said
         assert st["status"]["must_open"] and not any(t.startswith("Si demain") for t in st["status"]["must_open"])
         # ...but generation is untouched: the follow-up is stored and prompted in French
-        stored = session.state.get("capacity-limit").thread[-1]
+        stored = session.state.ask_next[0]
         assert stored.text == "Qui décroche ces appels aujourd'hui ?" and stored.lang == "fr"
         assert build_fast_system(session.state, "") == fast_before
         assert session.state.speech_locales == ["de-DE", "en-US"] and session.source.locales == ["de-DE", "en-US"]
@@ -440,17 +440,17 @@ def test_display_language_never_touches_generation_or_capture(tmp_path, real_cfg
         # a follow-up generated now is generated (and stored, and prompted) in French
         st.apply_sync_result(result(question_updates=[upd(st.focus_id, "partial", "x", piece="x",
                                                           follow_up="Combien de commandes par jour ?")]))
-        e = st.current_question.thread[-1]
+        e = st.ask_next[-1]  # queued under the question being asked
         assert e.kind == "followup" and e.lang == "fr" and e.text == "Combien de commandes par jour ?"
         assert "Combien de commandes par jour ?" in build_fast_user(st, [], [])
         session._ensure_display_translation()
         await session._display_task
         assert e.text == "Combien de commandes par jour ?" and e.texts == {"en": "[en] Combien de commandes par jour ?"}
         v = session.view()
-        assert v["current"]["follow_up"] == "[en] Combien de commandes par jour ?" and v["language"] == "fr"
+        assert v["current"]["ask_next"][0]["text"] == "[en] Combien de commandes par jour ?" and v["language"] == "fr"
         # back to the interview language: the generated text itself, no translation involved
         await session.set_languages(ui="fr")
-        assert session.view()["current"]["follow_up"] == "Combien de commandes par jour ?"
+        assert session.view()["current"]["ask_next"][0]["text"] == "Combien de commandes par jour ?"
         await session.shutdown()
 
     asyncio.run(go())
@@ -468,7 +468,7 @@ def test_display_translation_without_a_translating_engine_is_not_retried(tmp_pat
         task = session._display_task
         session._ensure_display_translation()
         assert session._display_task is task  # nothing new to try: no loop of failing calls
-        assert session.view()["current"]["follow_up"] == "Combien de commandes par jour ?"  # as generated
+        assert session.view()["current"]["ask_next"][0]["text"] == "Combien de commandes par jour ?"  # as generated
         await session.shutdown()
 
     asyncio.run(go())

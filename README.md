@@ -21,9 +21,14 @@ prepare (admin) ─► consent ─► interview: capture + follow-ups ─► sto
   piece by piece. Follow-ups dig down a ladder: from the business case (cost, target) to the
   workflow (trigger, people, steps, handoffs) to the implementation (tools by name, access,
   volumes).
-- **Follow-ups.** A fast pass a few seconds after each answer proposes one follow-up at a time; a
+- **Follow-ups.** A fast pass a few seconds after each answer proposes the next follow-up; a
   full sync every ~40 s updates the answers, the facts still missing and the maps of who carries
   which information. Phases order the interview behind the scenes; the interviewee never hears a form.
+- **The question being answered stays put.** Nobody can tell from the screen whether someone has
+  finished talking, so a new follow-up never replaces the question being answered: it is queued
+  underneath (two at most, then the next question once this one is answered). It moves up only when
+  the answer is over: you read it aloud, the interviewee is already answering the next question, or
+  there is a real pause after a complete sentence. Click a queued question to ask it at once.
 - **Admin auto-fill.** Before the interview, the admin panel fills the client sheet from public web
   sources (with provenance per field; your own edits are never overwritten) and prepares profile
   cards of the people you will meet (professional, publicly self-published facts only).
@@ -202,6 +207,7 @@ pacenote replay --client brioche-four --srt fr-FR=sessions/brioche-four/<id>/fr.
 | Key | Action |
 |---|---|
 | `n` / Enter | Next question |
+| click a queued question | Ask it now (it moves up into « À demander maintenant ») |
 | `p` | Close the current phase |
 | `a` | Mark the current question answered and move on |
 | `k` | Skip the current question |
