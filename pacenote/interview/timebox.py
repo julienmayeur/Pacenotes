@@ -13,12 +13,15 @@ own clock, `SessionState.now()`, so a replay at any speed keeps the same pace):
    `MIN_SLOT`. Once the slot is over the copilot stops digging: no new follow-up is queued and the
    next question is queued under the one being answered instead. It moves up at the first boundary
    (session.py: the interviewer reads it, the interviewee answers it, a short sure pause, or once the slot
-   is `GRACE` seconds over, the next line that ends a sentence), never mid-sentence.
+   is `GRACE` seconds over, the next line that ends a sentence), never on a line cut mid-sentence. Live,
+   the lines come in batches every ~11.5 s: that sentence end is seen 10-20 s after it was said, so the
+   interviewee may already have gone on.
    A step with less than a slot left starts no new question but a priority-1 one: an overrun eats the
    priority 2 and 3 questions first.
-3. **The closing is protected.** When the time left reaches the closing step's reserve, the next
-   question is the closing step's, wherever the interview is: what matters for the plan (the return,
-   the horizon) is never lost to time.
+3. **The closing is protected.** When the time left reaches the closing step's reserve, the question
+   on screen gives way at its next boundary and the next question is the closing step's, wherever the
+   interview is: what matters for the plan (the return, the horizon) is never lost to time. Past the
+   time, the closing's questions still go first, then the ones left over, priority 1 first.
 
 When the time is up nothing stops: the copilot keeps listening, analysing and proposing the closing
 questions, and the interviewer ends the interview (which writes the plan) when they choose.
@@ -97,8 +100,11 @@ def must_left(state: SessionState, phase: str) -> bool:
 
 
 def closing_due(state: SessionState, now: float | None = None) -> bool:
-    """Time to move to the closing step (rule 3): the time left is down to its reserve."""
-    if state.started_at is None or state.phase == CLOSING or not _has_open(state, CLOSING):
+    """Time to move to the closing step (rule 3): the time left is down to its reserve, and one of its
+    questions is still to ask."""
+    seen = set(state.focus_history)
+    if state.started_at is None or state.phase == CLOSING or not any(
+            q.open and q.phase == CLOSING and q.id not in seen for q in state.questions):
         return False
     return left(state, now) <= reserve(state)
 

@@ -641,8 +641,8 @@ class Session:
             return None
         if self.speech_pause() >= self.settings.slot_pause:
             return f"time slot over, {self.settings.slot_pause:g} s pause"
-        if -(timebox.slot_left(st) or 0.0) < timebox.GRACE:
-            return None
+        if -(timebox.slot_left(st) or 0.0) < timebox.GRACE and not timebox.closing_due(st):
+            return None  # (the closing's time has come: no grace)
         # live, the lines come in batches every ~11.5 s and a pause is rarely sure: the next line that ends a
         # sentence (in the newest batch) is the boundary
         mark = self._grace_from.setdefault(st.focus_id or "", self.transcript.last_seq)

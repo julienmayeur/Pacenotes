@@ -359,10 +359,14 @@ so a replay at any speed keeps the pace):
 - **Each question gets a slot**: its share of what is left of its step, priority 1 counting double, at
   least 60 s. Once the slot is over, no follow-up is queued on it (the prompts get `time_over`) and the
   next question is queued under the one being answered; it moves up at the first boundary (table above),
-  never mid-sentence. A step with less than a slot left starts only a priority-1 question: an overrun eats
+  never on a line cut mid-sentence (live, the sentence end is seen in the next batch, 10–20 s after it was
+  said). Once nothing new can be queued (every question asked), follow-ups come back. A step with less than a slot left starts only a priority-1 question: an overrun eats
   the priority 2 and 3 questions first.
-- **The closing is protected**: when the time left reaches the closing step's reserve, its questions come
-  next, wherever the interview is.
+- **The closing is protected**: when the time left reaches the closing step's reserve, the question on
+  screen gives way at its next boundary (no grace) and the closing's questions come next, wherever the
+  interview is; past the time they still go first, then the questions left over, priority 1 first. Time
+  only moves to a question not asked yet: once every question went up, the one on screen stays until the
+  interviewer moves on or ends.
 
 The screen shows the time left out of the planned length (past it, the time beyond it, quietly).
 When the time is up, or the model says the essentials are covered (`enough_data`), nothing stops:

@@ -920,7 +920,9 @@ async function act(action) {
     if (action === "sync") { await post("/api/sync"); $("sync-dot").className = "dot busy"; }
     if (action === "answered" && cur) render(await post(`/api/questions/${encodeURIComponent(cur)}/answered`));
     if (action === "skip" && cur) render(await post(`/api/questions/${encodeURIComponent(cur)}/skip`));
-    if (action === "enough") await post("/api/enough");
+    if (action === "enough") {  // ends the interview and writes the plan, as End (e)
+      if (confirm(t("console.confirmFinalize"))) await post("/api/enough");
+    }
     if (action === "end") {
       if (confirm(t("console.confirmFinalize"))) await post("/api/finalize");
     }

@@ -280,3 +280,92 @@ def test_when_the_closing_is_due_the_question_on_screen_gives_way_at_its_next_bo
     assert not timebox.slot_over(st)
     now[0] = E + 1200 - 79  # the closing's 80 s: the slot is not over, the time is
     assert timebox.slot_over(st) and st.next_qid() == "roi-expectation"
+
+
+
+def test_when_the_closing_is_due_the_next_sentence_end_moves_to_it_without_grace(tmp_path):
+    s = _started(tmp_path=tmp_path)
+    st = s.state
+    s.view()
+    st.ask_seq = 0
+    s._lags = [11.5] * 10
+    s.source.t = 1200 - 100
+    st.advance("n", to="core-who-comes")  # its 60 s slot would run past the closing's 80 s
+    st.ask_seq = s.transcript.last_seq
+    end = _talk_continuously(s, 1101.0, 1124.0)  # the closing is due from 1120
+    assert timebox.closing_due(st) and st.focus_id == "core-who-comes"
+    _say(s, end, end + 3, "c'est comme ça.")
+    s.source.t = end + 3.5
+    assert s._maybe_retire() and st.focus_id == "roi-expectation"
+
+
+
+def test_past_the_time_the_closing_questions_come_first_then_priority_1_leftovers():
+    st = _state(20)
+    st.started_at = E
+    now = [E]
+    st.set_clock(lambda: now[0])
+    st.start_phase_clock(E)
+    now[0] = E + 1150
+    st.advance("n")  # closing time
+    assert st.focus_id == "roi-expectation"
+    now[0] = E + 1300  # past the 20 minutes
+    st.advance("n")
+    assert st.focus_id == "roi-budget"  # the other closing question, before any left-over
+    now[0] = E + 1400
+    st.advance("n")
+    left = st.get(st.focus_id)
+    assert left.phase != "return" and left.priority == 1  # then the left-overs, priority 1 first
+
+
+
+def test_time_never_brings_back_a_question_already_asked():
+    """Past the time, with every question asked once, the time moves used to ping-pong between the two
+    opening questions every 1.5 minutes (real-model replay, 33-46 min). Revisiting is the interviewer's call."""
+    st = _state(20)
+    st.started_at = E
+    now = [E]
+    st.set_clock(lambda: now[0])
+    st.start_phase_clock(E)
+    for q in st.questions:
+        if q.id != st.focus_id:
+            st.focus_history.append(q.id)  # every question went up once
+    now[0] = E + 1500
+    assert timebox.slot_over(st) and st.next_qid() is None
+    st.get(st.focus_id).status = "answered"  # complete: the next one may be any open question
+    st.ask_next_qid = None
+    assert st.next_qid() is not None
+
+
+
+def test_once_the_closing_was_asked_left_overs_get_their_normal_slot():
+    st = _state(20)
+    st.started_at = E
+    now = [E]
+    st.set_clock(lambda: now[0])
+    st.start_phase_clock(E)
+    now[0] = E + 1150
+    st.advance("n")
+    now[0] = E + 1250
+    st.advance("n")
+    assert st.focus_id == "roi-budget"
+    now[0] = E + 1350
+    st.advance("n")  # both closing questions asked: a left-over
+    assert st.phase != "return" and not timebox.closing_due(st)
+    assert not timebox.slot_over(st) and st.focus_slot >= timebox.MIN_SLOT  # not rushed
+
+
+
+def test_with_nothing_left_to_queue_the_copilot_proposes_follow_ups_again():
+    st = _state(20)
+    st.started_at = E
+    now = [E]
+    st.set_clock(lambda: now[0])
+    st.start_phase_clock(E)
+    for q in st.questions:
+        if q.id != st.focus_id:
+            st.focus_history.append(q.id)
+    now[0] = E + 1500
+    assert timebox.slot_over(st) and st.next_qid() is None
+    st.apply_fast_result(fast(upd(st.focus_id, "partial", "x", piece="encore", follow_up="Et ensuite ?")))
+    assert [e.text for e in st.ask_next] == ["Et ensuite ?"]  # not silent for the rest of the meeting

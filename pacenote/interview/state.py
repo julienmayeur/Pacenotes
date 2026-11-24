@@ -804,14 +804,16 @@ class SessionState(BaseModel):
         asked."""
         if phase is None:
             return True
-        if phase != timebox.CLOSING and timebox.closing_due(self, now):
-            return True
-        if timebox.phase_short(self, phase, now) and not timebox.must_left(self, phase):
-            return True  # not enough time for another question and no priority-1 one left: an overrun eats the rest
         if phase in self.phases_skipped:
             return True
         if not any(q.open and q.phase == phase for q in self.questions):
             return True
+        if phase == timebox.CLOSING:
+            return False  # the closing's questions are what the time is kept for: they go first, even past it
+        if timebox.closing_due(self, now):
+            return True
+        if timebox.phase_short(self, phase, now) and not timebox.must_left(self, phase):
+            return True  # not enough time for another question and no priority-1 one left: an overrun eats the rest
         if self.phase_budget_spent(phase, now):
             return True
         asked = any((q := self.get(i)) is not None and q.phase == phase for i in self.focus_history)
@@ -865,8 +867,9 @@ class SessionState(BaseModel):
                 group = 1  # the next phases, in order
             else:
                 group = 2  # left-overs (visited, earlier or ended phases): only at the very end
-            return (group, seen, idx if group else 0, q.priority if short and group == 0 else 0,
-                    rank.get(q.id, len(rank)) if group == 0 else 0)
+            # left-overs (past their step's time): priority 1 first
+            return (group, seen, q.priority if group == 2 else 0, idx if group else 0,
+                    q.priority if short and group == 0 else 0, rank.get(q.id, len(rank)) if group == 0 else 0)
 
         order = sorted(cands, key=key)  # stable: queue order inside each group
         return [q.id for q in order]
@@ -1336,7 +1339,7 @@ class SessionState(BaseModel):
         asked = [e.text for e in q.thread if e.kind == "followup"] + [e.text for e in self.ask_next]
         if any(_fold(t) == f for t in asked) or _fold(q.text(self.language)) == f:
             return "already asked or queued"
-        if timebox.slot_over(self):
+        if timebox.slot_over(self) and self.next_qid() is not None:
             return "time slot over: the next question is queued instead"
         if len(self.ask_next) >= STACK_CAP:  # the newest, drawn from the latest answer, replaces the oldest
             self.ask_next = self.ask_next[len(self.ask_next) - STACK_CAP + 1:]
@@ -1355,6 +1358,8 @@ class SessionState(BaseModel):
         nq = self.get(self.ask_next_qid)
         if nq is None or not nq.open:
             order = self.upcoming_order(exclude=self.focus_id)
+            if q.status != "answered":  # moved on by time: only to a question not asked yet (never ping-pong
+                order = [i for i in order if i not in self.focus_history]  # between left-overs; n still can)
             self.ask_next_qid = order[0] if order else None
         return self.ask_next_qid
 

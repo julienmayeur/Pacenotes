@@ -1144,8 +1144,8 @@ def ask_snapshot(state: SessionState) -> dict:
     nxt = state.get(state.next_qid()) if timebox.slot_over(state) else None
     return {"asking_now": pin.text if pin is not None else (cur.text(state.language) if cur else ""),
             "queued": [e.text for e in state.ask_next],
-            # the question's time slot is over (timebox.py): the next question is queued, no more digging
-            "time_over": timebox.slot_over(state),
+            # the question's time slot is over (timebox.py) and the next question is queued: no more digging
+            "time_over": nxt is not None,
             **({"next_question": nxt.text(state.language)} if nxt is not None else {})}
 
 

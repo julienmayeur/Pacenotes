@@ -34,8 +34,9 @@ prepare (admin) ─► consent ─► interview: capture + follow-ups ─► sto
 - **Time keeps the interview moving.** The interview has a length (20 minutes by default, `--minutes 15`
   to change it). Each step of the conversation gets its share of the time left and each question a slot
   (priority 1 counts double, at least a minute). When a question's slot is over the copilot stops
-  digging: the next question is queued under it and moves up at the first pause or sentence end, never
-  mid-sentence. A step that runs long takes time from the steps after it, priority 2 and 3 questions
+  digging: the next question is queued under it and moves up at the first sure pause or, 30 s later, at
+  the end of a sentence (live, the transcript arrives in batches, so that sentence end is seen 10–20 s
+  late and the interviewee may already have gone on). A step that runs long takes time from the steps after it, priority 2 and 3 questions
   first, never from the closing questions, which always get their time at the end. The screen shows the
   time left, quietly. When the time is up nothing stops: the copilot keeps listening and proposing, and
   the End button lights up; ending writes the plan and opens it on screen.
