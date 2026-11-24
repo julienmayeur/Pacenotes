@@ -1,28 +1,27 @@
 # ── Interview data: never in git ─────────────────────────────────────────────
-# Live sessions: transcripts, state, plans
-sessions/
+# Paths starting with "/" are anchored to the repo root, so they never hit a code package
+# (pacenote/clients/) or a test folder (tests/fixtures/clients/).
+
+# Live sessions: transcripts, state, plans, logs
+/sessions/
 
 # Real clients: sheets, questionnaires, glossaries, research, people, metrics.
 # The committed example is the fictional clients.example/.
-clients/
-# …except the fictional questionnaires the unit tests load
-!tests/fixtures/clients/
+/clients/
 
-# The example client stays fictional: generated files never go to git
-clients.example/*/research.md
-clients.example/*/preplan.md
-clients.example/*/preplan.json
-clients.example/*/history/
-clients.example/*/people/
-clients.example/*/metrics.yaml
-clients.example/*/ambassadors.json
+# The example client stays fictional: only its three seed files are tracked; everything the app
+# writes next to them (research, preplan, history, people, metrics, ambassadors, locks, temp files)
+# stays local
+/clients.example/*/*
+!/clients.example/*/client.yaml
+!/clients.example/*/glossary.md
+!/clients.example/*/questionnaire.yaml
 
 # Potential ambassadors (people named in an interview) are local only, wherever they land
 ambassadors.json
-clients.example/*/.*.lock
 
 # Recordings and transcripts (tests build synthetic ones at run time)
-samples/
+/samples/
 *.srt
 *.vtt
 *.wav
@@ -47,8 +46,8 @@ wispr*.txt
 __pycache__/
 *.py[cod]
 *.egg-info/
-build/
-dist/
+/build/
+/dist/
 .venv/
 venv/
 .pytest_cache/
