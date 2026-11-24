@@ -16,6 +16,8 @@ coverage for the interviewer. The model labels; the code decides:
 - **Drift is measured on the conversation, not on the screen.** The current point started when a label named
   another area (and not the same point); it survives question changes on screen, a failed sync and slices
   labelled "other": nothing but a new area resets it, so a missing analysis never silences the move-on.
+  Before any area was named, a slice labelled "other" (greetings, how the interview works) moves the first
+  point's start to its end; with no label at all, the first point runs from the interview's start.
   Each point gets an allowance: its share of the interview (the length over the number of areas, times
   `ALLOWANCE_FACTOR`), between `MIN_ALLOWANCE` and `MAX_ALLOWANCE`, so every area can be reached in the
   planned length (20 minutes, 9 areas: 133 s each); twice that once no area is left
@@ -199,6 +201,10 @@ def apply_topic(state: SessionState, label: TopicLabel | None, now: float | None
         cov.seen[area] = "discussed"
     entry = {"at": round(now - state.started_at, 1), "area": label.area, "point": label.point,
              "same_point": label.same_point, "repeating": label.repeating}
+    if area is None and t.get("area") is None:
+        # no area named yet (greetings, how the interview works): the first point has not started. With no
+        # label at all (every sync failed), it runs from the interview's start
+        t["since"] = now
     if area and t.get("area") not in (None, area) and not label.same_point:
         # a new point: its clock starts at the beginning of this slice (the previous label), or when this
         # area's move-on question went up during the slice (the conversation followed it from then)

@@ -392,7 +392,8 @@ took the whole hour while the question on screen kept changing. The model labels
   untouched areas as open items.
 - **Drift is measured on the conversation**: the current point starts when a label names another area (and
   not the same point); question changes on screen, `other`, an unknown id or a failed sync never reset it,
-  so a missing analysis never silences the move-on. Allowance: the interview length over the number of
+  so a missing analysis never silences the move-on (before any area was named, a slice labelled `other` moves
+  the first point's start to its end; with no label at all it runs from the interview's start). Allowance: the interview length over the number of
   areas, between 2 and 5 minutes (133 s for 20 minutes and 9 areas: every area fits in the planned length); × 2 once no area is left
   untouched; × 0.6 after two slices in a row that only repeat the point; + 3 minutes per `x`.
 - **The move-on**: once the point has had its allowance, the first untouched area (then touched but not

@@ -328,3 +328,16 @@ def test_a_followed_move_on_starts_the_new_point_when_its_question_went_up(tmp_p
     st.advance("test: asked", to="area-sales")
     _sync(s, 205, _label("sales"))  # the slice from 160 to 205 is mostly about sales, from 170 on
     assert st.cov.topic["area"] == "sales" and st.cov.topic["since"] == E + 170
+
+
+def test_greetings_before_the_first_area_do_not_count_against_it(tmp_path):
+    s = _session(tmp_path)
+    _sync(s, 40, _label("other", "how the interview works", discussed=[]))
+    _sync(s, 80, _label("other", "how the interview works", same=True, discussed=[]))
+    _sync(s, 130, _label("customer-service"))
+    st = s.state
+    assert st.cov.topic["since"] == E + 80 and coverage.dwell(st) == 50
+    _at(s, 80 + BASE - 1)
+    assert not coverage.due(st)
+    _at(s, 80 + BASE + 1)
+    assert coverage.due(st)
