@@ -579,7 +579,7 @@ missing.
 priorities, workflows (current processes and pain points), quick_wins, risks, budget (amounts, \
 ranges, constraints the interviewee mentioned), open_points. Do not repeat state.plan_notes.
 - clean_passages: a cleaned, readable version of this slice (best stream, glossary applied), \
-one item per speaker turn: start (mm:ss), speaker (fde = the interviewer, client or unknown), lang, text. Drop \
+one item per speaker turn: start (mm:ss), speaker (interviewer, client = the interviewee, or unknown), lang, text. Drop \
 noise, the room (TV, nearby voices) and unrelated chatter.
 - enough_data: true only when all priority-1 questions are answered and every theme has \
 coverage of at least about 0.6, or when the time budget is used up and the remaining gaps can \

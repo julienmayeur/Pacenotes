@@ -19,7 +19,17 @@ from pydantic import BaseModel, ConfigDict
 
 QuestionStatus = Literal["answered", "partial", "pending"]
 EditOp = Literal["add", "reword", "reorder", "remove"]
-Speaker = Literal["fde", "client", "unknown"]
+Speaker = Literal["interviewer", "client", "unknown"]
+SPEAKERS = ("interviewer", "client", "unknown")
+
+
+def speaker_label(value: object) -> object:
+    """A stored turn's speaker (state.PassageLog): sessions saved before the rename used another label for
+    the interviewer, so any string that is not a known speaker reads as the interviewer. The model's own
+    output stays strict (Passage.speaker)."""
+    return value if not isinstance(value, str) or value in SPEAKERS else "interviewer"
+
+
 Rung = Literal["business", "workflow", "implementation", "done"]
 RUNGS = ("business", "workflow", "implementation")  # the ladder each question digs down
 

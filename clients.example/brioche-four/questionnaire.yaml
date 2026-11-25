@@ -45,7 +45,7 @@
 #         `expect` lists 1 to 3 concrete details per rung (short, in the questionnaire language);
 #         such a question is answered once at least half of them are covered.
 #   - priority: 1 = must-have before we can write the plan, 2 = important, 3 = if time allows.
-#   - 15 minutes is about 12 to 14 questions in all, the 9 core questions included: the follow-ups
+#   - 20 minutes is about 15 to 18 questions in all, the 9 core questions included: the follow-ups
 #     do the digging, not more questions. Each phase has a time budget; when it is spent the next
 #     move goes to the next phase, so priority 2-3 questions may stay unasked.
 #   - keywords: only used by the offline (--offline) engine; Claude ignores them.
@@ -67,7 +67,7 @@
 client: Brioche & Four
 slug: brioche-four
 language: fr
-target_minutes: 15
+target_minutes: 20
 
 consent:
   fr: >-

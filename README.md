@@ -3,7 +3,7 @@
 Pace notes for your interviews.
 
 In a rally, the co-driver reads the pace notes so the driver keeps their eyes on the road. Pacenote
-is a live interview copilot for consulting and discovery kickoffs: during a 15–20 minute
+is a live interview copilot for consulting and discovery kickoffs: during a 20-minute
 conversation with someone at a client (its CEO, a function leader or a person who does the work), it listens, keeps the question on screen, captures the answer,
 proposes the next follow-up, and writes the integration plan when you stop. You keep your mind on
 the conversation.
@@ -36,7 +36,7 @@ prepare (admin) ─► consent ─► interview: capture + follow-ups ─► sto
   there is a real pause after a complete sentence. As soon as the analysis marks the question answered
   (its call, held back until the required details are heard), the next question comes up at once, even
   while the interviewee goes on. Click a queued question to ask it at once.
-- **Time keeps the interview moving.** The interview has a length (20 minutes by default, `--minutes 15`
+- **Time keeps the interview moving.** The interview has a length (20 minutes by default, `--minutes 30`
   to change it). Each step of the conversation gets its share of the time left and each question a slot
   (priority 1 counts double, at least a minute). When a question's slot is over the copilot stops
   digging: the next question is queued under it and moves up at the first sure pause or, 30 s later, at

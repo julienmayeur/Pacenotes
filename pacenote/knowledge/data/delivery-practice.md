@@ -2,7 +2,7 @@
 as_of: 2026-11-04
 title: How value is proven (delivery practice)
 sources:
-  - {title: "OpenAI: What FDE means at OpenAI (June 2026)", url: "https://openai.com/"}
+  - {title: "OpenAI: how its forward-deployed engineers work (June 2026)", url: "https://openai.com/"}
   - {title: "CNBC: Anthropic and AWS program to train 10,000 forward-deployed engineers (2026-10-15)", url: "https://www.cnbc.com/"}
   - {title: "Mistral AI: Forge, custom models on the customer's own data (March 2026)", url: "https://mistral.ai/"}
   - {title: "Palantir AIP bootcamps", url: "https://www.palantir.com/"}
@@ -17,14 +17,14 @@ come from the vendor itself; never present them to the client as independent res
 
 ## What vendor delivery teams measure
 
-- OpenAI: FDEs are judged on production adoption, measurable workflow impact and eval-driven
+- OpenAI: forward-deployed engineers are judged on production adoption, measurable workflow impact and eval-driven
   feedback. Vendor-reported: about 48% time saved on directed test generation; Thrive Holdings
   tax pilot, 7,000 returns, about +50% throughput; a telecom voice agent's accuracy from 65.6%
   (December 2024) to 92.3% (May 2026) through evals plus model snapshots.
-- Anthropic and AWS (CNBC, 2026-10-15): a $100M program to train 10,000 FDEs by the end of 2027.
+- Anthropic and AWS (CNBC, 2026-10-15): a $100M program to train 10,000 forward-deployed engineers by the end of 2027.
   Early deployments show productivity gains, not yet clear financial returns: tasks up to 6x
   faster, $5-10M of capacity freed (**vendor-reported**).
-- Mistral: FDEs embedded with customers (often 50% of their time), custom models on the client's
+- Mistral: engineers embedded with customers (often 50% of their time), custom models on the client's
   own data (Forge, March 2026). Typical pattern: the system gathers scattered data and runs the
   checks; humans keep the final decision.
 - Palantir AIP bootcamps: about 5 days from client data to a working demo on 1-2 high-value

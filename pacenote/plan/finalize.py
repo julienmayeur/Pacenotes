@@ -54,7 +54,7 @@ def interview_log_md(state: SessionState) -> str:
     if state.passages:
         lines.append("### " + tr("plan.cleanedExcerpts"))
         lines.append("")
-        who = {"fde": tr("plan.speaker.interviewer"), "client": tr("plan.speaker.interviewee"), "unknown": "?"}
+        who = {"interviewer": tr("plan.speaker.interviewer"), "client": tr("plan.speaker.interviewee"), "unknown": "?"}
         for p in state.passages:
             lines.append(f"- `{p.start}` **{who.get(p.speaker, p.speaker)}** : {p.text}")
         lines.append("")

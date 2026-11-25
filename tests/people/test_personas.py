@@ -293,12 +293,14 @@ def test_the_english_plan_and_the_speaker_labels():
 
     st = _slots_state("operator", role="Order desk assistant")
     st.language = "en"
-    st.apply_sync_result(result(clean_passages=[{"start": "00:10", "speaker": "client", "lang": "en", "text": "Hello."}],
+    st.apply_sync_result(result(clean_passages=[{"start": "00:05", "speaker": "interviewer", "lang": "en", "text": "Hi."},
+                                                {"start": "00:10", "speaker": "client", "lang": "en", "text": "Hello."}],
                                 to_check=[DEFER]))
     md = render_plan_md(offline_plan_doc(st), st)
     assert "**In the meeting**: Order desk assistant — Hands-on operator" in md
     assert "## To check with other people" in md and "With Claire (order desk)" in md
     assert "**Interviewee**" in interview_log_md(st) and "CEO" not in interview_log_md(st)
+    assert "`00:05` **Interviewer** : Hi." in interview_log_md(st)
 
 
 # --- admin and research -------------------------------------------------------------------------------------------

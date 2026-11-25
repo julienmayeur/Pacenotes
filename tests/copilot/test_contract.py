@@ -156,3 +156,16 @@ def test_refusal_and_truncation_raise_sync_failed(state):
 
 def test_empty_result_is_contract_valid():
     assert parse_sync_result(empty_result().model_dump_json()) == empty_result()
+
+
+def test_a_session_saved_before_the_speaker_rename_reads_its_interviewer_turns():
+    from pacenote.interview.state import PassageLog
+
+    old = "f" + "de"  # the label sessions were saved with before the rename
+    assert PassageLog(sync=1, start="0:01", speaker=old, lang="fr", text="Bonjour").speaker == "interviewer"
+    assert PassageLog(sync=1, start="0:01", speaker="client", lang="fr", text="Oui").speaker == "client"
+    # the model's own output stays strict: an unknown speaker is a contract error
+    bad = json.loads(json.dumps(VALID))
+    bad["clean_passages"][0]["speaker"] = old
+    with pytest.raises(ContractError):
+        parse_sync_result(bad)

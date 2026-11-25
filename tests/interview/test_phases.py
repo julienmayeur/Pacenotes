@@ -63,8 +63,8 @@ def test_questions_are_ordered_phase_by_phase_with_budgets():
     assert order == sorted(order)
     assert {q.phase for q in st.questions} == set(P.PHASE_IDS)  # every phase has questions
     assert st.focus_id == "capacity-limit" and st.current_phase == "wealth"
-    assert abs(sum(st.phase_budgets.values()) - 15 * 60) < 1  # scaled to target_minutes
-    assert st.phase_budgets["signal-flow"] == 180.0
+    assert st.target_minutes == 20 and abs(sum(st.phase_budgets.values()) - 20 * 60) < 1  # scaled to target_minutes
+    assert st.phase_budgets["signal-flow"] == 240.0  # 3 of the 15 planned minutes, scaled to 20
     assert P.budgets(30)["wealth"] == 180.0  # a 30-minute interview doubles every budget
     assert P.budgets(15, {"deep-dives": 8})["deep-dives"] > P.budgets(15)["deep-dives"]
 

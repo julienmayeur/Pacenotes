@@ -70,7 +70,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, Field, PrivateAttr, model_validator
+from pydantic import BaseModel, Field, PrivateAttr, field_validator, model_validator
 
 from pacenote.copilot.contract import (
     MAP_KINDS,
@@ -84,6 +84,7 @@ from pacenote.copilot.contract import (
     RecipeMatch,
     SlotFill,
     SyncResult,
+    speaker_label,
 )
 from pacenote.interview import coverage, lens, timebox
 from pacenote.interview import phases as P
@@ -374,6 +375,8 @@ class PassageLog(BaseModel):
     speaker: str
     lang: str
     text: str
+
+    _speaker = field_validator("speaker", mode="before")(staticmethod(speaker_label))
 
 
 class _SharedClock:
