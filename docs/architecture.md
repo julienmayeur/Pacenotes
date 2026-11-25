@@ -375,8 +375,11 @@ so a replay at any speed keeps the pace):
   said). Once nothing new can be queued (every question asked), follow-ups come back. A step with less than a slot left starts only a priority-1 question: an overrun eats
   the priority 2 and 3 questions first.
 - **The closing is protected**: its reserve is its planned time, and at least a slot plus its grace
-  (60 + 30 s) per closing question still open, because the time being up ends the interview; its slots
-  are computed net of those graces. When the time left reaches that reserve, the question on
+  (60 + 30 s) per closing question still to ask or on screen (one asked earlier keeps no time), plus one
+  grace for the question on screen to give way, because the time being up ends the interview once the
+  closing is done; its slots are computed net of those graces, and inside the closing a question moves
+  on at the first sentence end after its slot (no grace). When the time left reaches that reserve, a
+  pending move-on to another area is set aside, the question on
   screen gives way at its next boundary (no grace) and the closing's questions come next, wherever the
   interview is; past the time they still go first. Time
   only moves to a question not asked yet: once every question went up, the one on screen stays until the

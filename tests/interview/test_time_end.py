@@ -368,3 +368,81 @@ def test_the_plus_five_button_and_its_key_in_a_real_browser(tmp_path, client_cfg
     assert seen["afterClick"] == {"total": 1500, "shown": True}
     assert seen["afterKey"] == {"total": 1800, "shown": False}
     assert session.state.target_minutes == 30 and len(session.state.extensions) == 2
+
+
+# --- found on the replay of this morning's interview -------------------------------------------------------
+
+
+def test_a_pending_move_on_gives_way_to_the_closing_when_it_is_due(tmp_path):
+    """Replay: a move-on queued at 15:27 went up at 15:56 and held the closing (due 15:30) until 16:19."""
+    s = _started(tmp_path=tmp_path)
+    st = s.state
+    st.cov.topic = {"area": "customer-service", "since": st.started_at, "point": "x"}
+    _at(s, 1200 - 215)
+    assert coverage.raise_move_on(st) is not None and coverage.pending_qid(st) is not None
+    _at(s, 1200 - 205)  # the closing is due (210 s reserve)
+    assert timebox.closing_due(st)
+    coverage.tick(st)
+    assert coverage.pending_qid(st) is None and st.cov.log[-1]["outcome"] == "closing time"
+    assert st.upcoming_order()[0] == "roi-expectation"
+
+
+def test_in_the_closing_a_sentence_end_after_the_slot_moves_on_without_grace(tmp_path):
+    """Replay: each closing question took its slot plus a 30 s grace plus the next batch (92-116 s): the
+    closing ended 79 s past the time. In the closing the first sentence end after the slot is the boundary."""
+    s = _started(tmp_path=tmp_path)
+    st = s.state
+    s._lags = [11.5] * 10
+    _at(s, 1200 - 209)
+    st.advance("n")
+    s.view()
+    st.ask_seq = s.transcript.last_seq
+    assert st.focus_id == "roi-expectation"
+    slot_end = 1200 - 209 + st.focus_slot
+    end = _talk(s, 1200 - 208, slot_end + 2)
+    assert not s._maybe_retire()  # the slot is over, mid-sentence: the loop checks on every poll
+    _say(s, end, end + 3, "on vise un retour en un an.")
+    _at(s, end + 3.5)
+    assert s._maybe_retire() and st.focus_id == "roi-budget"
+    assert s.ask_changes[-1]["reason"] == "time slot over, sentence end"
+
+
+def test_a_move_on_after_plus_five_in_the_closing_is_no_closing_question(tmp_path):
+    """Replay: an area raised after a +5 in the closing was put in the closing's step, and counted as one."""
+    s = _started(tmp_path=tmp_path)
+    st = s.state
+    _at(s, 1200 - 209)
+    st.advance("n")
+    st.extend_time()
+    assert timebox.closing_reopened(st)
+    st.cov.topic = {"area": "customer-service", "since": st.started_at, "point": "x"}
+    qid = coverage.raise_move_on(st)
+    assert qid is not None and st.get(qid).phase != "return"
+    assert timebox.closing_left(st) == ["roi-budget"]
+
+
+def test_closing_questions_already_asked_keep_no_time_in_the_reserve(tmp_path):
+    """Replay: after +5 in the closing, the two closing questions already asked (left open: nobody answered
+    them) still counted in the reserve, and the closing came back at 20:09 of 25 instead of about 23:00."""
+    s = _started(tmp_path=tmp_path)
+    st = s.state
+    _at(s, 1200 - 209)
+    st.advance("n")  # roi-expectation goes up and stays open
+    st.extend_time()
+    st.advance("n")  # the floor goes back: a question never asked
+    assert st.get(st.focus_id).phase != "return"
+    assert timebox.reserve(st) == timebox.MIN_SLOT + timebox.GRACE + timebox.GRACE  # roi-budget only
+
+
+def test_after_plus_five_the_closing_question_on_screen_keeps_its_slot(tmp_path):
+    """Replay: the click 6 s after a closing question went up let a move-on replace it 23 s later."""
+    s = _started(tmp_path=tmp_path)
+    st = s.state
+    st.cov.topic = {"area": "customer-service", "since": st.started_at, "point": "x"}  # a long point
+    _at(s, 1200 - 209)
+    st.advance("n")
+    _at(s, 1200 - 200)
+    st.extend_time()
+    assert timebox.closing_reopened(st) and not coverage.due(st)  # its slot runs: no move-on yet
+    _at(s, 1200 - 209 + st.focus_slot + 1)
+    assert coverage.due(st)  # its slot is over: the floor goes back

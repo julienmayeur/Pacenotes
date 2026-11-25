@@ -19,8 +19,9 @@ own clock, `SessionState.now()`, so a replay at any speed keeps the same pace):
    A step with less than a slot left starts no new question but a priority-1 one: an overrun eats the
    priority 2 and 3 questions first.
 3. **The closing is protected.** Its reserve is its planned time, and at least `MIN_SLOT + GRACE` per
-   closing question still open (the time being up ends the interview, so every closing question must go
-   up before it). When the time left reaches the closing step's reserve, the question
+   closing question still to ask or on screen, plus one `GRACE` for the question on screen to give way
+   (the time being up ends the interview once the closing is done, so the closing must fit before it).
+   Inside the closing a question moves on at the first sentence end after its slot, with no grace. When the time left reaches the closing step's reserve, the question
    on screen gives way at its next boundary and the next question is the closing step's, wherever the
    interview is: what matters for the plan (the return, the horizon) is never lost to time. Past the
    time, the closing's questions still go first.
@@ -88,11 +89,18 @@ def _has_open(state: SessionState, phase: str) -> bool:
 
 def reserve(state: SessionState) -> float:
     """Seconds kept for the closing step (0 once it has nothing left to ask): its planned time, and at
-    least a slot plus its grace per question it still has open. The time being up ends the interview
-    (lifecycle.py): a closing of three questions planned 1:20 was cut after its first (they ran 19:12 to
-    22:16 on the replay of a real interview)."""
-    n = sum(1 for q in state.questions if q.open and q.phase == CLOSING)
-    return max(planned(state).get(CLOSING, 0.0), n * (MIN_SLOT + GRACE)) if n else 0.0
+    least a slot plus its grace per question it still has open, plus one grace for the question on screen
+    to give way while the closing has not started. The time being up ends the interview once the closing
+    is done (lifecycle.py): a closing of three questions planned 1:20 ran 19:12 to 22:16 on the replay of a
+    real interview, and with 90 s per question and no switch time it still ended 79 s past the time."""
+    cur = state.get(state.focus_id)
+    # the questions still to put up, and the one on screen (one already asked keeps no time: a "+5 min"
+    # replay brought the closing back 3 minutes early when they still counted)
+    n = len(closing_left(state)) + (1 if cur is not None and cur.open and cur.phase == CLOSING else 0)
+    if not n:
+        return 0.0
+    switch = GRACE if state.phase != CLOSING else 0.0
+    return max(planned(state).get(CLOSING, 0.0), n * (MIN_SLOT + GRACE) + switch)
 
 
 def phase_share(state: SessionState, phase: str, now: float | None = None) -> float:

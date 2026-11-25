@@ -78,19 +78,20 @@ def test_each_step_gets_its_share_of_the_time_left_and_the_closing_keeps_its_res
     st.started_at = E
     st.set_clock(lambda: E)
     st.start_phase_clock(E)
-    # the closing keeps a slot and its grace per open question (2 here: 180 s, more than its planned 80 s),
-    # since the time being up ends the interview; the steps before it share the rest by their planned minutes
-    assert timebox.reserve(st) == 2 * (timebox.MIN_SLOT + timebox.GRACE) == 180 > st.phase_plan["return"]
+    # the closing keeps a slot and its grace per open question, and one grace for the question on screen to
+    # give way (2 here: 210 s, more than its planned 80 s), since the time being up ends the interview once
+    # the closing is done; the steps before it share the rest by their planned minutes
+    assert timebox.reserve(st) == 2 * (timebox.MIN_SLOT + timebox.GRACE) + timebox.GRACE == 210 > st.phase_plan["return"]
     before = {p: st.phase_plan[p] for p in st.phase_plan if p != "return"}
     assert st.phase == "wealth"
-    assert math.isclose(st.phase_budgets["wealth"], (1200 - 180) * 120 / sum(before.values()), abs_tol=0.2)
+    assert math.isclose(st.phase_budgets["wealth"], (1200 - 210) * 120 / sum(before.values()), abs_tol=0.2)
     # the opening ran 10 minutes (it took 14 in the real interview): the next step only gets its share of
     # what is left once the closing's reserve is set aside
     st.set_clock(lambda: E + 600)
     st.advance("n", to="core-who-comes")
     weights = {p: st.phase_plan[p] for p in ("signal-carriers", "signal-flow", "knowledge", "decisions", "deep-dives")}
     assert st.phase == "signal-carriers"
-    assert math.isclose(st.phase_budgets["signal-carriers"], (600 - 180) * 120 / sum(weights.values()), abs_tol=0.2)
+    assert math.isclose(st.phase_budgets["signal-carriers"], (600 - 210) * 120 / sum(weights.values()), abs_tol=0.2)
     assert st.edit_log[-2].detail.endswith("(time budget spent)")
 
 
@@ -100,9 +101,9 @@ def test_when_the_time_left_is_the_closings_the_next_question_is_the_closings():
     st.set_clock(lambda: E)
     st.start_phase_clock(E)
     assert not timebox.closing_due(st)
-    st.set_clock(lambda: E + 1200 - 181)
+    st.set_clock(lambda: E + 1200 - 211)
     assert not timebox.closing_due(st)
-    st.set_clock(lambda: E + 1200 - 179)  # 179 s left: within the closing's reserve
+    st.set_clock(lambda: E + 1200 - 209)  # 209 s left: within the closing's reserve
     assert timebox.closing_due(st) and st.upcoming_order()[0] == "roi-expectation"
     st.advance("n")
     assert st.focus_id == "roi-expectation" and st.phase == "return"

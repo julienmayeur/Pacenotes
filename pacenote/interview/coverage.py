@@ -271,9 +271,14 @@ def next_area(state: SessionState) -> str | None:
 
 
 def _closing(state: SessionState, now: float | None = None) -> bool:
-    """The closing's questions have the floor (not after a "+5 min" gave it back: timebox.py rule 5)."""
-    return ((state.phase == timebox.CLOSING and not timebox.closing_reopened(state, now))
-            or timebox.closing_due(state, now))
+    """The closing's questions have the floor. After a "+5 min" gave it back (timebox.py rule 5), the closing
+    question on screen still keeps it until its slot is over."""
+    if state.phase == timebox.CLOSING:
+        if not timebox.closing_reopened(state, now):
+            return True
+        q = state.get(state.focus_id)
+        return q is not None and q.phase == timebox.CLOSING and not timebox.slot_over(state, now)
+    return timebox.closing_due(state, now)
 
 
 def due(state: SessionState, now: float | None = None) -> bool:
@@ -300,6 +305,9 @@ def _question(state: SessionState, area: Area) -> QuestionState:
         state.themes.append(ThemeState(id=THEME, titles={"fr": "Tour de l'entreprise", "en": "Company tour"},
                                        title_fr="Tour de l'entreprise", title_en="Company tour"))
     phase = state.phase or state.current_phase or "deep-dives"
+    if phase == timebox.CLOSING:  # a move-on after "+5 min" gave the floor back: it is no closing question
+        phase = next((x.phase for i in reversed(state.focus_history) if (x := state.get(i)) is not None
+                      and x.phase != timebox.CLOSING), "deep-dives")
     if q is None:
         fr = (state.source_language or state.language) == "fr"  # expect items are kept in the source language
         expect = _empty_ladder()
@@ -349,6 +357,8 @@ def tick(state: SessionState, now: float | None = None) -> bool:
     mv = state.cov.move_on
     if mv and (q := state.get(mv.get("qid"))) is not None and not q.open:
         _resolve(state, "its question was closed", drop=False)
+    elif mv and _closing(state, now) and pending_qid(state) is not None:
+        _resolve(state, "closing time", drop=True, now=now)  # the closing has the floor: it comes next
     if due(state, now):
         return raise_move_on(state, now) is not None
     return False
