@@ -446,3 +446,93 @@ def test_after_plus_five_the_closing_question_on_screen_keeps_its_slot(tmp_path)
     assert timebox.closing_reopened(st) and not coverage.due(st)  # its slot runs: no move-on yet
     _at(s, 1200 - 209 + st.focus_slot + 1)
     assert coverage.due(st)  # its slot is over: the floor goes back
+
+
+_AUTO_JS = """
+const { chromium } = require('playwright');
+(async () => {
+  const url = process.argv[2];
+  const b = await chromium.launch();
+  const p = await b.newPage();
+  p.on('dialog', (d) => d.accept());
+  await p.goto(url);
+  await p.waitForSelector('#start');
+  await p.click('#start');
+  const seen = [];
+  const t0 = Date.now();
+  for (;;) {  // no key is pressed, nothing is clicked: watch the question on screen change by itself
+    const s = await p.evaluate(() => ({ q: document.getElementById('current').textContent,
+      ended: document.getElementById('listen').classList.contains('ended') }));
+    if (s.q && seen[seen.length - 1] !== s.q) seen.push(s.q);
+    if (s.ended || Date.now() - t0 > 90000) break;
+    await p.waitForTimeout(100);
+  }
+  const banner = await p.evaluate(() => ({ shown: !document.getElementById('banner').classList.contains('hidden'),
+    mic: document.getElementById('banner-mic-label').textContent }));
+  await p.waitForURL(/\\/plan/, { timeout: 60000 });
+  await b.close();
+  console.log(JSON.stringify({ questions: seen.length, banner, plan: true }));
+})().catch((e) => { console.error(e); process.exit(1); });
+"""
+
+
+@pytest.mark.skipif(not _node_playwright(), reason="needs node + playwright + chromium")
+def test_no_click_the_questions_move_the_closing_runs_then_the_interview_stops_in_a_real_browser(
+        tmp_path, monkeypatch):
+    """A replay (3 minutes of speech at 6x) with the times shrunk (a 150 s interview, 15 s slots, 5 s grace):
+    nobody touches the screen. The questions move on by themselves, the closing's questions go up, and once
+    the closing is done the time ends the interview: listening stops, the plan is written and opens."""
+    import os
+    import socket
+    import subprocess
+    import threading
+
+    import uvicorn
+
+    from pacenote.copilot.engines import OfflineEngine
+    from pacenote.interview.session import Session, Settings
+    from pacenote.transcription.capture import ReplaySource
+    from tests.conftest import SAMPLES, real_client
+    from tests.interview.test_listening_lifecycle import _until
+
+    monkeypatch.setattr(timebox, "total", lambda st: 150.0)
+    monkeypatch.setattr(timebox, "MIN_SLOT", 15.0)
+    monkeypatch.setattr(timebox, "GRACE", 5.0)
+    monkeypatch.setattr(timebox, "HARD", 20.0)
+    monkeypatch.setattr(lifecycle, "OVERRUN", 40.0)
+    src = ReplaySource({"fr": SAMPLES / "fr.srt", "en": SAMPLES / "en.srt"}, speed=6.0)
+    session = Session(client=real_client(), session_dir=tmp_path / "s", engine=OfflineEngine(), source_factory=lambda d: src,
+                      settings=Settings(sync_interval=3600, first_sync_delay=3600, poll_interval=0.05, fast_enabled=False))
+    for q in session.state.questions:  # the closing must go up (the keyword engine could find it answered)
+        q.keywords = [] if q.phase == "return" else q.keywords
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    sock.close()
+    server = uvicorn.Server(uvicorn.Config(create_app(session), host="127.0.0.1", port=port, log_level="error"))
+    th = threading.Thread(target=server.run, daemon=True)
+    th.start()
+    js = tmp_path / "auto.js"
+    js.write_text(_AUTO_JS, encoding="utf-8")
+    try:
+        assert _until(lambda: server.started)
+        out = subprocess.run(["node", str(js), f"http://127.0.0.1:{port}/"], capture_output=True, text=True,
+                             timeout=180, env=dict(os.environ))
+        assert out.returncode == 0, out.stderr
+        seen = json.loads(out.stdout.strip().splitlines()[-1])
+    finally:
+        server.should_exit = True
+        th.join(10)
+    st = session.state
+    log = [json.loads(x) for x in (session.session_dir / "sync_log.jsonl").read_text().splitlines()]
+    moves = [e for e in log if e.get("kind") == "question"]
+    assert seen["questions"] >= 3 and len(moves) >= 2  # moved by themselves: nothing was pressed
+    assert all(not m["reason"].startswith(("interviewer", "next question clicked")) for m in moves)
+    closing = [m["focus"] for m in moves if st.get(m["focus"]).phase == "return"]
+    assert closing == ["roi-expectation", "roi-budget"]
+    end = next(e for e in log if e.get("kind") == "end")
+    assert st.end_reason == "time_up" and end["closing_done"] is True
+    assert any(e.get("kind") == "closing_done" for e in log)
+    assert seen["banner"]["shown"] and seen["banner"]["mic"]  # "listening stopped" on the end banner
+    assert st.mode == "done" and st.plan_files and (session.session_dir / "plan.md").exists()
+    assert not session.capture_open

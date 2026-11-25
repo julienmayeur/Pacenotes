@@ -1,4 +1,4 @@
-"""The executive lens: what to say and what to measure, per workflow, in a 15-minute interview.
+"""The executive lens: what to say and what to measure, per workflow, in a 20-minute interview.
 
 Pacenote captures what it can in about fifteen minutes with one person, not by watching staff
 for weeks: the weak signals from the floor rarely surface there. So the copilot helps the
