@@ -113,8 +113,10 @@ def test_enough_stops_listening(tmp_path, client_cfg):
 
 
 def test_time_up_ends_the_interview_and_stops_listening(tmp_path, client_cfg, monkeypatch):
-    """The planned length is over: the interview ends by itself, listening stops, the plan is written."""
+    """The planned length is over: the interview ends by itself, listening stops, the plan is written. (No
+    closing was asked here: the end comes at the overrun cap, lifecycle.OVERRUN, 2 min for real.)"""
     monkeypatch.setattr(timebox, "total", lambda st: 0.6)  # a 0.6 s interview (the real one: 20 min)
+    monkeypatch.setattr(lifecycle, "OVERRUN", 0.3)
     script, log = fake_listen(tmp_path)
     session = _live(tmp_path, client_cfg, script)
     with TestClient(create_app(session)) as http:
@@ -125,9 +127,11 @@ def test_time_up_ends_the_interview_and_stops_listening(tmp_path, client_cfg, mo
         assert http.get("/api/state").json()["plan_ready"]  # the plan is presented, not left pending
 
 
-def test_time_up_on_the_interview_clock_ends_a_replay_with_nothing_heard_after(tmp_path, client_cfg):
-    """A replay at its own pace: at the planned length (1 min here) the interview ends, and none of the
-    recording said after it is ever ingested (the replay hears no more than a microphone would)."""
+def test_time_up_on_the_interview_clock_ends_a_replay_with_nothing_heard_after(tmp_path, client_cfg, monkeypatch):
+    """A replay at its own pace: at the planned length (1 min here) once the closing is done, else at the
+    overrun cap (5 s here), the interview ends, and none of the recording said after it is ever ingested (the
+    replay hears no more than a microphone would)."""
+    monkeypatch.setattr(lifecycle, "OVERRUN", 5.0)
     clock = [0.0]
     src = ReplaySource({"fr": SAMPLES / "fr.srt", "en": SAMPLES / "en.srt"}, speed=1.0, clock=lambda: clock[0])
     session = Session(client=client_cfg, session_dir=tmp_path / "r", engine=OfflineEngine(), settings=QUIET,
@@ -146,8 +150,8 @@ def test_time_up_on_the_interview_clock_ends_a_replay_with_nothing_heard_after(t
 
     asyncio.run(run())
     assert session.state.end_reason == "time_up" and session.state.mode == "done"
-    assert 60 <= clock[0] <= 70
-    assert max(s.end for s in session.transcript.segments) <= 61  # said before the end, nothing after
+    assert 60 <= clock[0] <= 75  # at the time once the closing is done (it may be, in 1 min), else at the cap
+    assert max(s.end for s in session.transcript.segments) <= clock[0] + 1  # said before the end, nothing after
     assert src.poll() == [] and src.poll(final=True) == []
 
 

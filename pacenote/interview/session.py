@@ -456,8 +456,10 @@ class Session:
         self._set_mode("finalize")  # stops capture
         self.state.ended_at, self.state.end_reason = time.time(), reason
         self.state.force_enough(_END_TEXT.get(reason, reason))
-        self._log_sync({"kind": "end", "reason": reason,
+        closing = self.state.started_at is not None and timebox.closing_done(self.state)
+        self._log_sync({"kind": "end", "reason": reason, "closing_done": closing,
                         "elapsed": format_clock(timebox.elapsed(self.state)) if self.state.started_at else None})
+        self._timing_event("end", reason=reason, closing_done=closing)
         self.persist()
         return True
 
@@ -490,7 +492,23 @@ class Session:
         last = max(max((s.end for s in self.transcript.segments), default=0.0), self._heard_from)
         gone = None if self._pages or self._page_gone_at is None else time.monotonic() - self._page_gone_at
         return lifecycle.end_reason(self.state, speech_now=self.speech_clock(), last_heard=last,
-                                    page_seen=self._page_seen, page_gone_for=gone)
+                                    page_seen=self._page_seen, page_gone_for=gone,
+                                    at_boundary=timebox.left(self.state) <= 0 and self._end_boundary())
+
+    def _end_boundary(self) -> bool:
+        """The time is up: is now a boundary to stop at (timebox.py rule 4)? The closing's last answer ended
+        after the time, a sure pause, a line that ends a sentence since the time was up, or `timebox.GRACE`
+        seconds past it."""
+        st = self.state
+        over = -timebox.left(st)
+        if over < 0 or st.started_at is None:
+            return False
+        if st.closing_done_at is not None and st.closing_done_at >= st.started_at + timebox.total(st):
+            return True
+        if over >= timebox.GRACE or self.speech_pause() >= self.settings.slot_pause:
+            return True
+        mark = self._grace_from.setdefault(f"end|{st.target_minutes}", self.transcript.last_seq)
+        return any(s.seq > mark and not self.line_open(s.text) for s in self._lines())
 
     # --- ingest ----------------------------------------------------------------
     def ingest_once(self, final: bool = False) -> int:
@@ -544,18 +562,28 @@ class Session:
     def _log_timing(self) -> None:
         """timing.jsonl (session folder, local): every few seconds, the speech clock, the last line's end, the
         microphone level, the pause measured and the time slot. What a pause or a move
-        was based on can be read back after a real interview."""
+        was based on can be read back after a real interview. Events ("+5 min", the closing done, the
+        end) are written at once (`_timing_event`)."""
         now = time.monotonic()
         if self.state.mode != "interview" or now - self._timing_at < self.TIMING_EVERY:
             return
         self._timing_at = now
         st = self.state
         level = getattr(self.source, "level", None)
-        row = {"clock": round(self.speech_clock(), 2),
-               "line_end": round(max((s.end for s in self.transcript.segments), default=0.0), 2),
-               "level": level() if callable(level) else None,
-               "pause": round(min(self.speech_pause(), 1e6), 2), "lines": self.transcript.last_seq,
-               "focus": st.focus_id, "slot_left": timebox.slot_left(st), "left": round(timebox.left(st))}
+        self._write_timing({"clock": round(self.speech_clock(), 2),
+                            "line_end": round(max((s.end for s in self.transcript.segments), default=0.0), 2),
+                            "level": level() if callable(level) else None,
+                            "pause": round(min(self.speech_pause(), 1e6), 2), "lines": self.transcript.last_seq,
+                            "focus": st.focus_id, "slot_left": timebox.slot_left(st), "left": round(timebox.left(st))})
+
+    def _timing_event(self, event: str, **extra) -> None:
+        st = self.state
+        self._write_timing({"event": event, "clock": round(self.speech_clock(), 2),
+                            "elapsed": round(timebox.elapsed(st), 1) if st.started_at else None,
+                            "total": round(timebox.total(st)), "left": round(timebox.left(st)) if st.started_at else None,
+                            "focus": st.focus_id, "phase": st.phase, **extra})
+
+    def _write_timing(self, row: dict) -> None:
         try:
             with (self.session_dir / "timing.jsonl").open("a", encoding="utf-8") as fh:
                 fh.write(json.dumps(row) + "\n")
@@ -723,7 +751,7 @@ class Session:
             self._completed = None
             nxt = next((i for i in queue if i["kind"] == "question"), None)
             return nxt, f"complete, {len(cur.covered)} of {len(cur.all_expect())} details"
-        if self._tail:
+        if self._tail and not self._hard_over():
             return None  # still the tail of the answer just completed: the new question was not asked yet
         if ((timebox.slot_over(st) or coverage.pending_qid(st) is not None)
                 and (nxt := next((i for i in queue if i["kind"] == "question"), None))):
@@ -754,14 +782,18 @@ class Session:
         over, a new line that ends a sentence (a live conversation can go minutes without a pause the
         batched lines can show)."""
         st = self.state
-        if sum(len(s.text) for s in self.transcript.segments if s.seq > (st.ask_seq or 0)) < self.settings.answer_min_chars:
-            return None
         # the next area's question (coverage.py) has its own clock: on screen at least SHOW seconds (the
         # interviewer reads the transition line and can keep going with x), its grace counted from then
         moving = (mq := coverage.pending_qid(st)) is not None
         age = st.now() - st.cov.move_on.get("at", st.now()) if moving else None
         what = "next area" if moving else "time slot over"
         if age is not None and age < coverage.SHOW:
+            return None
+        # nothing said, no sentence end, the tail of an earlier answer: `timebox.HARD` s past its own clock, it
+        # moves anyway (a move-on counts from when it was queued, the question's slot from its end)
+        if (age >= timebox.HARD) if moving else self._hard_over():
+            return f"{what}, {timebox.HARD:g} s past it"
+        if sum(len(s.text) for s in self.transcript.segments if s.seq > (st.ask_seq or 0)) < self.settings.answer_min_chars:
             return None
         if self.speech_pause() >= self.settings.slot_pause:
             return f"{what}, {self.settings.slot_pause:g} s pause"
@@ -774,6 +806,11 @@ class Session:
         if any(s.seq > mark and not self.line_open(s.text) for s in self._lines()):
             return f"{what}, sentence end"
         return None
+
+    def _hard_over(self) -> bool:
+        """The question on screen is `timebox.HARD` seconds past its slot: it moves on at once."""
+        rest = timebox.slot_left(self.state)
+        return rest is not None and -rest >= timebox.HARD
 
     def _maybe_move_on(self) -> bool:
         """The conversation has stayed on one point for its allowance (coverage.py): queue the next area's
@@ -797,6 +834,8 @@ class Session:
 
     def _maybe_retire(self) -> bool:
         """What is asked now changes only once its answer is over (see _answer_over)."""
+        if timebox.on_last_closing(self.state) and not timebox.closing_reopened(self.state):
+            return self._closing_last()
         over = self._answer_over()
         if over is None:
             return False
@@ -811,6 +850,50 @@ class Session:
         self._advance(why, to=item["qid"] if item else None)
         self._tail = why.startswith("complete") and talking  # moved while the old answer goes on
         self._tail_seq = self.transcript.last_seq
+        return True
+
+    def _closing_last(self) -> bool:
+        """The closing's last question (timebox.py rule 4): a follow-up can still be asked, but nothing moves
+        past it. Once its answer is over (its slot over or it is answered, then a boundary; never the
+        analysis alone while the interviewee goes on) the closing is done: the interview ends at the time."""
+        st = self.state
+        over = self._answer_over()
+        if over is not None and over[0] is not None and over[0]["kind"] == "followup":
+            item, why = over
+            st.promote(item["at"], reason=why)
+            self._ask_changed("followup", why)
+            self._tail, self._completed = False, None
+            self.persist()
+            return True
+        cur = st.current_question
+        if (st.closing_done_at is not None or cur is None
+                or not (cur.status == "answered" or timebox.slot_over(st))):
+            return False
+        why = self._slot_boundary()
+        if not why:
+            return False
+        st.closing_done_at = st.now()
+        self._log_sync({"kind": "closing_done", "clock": round(self.speech_clock(), 2), "focus": st.focus_id,
+                        "why": why, "elapsed": format_clock(timebox.elapsed(st))})
+        self._timing_event("closing_done", why=why)
+        self.persist()
+        return True
+
+    async def extend_time(self) -> bool:
+        """"+5 min" (m on the page): the planned length grows by 5 minutes and the time is re-planned
+        (timebox.py rule 5). Logged in timing.jsonl."""
+        st = self.state
+        if st.mode != "interview" or st.started_at is None:
+            return False
+        before = timebox.left(st)
+        st.extend_time()
+        self._log_sync({"kind": "extend_time", "clock": round(self.speech_clock(), 2), "minutes": st.target_minutes,
+                        "elapsed": format_clock(timebox.elapsed(st)), "reopened": st.closing_reopened})
+        self._timing_event("extend_time", by=timebox.EXTEND_BY, left_before=round(before),
+                           extensions=len(st.extensions), closing_reopened=st.closing_reopened,
+                           slot_left=timebox.slot_left(st))
+        self.persist()
+        await self.notify()
         return True
 
     def _ask_changed(self, kind: str, reason: str) -> None:

@@ -28,7 +28,7 @@
     "analysing": "analysing",
     "deep": "deep analysis",
     "moveHint": "n / Enter: next question",
-    "moveReady": "Complete — the next question is ready below; it moves up when you ask it (or n / Enter)",
+    "moveReady": "Complete — the next question moves up by itself at the next pause (n / Enter: now)",
     "ladder": "ladder",
     "translated": "machine-translated",
     "rungs": {
@@ -804,6 +804,9 @@
     "toggle": "Show or hide the details"
   },
   "controls": {
+    "moreTime": "+5 min",
+    "moreTimeTitle": "Add 5 minutes to the interview; the rest of the time is re-planned (m)",
+    "moreTimeAdded": "+{{n}} min added",
     "end": "End",
     "endTitle": "End the interview and write the plan (e)",
     "next": "Next",
@@ -858,7 +861,7 @@
     "step": "Phase {{n}}/{{m}}",
     "left": "{{t}} left",
     "over": "over time",
-    "overHint": "Phase time spent — n / Enter moves to “{{next}}” (the current question is never cut)",
+    "overHint": "Phase time spent — moves to “{{next}}” by itself at the next pause (n / Enter: now)",
     "doneHint": "Phase covered — n / Enter moves to “{{next}}”",
     "toCapture": "Still to capture in this phase",
     "maps": "{{org}} people · {{flows}} flows · {{stores}} places · {{decisions}} decisions · {{catalog}} tools"

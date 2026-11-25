@@ -229,7 +229,8 @@ sequenceDiagram
   no microphone) and refuses to start with the real cause if that fails. The microphone opens only
   on Start, so small talk before consent is never transcribed.
 - **Listening belongs to the interview** (`interview/lifecycle.py`). It stops the moment the interview
-  ends: End / `e` / `/api/enough` / `/api/finalize`, the time is up (the planned length), no interview
+  ends: End / `e` / `/api/enough` / `/api/finalize`, the time is up (the planned length, once the closing
+  is done, at the next boundary; at most `lifecycle.OVERRUN`, 2 min, past it), no interview
   screen open for 10 s (the page's `/api/events` stream; a reload comes back well within that), nobody
   heard for 5 minutes, or the server stops. `Session._set_mode` is the only writer of `state.mode`:
   leaving "interview" stops capture before the last analysis and the plan run, and only `Session.start`
@@ -284,7 +285,7 @@ retires only on an "answer over" signal (`Session._answer_over`, checked every p
 | The interviewer reads a queued question | A line that starts a turn (≥ 0.6 s gap on the speech clock, not the first lines after the pin; for a follow-up, said after it appeared) holds ≥ 60 % of the question's content words, and they make up ≥ ⅓ of the words heard; the turn's first lines up to its next gap (a long question comes as several ~60-character lines) | That item is asked now, at once (earlier queued ones are dropped) |
 | The question is complete | An analysis (fast pass or full sync) turns the focus question from open to answered: the model's call (the ladder done), accepted only past the existing gate, every slot item plus half of the other expected details (`QuestionState.sufficient`); from an answer given after what is asked now went up (a turn starts after it in the lines it read; a pending completion is dropped when the interviewer reads or clicks a follow-up) | The focus moves to the next question at once, even while the interviewee goes on |
 | The interviewee answers the next question | The fast pass gives the queued next question an answer piece and none to the current one | The focus moves there |
-| The question's time slot is over | `timebox.slot_over` (below), something said since the pin, then the first boundary: a sure pause of 1.5 s; once the slot is 30 s over, a new line ending in . ? ! | The next question moves up, before any queued follow-up |
+| The question's time slot is over | `timebox.slot_over` (below), something said since the pin, then the first boundary: a sure pause of 1.5 s; once the slot is 30 s over, a new line ending in . ? !; once it is `timebox.HARD` (90 s) over, at once, whatever is said (nothing heard, no sentence end, the tail of an earlier answer) | The next question moves up, before any queued follow-up; no click needed |
 | The conversation stayed on one point | `coverage.pending_qid` (below): the next area's question is queued, on screen at least 10 s (whatever the slot on screen says); then a sure pause of 1.5 s, or once it has been queued 30 s, a new line ending in . ? ! | The next area's question moves up, unless the interviewer keeps going (`x`) |
 | A real pause after the answer | Something was said since the pin; the fast pass read every line; then a pause on the speech clock of 3.5 s after a line ending in . ? ! (7 s after any other line: the recogniser cuts long sentences into ~60-character lines) | The first queued item moves up (the next question if the focus is answered) |
 | The interviewer | `n` / Enter, `a`, `k`, `p`, or a click on a queued question | As before (`n` and `a` go to the « Question suivante » shown); a click asks that item |
@@ -377,17 +378,30 @@ so a replay at any speed keeps the pace):
   (60 + 30 s) per closing question still open, because the time being up ends the interview; its slots
   are computed net of those graces. When the time left reaches that reserve, the question on
   screen gives way at its next boundary (no grace) and the closing's questions come next, wherever the
-  interview is; past the time (only with a `lifecycle.OVERRUN`) they still go first, then the questions
-  left over, priority 1 first. Time
+  interview is; past the time they still go first. Time
   only moves to a question not asked yet: once every question went up, the one on screen stays until the
   interviewer moves on or ends.
+- **The closing is the end**: nothing is queued after its last question (no left-over follows it). The
+  closing is *done* (`timebox.closing_done`) once none of its questions is left to put up and the last
+  one's answer is over: its slot is over or it is answered, then a boundary as for any question (a sure
+  pause, a sentence end after the grace, or 90 s past the slot; the analysis finding it complete is not
+  enough while the interviewee goes on), or the interviewer moved off it (`n`). That moment is
+  `closing_done_at`, logged in `sync_log.jsonl` and `timing.jsonl`.
+- **+5 min** (`m` / `+`, `/api/more-time`, offered once 5 minutes or less are left): the planned length
+  grows by 5 minutes; the current step's budget and the slot of the question on screen are re-planned
+  on it, the coverage allowance grows with it and the closing's reserve moves to the new end. Clicked
+  once the closing has started, the closing gives the floor back to what is still unasked (a question
+  never asked, an area not discussed) and comes back when the time left is its reserve again; with
+  nothing unasked the closing's own slots stretch. Each click is a line of `timing.jsonl`
+  (`"event": "extend_time"`); several clicks add up.
 
 The screen shows the time left out of the planned length (past it, the time beyond it, quietly).
 When the model says the essentials are covered (`enough_data`) nothing stops: listening, the analyses
 and the questions go on, and the End button (`e`) lights up for the interviewer. When the time is up
-(`lifecycle.OVERRUN` after the planned length, 0 by default) the interview ends: listening stops at once,
-the plan is written and opens in the Plan view, as when the interviewer ends it (`e`, the console, or
-`/api/enough`). See Capture for every other way it ends.
+and the closing is done, the interview ends at the next boundary (a sure pause, a line ending a sentence,
+or 30 s past the time): listening stops at once, the plan is written and opens in the Plan view, as when
+the interviewer ends it (`e`, the console, or `/api/enough`). A closing still running at the time goes on
+to its end, never more than `lifecycle.OVERRUN` (2 min) past it. See Capture for every other way it ends.
 
 ### Coverage first (`interview/coverage.py`)
 

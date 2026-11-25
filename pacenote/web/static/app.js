@@ -704,6 +704,11 @@ function renderChrome() {
   // the end only once the interviewer ends the interview: "enough data" or the time being up is a hint for
   // them (the End button lights up), never an end, and listening and the analysis go on
   const ending = ["finalize", "generating", "done"].includes(S.mode);
+  // "+5 min": offered quietly once 5 minutes or less are left (the server decides, on the interview clock)
+  const more = $("ctl-more");
+  setClass(more, "hidden", !(S.mode === "interview" && S.time && S.time.extend));
+  const added = (S.time && S.time.extended) || 0;
+  more.title = added ? `${t("controls.moreTimeTitle")} · ${t("controls.moreTimeAdded", { n: added * 5 })}` : t("controls.moreTimeTitle");
   const endBtn = $("ctl-end");
   setClass(endBtn, "ready", !!(S.enough_data || (S.time && S.time.over)));
   endBtn.title = S.enough_data ? `${t("controls.endTitle")} · ${S.enough_data_reason || ""}` : t("controls.endTitle");
@@ -962,6 +967,7 @@ async function act(action) {
     if (action === "answered" && cur) render(await post(`/api/questions/${encodeURIComponent(cur)}/answered`));
     if (action === "skip" && cur) render(await post(`/api/questions/${encodeURIComponent(cur)}/skip`));
     if (action === "extend") render(await post("/api/extend"));  // keep going on this point (coverage first)
+    if (action === "more" && S.time && S.time.extend) render(await post("/api/more-time"));  // +5 min (last 5 minutes only)
     if (action === "enough") {  // ends the interview and writes the plan, as End (e)
       if (confirm(t("console.confirmFinalize"))) await post("/api/enough");
     }
@@ -1016,6 +1022,7 @@ document.addEventListener("keydown", (e) => {
   else if (k === "p") act("phase");
   else if (k === "e") act("end");
   else if (k === "x") act("extend");
+  else if (k === "m" || e.key === "+") act("more");
   else if (k === "d") toggleDetails();
   else if (k === "t") { showTail = !showTail; store("pacenote.tail", showTail ? "1" : "0"); if (S) renderStrip(); }
   else if (k === "l") cycleUiLanguage();

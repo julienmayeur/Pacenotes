@@ -142,6 +142,8 @@ body {
 .ctl.primary-ctl { color: var(--accent); font-weight: 600; }
 .ctl:disabled { opacity: .4; cursor: not-allowed; }
 .ctl.end-ctl { margin-left: auto; }
+.ctl.more-ctl { margin-left: auto; color: var(--muted); }  /* +5 min: quiet, the interviewee sees this screen */
+.ctl.more-ctl:not(.hidden) + .end-ctl { margin-left: 6px; }
 .ctl.end-ctl.ready { color: var(--accent); border-color: var(--accent); }  /* the essentials are in, or the time is up */
 
 /* the theme question under a follow-up: small context, never a second question competing with "ask now" */

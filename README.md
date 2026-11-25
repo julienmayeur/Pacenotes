@@ -18,7 +18,8 @@ prepare (admin) ─► consent ─► interview: capture + follow-ups ─► sto
   speech recognition, in every spoken language at once (e.g. French and English). The microphone
   opens only when you click Start on the consent screen. Audio is never stored or sent anywhere.
 - **It never listens outside the interview.** Listening starts with the interview and stops the moment
-  it ends, whatever ends it: you end it (`e`), its time is up, the interview screen is closed for 10 s,
+  it ends, whatever ends it: you end it (`e`), its time is up (once the closing is done), the interview
+  screen is closed for 10 s,
   nobody has spoken for 5 minutes, or the app is stopped. The plan is written after the microphone is
   off. The top of the screen says it quietly: a small red dot and "Listening" while the microphone is
   on, a hollow dot and "Not listening" once it is off.
@@ -44,8 +45,13 @@ prepare (admin) ─► consent ─► interview: capture + follow-ups ─► sto
   late and the interviewee may already have gone on). A step that runs long takes time from the steps after it, priority 2 and 3 questions
   first, never from the closing questions, which always get their time at the end. The screen shows the
   time left, quietly. The model saying the essentials are covered is a hint (the End button lights up),
-  never an end. When the time is up the interview ends: listening stops, the plan is written and opens on
-  screen. The closing questions get their reserved time before that.
+  never an end. A question whose slot is over always moves on by itself, at the latest 90 s past it.
+  The closing questions get their reserved time at the end, and nothing is queued after the last one.
+  When the time is up and the closing is done, the interview ends at the next pause or sentence end:
+  listening stops, the plan is written and opens on screen, as with `e`. A closing still running at the
+  time goes on to its end, at most 2 minutes past it. In the last 5 minutes a quiet **+5 min** button
+  (`m`) adds 5 minutes: the rest of the time is re-planned and the closing moves to the new end; click it
+  again for 5 more.
 - **The whole company before one point.** People dig in to understand and do not feel the time pass, so the
   copilot watches the coverage too. Claude labels what each stretch of the conversation is about, as an area
   of the company (sales, customer service, after-sales, purchasing, logistics, marketing, finance, people,
@@ -241,6 +247,7 @@ replays a recorded session with its own live delivery. `--minutes N` sets the in
 | `p` | Close the current phase |
 | `e` | End the interview: stop listening, write the plan and open it |
 | `x` | Keep going on the current point: three more minutes, and the queued move to the next area is set aside |
+| `m` / `+` | +5 min (offered in the last 5 minutes): the interview gets 5 more minutes, re-planned |
 | `a` | Mark the current question answered and move on |
 | `k` | Skip the current question |
 | `s` | Sync now |

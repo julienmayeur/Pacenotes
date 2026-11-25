@@ -456,6 +456,12 @@ class SessionState(BaseModel):
     focus_id: str | None = None  # the question being asked (locked while answered)
     focus_since: float | None = None
     focus_slot: float | None = None  # seconds the focus question gets before time moves it on (timebox.py)
+    # the end of the interview (timebox.py rules 4-5): when the closing's last answer was over (interview
+    # clock), "+5 min" clicked in the closing (it gives the floor back), and when each "+5 min" was clicked
+    # (seconds into the interview)
+    closing_done_at: float | None = None
+    closing_reopened: bool = False
+    extensions: list[float] = Field(default_factory=list)
     # what is asked now on the focus question `ask_for` (see the module docstring): the follow-up being
     # answered (None = the focus question itself), the follow-ups queued under it, not asked yet, the
     # next question queued once the focus is answered, and when the pinned item went up (`ask_seq`: the
@@ -515,6 +521,21 @@ class SessionState(BaseModel):
 
     def set_clock(self, clock: Callable[[], float] | None) -> None:
         self._clock = _SharedClock(clock) if clock is not None else None
+
+    def extend_time(self, now: float | None = None) -> None:
+        """"+5 min" (timebox.py rule 5): the planned length grows by timebox.EXTEND_BY and the time is
+        re-planned. Clicked once the closing has started, the closing gives the floor back to what is still
+        unasked (a question never asked, an area not discussed), if any."""
+        now = self.now() if now is None else now
+        self.target_minutes = int(round(self.target_minutes + timebox.EXTEND_BY / 60))
+        self.extensions.append(round(timebox.elapsed(self, now), 1))
+        seen = set(self.focus_history)
+        unasked = any(q.open and q.phase != timebox.CLOSING and q.id not in seen for q in self.questions)
+        if self.phase == timebox.CLOSING and (unasked or coverage.next_area(self) is not None):
+            self.closing_reopened = True  # the closing's question on screen keeps its slot, then gives way
+        else:
+            timebox.replan(self, now)
+        self._refill_next()
 
     def set_target_minutes(self, minutes: float) -> None:
         """Change the interview's length before it starts: the step budgets are scaled to it."""
@@ -819,7 +840,9 @@ class SessionState(BaseModel):
         if not any(q.open and q.phase == phase for q in self.questions):
             return True
         if phase == timebox.CLOSING:
-            return False  # the closing's questions are what the time is kept for: they go first, even past it
+            # the closing's questions are what the time is kept for: they go first, even past it; only a
+            # "+5 min" clicked in the closing gives the floor back while there is room (timebox.py rule 5)
+            return timebox.closing_reopened(self, now)
         if timebox.closing_due(self, now):
             return True
         if timebox.phase_short(self, phase, now) and not timebox.must_left(self, phase):
@@ -848,6 +871,8 @@ class SessionState(BaseModel):
         if self.phase is not None and self.phase_since is not None:
             self.phase_spent[self.phase] = round(self.phase_spent.get(self.phase, 0.0) + now - self.phase_since, 1)
         old, self.phase = self.phase, phase
+        if phase != timebox.CLOSING:
+            self.closing_reopened = False  # the floor went back: the closing comes again when it is due
         self.phase_since = now if self.phase_since is not None or self.started_at else None
         if phase is not None and self.started_at is not None:  # its share of the time left (timebox.py)
             self.phase_budgets[phase] = round(timebox.phase_share(self, phase, now), 1)
@@ -865,6 +890,7 @@ class SessionState(BaseModel):
         cur_idx = P.PHASE_INDEX.get(current or "", 0)
         current_open = not self.phase_done(current)
         closing = timebox.closing_due(self)  # the time left is the closing's: its questions come first
+        reopened = timebox.closing_reopened(self)  # "+5 min" in the closing: what is unasked first, the closing last
         short = timebox.phase_short(self, current)  # little time left in the step: priority 1 first
 
         def key(q: QuestionState) -> tuple:
@@ -872,6 +898,8 @@ class SessionState(BaseModel):
             seen = q.id in visited
             if closing and q.phase == timebox.CLOSING and not seen:
                 group = 0
+            elif reopened and q.phase == timebox.CLOSING:
+                group = 3
             elif idx == cur_idx and current_open and not seen:
                 group = 0  # the current phase, questions not asked yet
             elif idx > cur_idx and not seen:
@@ -1372,6 +1400,9 @@ class SessionState(BaseModel):
             self.ask_next_qid = mv
             return mv
         if q is None or (q.status != "answered" and not timebox.slot_over(self)):
+            return None
+        if timebox.on_last_closing(self) and not timebox.closing_reopened(self):
+            self.ask_next_qid = None  # the closing is the end: nothing follows it on its own (timebox.py rule 4)
             return None
         nq = self.get(self.ask_next_qid)
         if nq is None or not nq.open:

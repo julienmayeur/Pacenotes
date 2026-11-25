@@ -271,7 +271,9 @@ def next_area(state: SessionState) -> str | None:
 
 
 def _closing(state: SessionState, now: float | None = None) -> bool:
-    return state.phase == timebox.CLOSING or timebox.closing_due(state, now)
+    """The closing's questions have the floor (not after a "+5 min" gave it back: timebox.py rule 5)."""
+    return ((state.phase == timebox.CLOSING and not timebox.closing_reopened(state, now))
+            or timebox.closing_due(state, now))
 
 
 def due(state: SessionState, now: float | None = None) -> bool:

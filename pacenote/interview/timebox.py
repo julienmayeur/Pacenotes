@@ -23,12 +23,25 @@ own clock, `SessionState.now()`, so a replay at any speed keeps the same pace):
    up before it). When the time left reaches the closing step's reserve, the question
    on screen gives way at its next boundary and the next question is the closing step's, wherever the
    interview is: what matters for the plan (the return, the horizon) is never lost to time. Past the
-   time (only with a `lifecycle.OVERRUN`), the closing's questions still go first, then the ones left
-   over, priority 1 first.
+   time, the closing's questions still go first.
 
-When the time is up the interview ends (interview/lifecycle.py): listening stops at once and the plan is
-written. The closing's reserve (rule 3) is what makes sure its questions are asked before that. The
-model's "enough data" is only a hint: the End button lights up, nothing stops.
+4. **The closing is the end.** Nothing is queued after the closing's last question: no left-over follows it.
+   The closing is *done* once none of its questions is left to put up and the last one's answer is over
+   (`closing_done`: its slot is over or it is answered, then a boundary, as for any question; or the
+   interviewer moved off it). When the time is up and the closing is done, the interview ends at the next
+   boundary (interview/lifecycle.py): listening stops and the plan is written, as with End. The closing's
+   reserve (rule 3) sizes its last slot to end about `GRACE` before the time, so the stop comes near the
+   planned length, never in the middle of the closing; a closing still running at the time goes on to its
+   end, at most `lifecycle.OVERRUN` past it.
+5. **"+5 min".** From `EXTEND_SHOWN` seconds before the end the screen offers +5 min (`extend`): each click adds
+   `EXTEND_BY` to the planned length and re-plans: the current step and the question on screen get their new
+   share, the coverage allowance grows with the length, and the closing's reserve moves to the new end. A
+   click once the closing has started gives the floor back to what is still unasked (`closing_reopened`);
+   the closing comes back when the time left is its reserve again.
+
+A question's slot never holds it for good: `HARD` seconds past it, it moves on whatever is being said (an
+answer with no sentence end, nothing heard, or the tail of an earlier answer would otherwise keep it up).
+The model's "enough data" is only a hint: the End button lights up, nothing stops.
 """
 
 from __future__ import annotations
@@ -44,6 +57,9 @@ DEFAULT_MINUTES = 20  # the interview's length when the questionnaire or the com
 CLOSING = "return"
 MIN_SLOT = 60.0  # s: a question always gets at least this before time moves it on
 GRACE = 30.0  # s after the slot: with no sure pause, the next line that ends a sentence is the boundary
+HARD = 90.0  # s after the slot: the question moves on at once, whatever is being said
+EXTEND_BY = 300.0  # s one "+5 min" adds to the planned length
+EXTEND_SHOWN = 300.0  # s left from which the screen offers "+5 min"
 PRIORITY_WEIGHT = {1: 2.0, 2: 1.0, 3: 0.5}
 
 
@@ -107,6 +123,34 @@ def must_left(state: SessionState, phase: str) -> bool:
     return any(q.open and q.phase == phase and q.priority == 1 and q.id not in seen for q in state.questions)
 
 
+def closing_left(state: SessionState) -> list[str]:
+    """The closing's questions still to put up (open, never on screen)."""
+    seen = set(state.focus_history)
+    return [q.id for q in state.questions if q.open and q.phase == CLOSING and q.id not in seen]
+
+
+def on_last_closing(state: SessionState) -> bool:
+    """The question on screen is the closing's last one to ask: nothing is queued after it (rule 4)."""
+    q = state.get(state.focus_id)
+    return q is not None and q.phase == CLOSING and not closing_left(state)
+
+
+def closing_done(state: SessionState) -> bool:
+    """Rule 4: none of the closing's questions is left to put up, and the last one's answer is over (the
+    session sets `closing_done_at` at its boundary) or the interviewer moved off it. True with no closing."""
+    if closing_left(state):
+        return False
+    q = state.get(state.focus_id)
+    return q is None or q.phase != CLOSING or state.closing_done_at is not None
+
+
+def closing_reopened(state: SessionState, now: float | None = None) -> bool:
+    """Rule 5: "+5 min" was clicked in the closing and there is room again before its reserve: the closing
+    gives the floor back to what is still unasked, and comes back when it is due."""
+    return (state.phase == CLOSING and state.closing_reopened
+            and left(state, now) > reserve(state) + MIN_SLOT + GRACE)
+
+
 def closing_due(state: SessionState, now: float | None = None) -> bool:
     """Time to move to the closing step (rule 3): the time left is down to its reserve, and one of its
     questions is still to ask."""
@@ -153,10 +197,29 @@ def slot_over(state: SessionState, now: float | None = None) -> bool:
     return (rest is not None and rest <= 0) or closing_due(state, now)
 
 
+def replan(state: SessionState, now: float | None = None) -> None:
+    """Rule 5, after the length changed mid-interview: the current step's budget is what it spent plus its
+    new share of the time left, and the question on screen gets its new slot (the coverage allowance and
+    the closing's reserve read the length directly)."""
+    now = state.now() if now is None else now
+    if state.started_at is None or state.phase is None or state.phase_since is None:
+        return
+    state.phase_budgets[state.phase] = round(state.phase_elapsed(now) + phase_share(state, state.phase, now), 1)
+    if state.focus_id is not None and state.focus_since is not None:
+        rest = slot_for(state, state.focus_id, now)
+        if rest is not None:
+            state.focus_slot = round(max(0.0, now - state.focus_since) + rest, 1)
+
+
 def view(state: SessionState, now: float | None = None) -> dict:
-    """What the screen shows (quiet: elapsed / total) and what the interviewer details show."""
+    """What the screen shows (quiet: elapsed / total) and what the interviewer details show. `extend`: the
+    "+5 min" button is offered (rule 5)."""
     rest = slot_left(state, now)
+    remaining = left(state, now)
     return {"elapsed": round(elapsed(state, now)), "total": round(total(state)),
-            "left": round(left(state, now)), "over": left(state, now) <= 0,
+            "left": round(remaining), "over": remaining <= 0,
             "slot_left": None if rest is None else round(rest), "slot_over": rest is not None and rest <= 0,
-            "closing": state.phase == CLOSING or closing_due(state, now)}
+            "closing": state.phase == CLOSING or closing_due(state, now),
+            "closing_done": state.started_at is not None and closing_done(state),
+            "extend": state.mode == "interview" and state.started_at is not None and remaining <= EXTEND_SHOWN,
+            "extended": len(state.extensions)}

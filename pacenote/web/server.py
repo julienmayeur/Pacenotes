@@ -172,6 +172,13 @@ def create_app(session: Session, auto_start: bool = False, research: ResearchMan
             raise HTTPException(status_code=409, detail="not interviewing")
         return session.view()
 
+    @app.post("/api/more-time")
+    async def more_time() -> dict:
+        """"+5 min" (m on the page): the interview's planned length grows by 5 minutes, re-planned."""
+        if not await session.extend_time():
+            raise HTTPException(status_code=409, detail="not interviewing")
+        return session.view()
+
     @app.post("/api/questions/{qid}/answered")
     async def answered(qid: str) -> dict:
         if not await session.mark_answered(qid):

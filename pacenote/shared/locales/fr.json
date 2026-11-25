@@ -28,7 +28,7 @@
     "analysing": "analyse",
     "deep": "analyse approfondie",
     "moveHint": "n / Entrée : question suivante",
-    "moveReady": "Réponse complète — la question suivante est prête dessous ; elle passe en tête quand vous la posez (ou n / Entrée)",
+    "moveReady": "Réponse complète — la question suivante passe d'elle-même à la prochaine pause (n / Entrée : tout de suite)",
     "ladder": "paliers",
     "translated": "traduit automatiquement",
     "rungs": {
@@ -804,6 +804,9 @@
     "toggle": "Afficher ou masquer le détail"
   },
   "controls": {
+    "moreTime": "+5 min",
+    "moreTimeTitle": "Ajouter 5 minutes à l'entretien ; la suite du temps est replanifiée (m)",
+    "moreTimeAdded": "+{{n}} min ajoutées",
     "end": "Terminer",
     "endTitle": "Terminer l'entretien et rédiger le plan (e)",
     "next": "Suivante",
@@ -858,7 +861,7 @@
     "step": "Étape {{n}}/{{m}}",
     "left": "{{t}} restant",
     "over": "temps dépassé",
-    "overHint": "Temps de l'étape écoulé — n / Entrée passe à « {{next}} » (la question en cours n'est jamais coupée)",
+    "overHint": "Temps de l'étape écoulé — passe d'elle-même à « {{next}} » à la prochaine pause (n / Entrée : tout de suite)",
     "doneHint": "Étape couverte — n / Entrée passe à « {{next}} »",
     "toCapture": "À capter dans cette étape",
     "maps": "{{org}} personnes · {{flows}} flux · {{stores}} lieux d'info · {{decisions}} décisions · {{catalog}} outils"
